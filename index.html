@@ -3,90 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Surat Masuk dan Surat Keluar Supabase</title>
+    <title>Sistem Surat Digital Supabase</title>
     <link rel="stylesheet" href="./assets/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 </head>
 <body>
-    <div class="container">
-        <div class="card" id="authBox">
-            <h2>Login Admin</h2>
-            <div class="notice notice-info" id="authMessage">
-                Masukkan akun Supabase Auth yang sudah dibuat di dashboard Supabase.
-            </div>
+    <div class="app-background" aria-hidden="true">
+        <div class="orb orb-one"></div>
+        <div class="orb orb-two"></div>
+        <div class="grid-overlay"></div>
+    </div>
 
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input autocomplete="email" id="email" placeholder="admin@email.com" type="email">
-            </div>
+    <main class="container">
+        <section class="auth-shell" id="authBox">
+            <div class="auth-brand">
+                <div class="brand-mark">SD</div>
+                <p class="eyebrow">Sistem Digital</p>
+                <h1>Administrasi Surat Masuk dan Surat Keluar</h1>
+                <p class="brand-desc">
+                    Kelola arsip, unggah file asli, buat PDF hasil surat, dan simpan semuanya langsung ke Supabase.
+                </p>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input autocomplete="current-password" id="password" placeholder="Password" type="password">
-            </div>
-
-            <button class="btn-primary" id="btnLogin">Login</button>
-        </div>
-
-        <div class="hidden" id="app">
-            <div class="topbar">
-                <div>
-                    <h1>Sistem Administrasi Surat Digital</h1>
-                    <p>File asli surat masuk dan hasil surat otomatis tersimpan ke Supabase Storage.</p>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <span>01</span>
+                        <div>
+                            <strong>Upload File Asli</strong>
+                            <p>File surat masuk masuk ke bucket surat-asli.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span>02</span>
+                        <div>
+                            <strong>Generate PDF</strong>
+                            <p>Hasil preview surat tersimpan ke bucket surat-hasil.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span>03</span>
+                        <div>
+                            <strong>Data Terpusat</strong>
+                            <p>Metadata surat tersimpan pada tabel surat.</p>
+                        </div>
+                    </div>
                 </div>
-                <button class="btn-light" id="btnLogout">Logout</button>
             </div>
+
+            <div class="auth-card">
+                <div class="card-header">
+                    <p class="eyebrow">Login Admin</p>
+                    <h2>Masuk ke Dashboard</h2>
+                    <p>Gunakan akun Supabase Auth yang sudah dibuat di dashboard.</p>
+                </div>
+
+                <div class="notice notice-info" id="authMessage">
+                    Masukkan email dan password admin untuk membuka aplikasi.
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input autocomplete="email" id="email" placeholder="admin@email.com" type="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input autocomplete="current-password" id="password" placeholder="Password" type="password">
+                </div>
+
+                <button class="btn btn-primary full-width" id="btnLogin">Login</button>
+                <p class="small-text auth-help">Pastikan user sudah confirmed di menu Authentication Supabase.</p>
+            </div>
+        </section>
+
+        <section class="hidden app-shell" id="app">
+            <header class="topbar">
+                <div class="topbar-title">
+                    <div class="brand-mini">SD</div>
+                    <div>
+                        <p class="eyebrow">Dashboard</p>
+                        <h1>Sistem Administrasi Surat Digital</h1>
+                        <p>File asli dan hasil PDF tersimpan otomatis ke Supabase Storage.</p>
+                    </div>
+                </div>
+
+                <div class="topbar-actions">
+                    <span class="connection-pill">Supabase aktif</span>
+                    <button class="btn btn-light" id="btnLogout">Logout</button>
+                </div>
+            </header>
 
             <div class="notice notice-info" id="messageBox">
                 Lengkapi data surat, lalu klik Simpan ke Supabase.
             </div>
 
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <span class="summary-icon">IN</span>
+                    <div>
+                        <strong>Surat Masuk</strong>
+                        <p>Upload file asli dan arsip penerimaan.</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-icon">OUT</span>
+                    <div>
+                        <strong>Surat Keluar</strong>
+                        <p>Buat isi surat dan simpan hasil PDF.</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-icon">PDF</span>
+                    <div>
+                        <strong>Preview Otomatis</strong>
+                        <p>Dokumen siap cetak dan diarsipkan.</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="layout">
-                <div class="card form-panel">
-                    <h2>Form Data Surat</h2>
-
-                    <div class="form-group">
-                        <label for="jenisSurat">Jenis Surat</label>
-                        <select id="jenisSurat">
-                            <option value="masuk">Surat Masuk</option>
-                            <option value="keluar">Surat Keluar</option>
-                        </select>
+                <section class="card form-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">Input Data</p>
+                            <h2>Form Data Surat</h2>
+                        </div>
+                        <span class="panel-badge">Realtime Preview</span>
                     </div>
 
-                    <div class="form-group">
-                        <label for="namaInstansi">Nama Instansi</label>
-                        <input id="namaInstansi" type="text" value="Nama Instansi / Lembaga">
+                    <div class="form-section">
+                        <h3>Informasi Surat</h3>
+
+                        <div class="form-group">
+                            <label for="jenisSurat">Jenis Surat</label>
+                            <select id="jenisSurat">
+                                <option value="masuk">Surat Masuk</option>
+                                <option value="keluar">Surat Keluar</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="namaInstansi">Nama Instansi</label>
+                            <input id="namaInstansi" type="text" value="Nama Instansi / Lembaga">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="alamatInstansi">Alamat Instansi</label>
+                            <textarea id="alamatInstansi">Alamat lengkap instansi, nomor telepon, email, dan kode pos.</textarea>
+                        </div>
+
+                        <div class="field-grid">
+                            <div class="form-group">
+                                <label for="nomorSurat">Nomor Surat</label>
+                                <input id="nomorSurat" placeholder="Contoh: 001/SM/VI/2026" type="text">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="tanggalSurat">Tanggal Surat</label>
+                                <input id="tanggalSurat" type="date">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="perihalSurat">Perihal</label>
+                            <input id="perihalSurat" placeholder="Contoh: Undangan Rapat" type="text">
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="alamatInstansi">Alamat Instansi</label>
-                        <textarea id="alamatInstansi">Alamat lengkap instansi, nomor telepon, email, dan kode pos.</textarea>
-                    </div>
+                    <div class="form-section" id="formSuratMasuk">
+                        <h3>Detail Surat Masuk</h3>
 
-                    <div class="form-group">
-                        <label for="nomorSurat">Nomor Surat</label>
-                        <input id="nomorSurat" placeholder="Contoh: 001/SM/VI/2026" type="text">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="tanggalSurat">Tanggal Surat</label>
-                        <input id="tanggalSurat" type="date">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="perihalSurat">Perihal</label>
-                        <input id="perihalSurat" placeholder="Contoh: Undangan Rapat" type="text">
-                    </div>
-
-                    <div id="formSuratMasuk">
                         <div class="form-group">
                             <label for="pengirimSurat">Pengirim</label>
                             <input id="pengirimSurat" placeholder="Contoh: Dinas Pendidikan" type="text">
                         </div>
 
-                        <div class="form-group">
-                            <label for="tanggalDiterima">Tanggal Diterima</label>
-                            <input id="tanggalDiterima" type="date">
+                        <div class="field-grid">
+                            <div class="form-group">
+                                <label for="tanggalDiterima">Tanggal Diterima</label>
+                                <input id="tanggalDiterima" type="date">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="statusMasuk">Status Surat</label>
+                                <select id="statusMasuk">
+                                    <option value="Baru">Baru</option>
+                                    <option value="Diterima">Diterima</option>
+                                    <option value="Didisposisikan">Didisposisikan</option>
+                                    <option value="Selesai">Selesai</option>
+                                    <option value="Diarsipkan">Diarsipkan</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -94,25 +200,16 @@
                             <input id="bagianTujuan" placeholder="Contoh: Bagian Umum" type="text">
                         </div>
 
-                        <div class="form-group">
-                            <label for="statusMasuk">Status Surat</label>
-                            <select id="statusMasuk">
-                                <option value="Baru">Baru</option>
-                                <option value="Diterima">Diterima</option>
-                                <option value="Didisposisikan">Didisposisikan</option>
-                                <option value="Selesai">Selesai</option>
-                                <option value="Diarsipkan">Diarsipkan</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
+                        <div class="form-group upload-group">
                             <label for="fileSuratAsli">Upload File Asli Surat Masuk</label>
                             <input accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="fileSuratAsli" type="file">
                             <p class="small-text">File ini akan masuk ke bucket surat-asli di Supabase Storage.</p>
                         </div>
                     </div>
 
-                    <div class="hidden" id="formSuratKeluar">
+                    <div class="hidden form-section" id="formSuratKeluar">
+                        <h3>Detail Surat Keluar</h3>
+
                         <div class="form-group">
                             <label for="tujuanSurat">Tujuan Surat</label>
                             <input id="tujuanSurat" placeholder="Contoh: Kepala Dinas Pendidikan" type="text">
@@ -123,52 +220,67 @@
                             <textarea id="alamatTujuan" placeholder="Alamat tujuan surat"></textarea>
                         </div>
 
-                        <div class="form-group">
-                            <label for="lampiranSurat">Lampiran</label>
-                            <input id="lampiranSurat" placeholder="Contoh: 1 berkas atau -" type="text">
+                        <div class="field-grid">
+                            <div class="form-group">
+                                <label for="lampiranSurat">Lampiran</label>
+                                <input id="lampiranSurat" placeholder="Contoh: 1 berkas atau -" type="text">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="statusKeluar">Status Surat</label>
+                                <select id="statusKeluar">
+                                    <option value="Draft">Draft</option>
+                                    <option value="Menunggu Persetujuan">Menunggu Persetujuan</option>
+                                    <option value="Disetujui">Disetujui</option>
+                                    <option value="Terkirim">Terkirim</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label for="isiSurat">Isi Surat</label>
                             <textarea id="isiSurat" placeholder="Tulis isi surat keluar di sini."></textarea>
                         </div>
+                    </div>
 
-                        <div class="form-group">
-                            <label for="statusKeluar">Status Surat</label>
-                            <select id="statusKeluar">
-                                <option value="Draft">Draft</option>
-                                <option value="Menunggu Persetujuan">Menunggu Persetujuan</option>
-                                <option value="Disetujui">Disetujui</option>
-                                <option value="Terkirim">Terkirim</option>
-                            </select>
+                    <div class="form-section">
+                        <h3>Penandatangan</h3>
+
+                        <div class="field-grid">
+                            <div class="form-group">
+                                <label for="namaPenandatangan">Nama Penandatangan</label>
+                                <input id="namaPenandatangan" placeholder="Contoh: Budi Santoso, S.A.P." type="text">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="jabatanPenandatangan">Jabatan Penandatangan</label>
+                                <input id="jabatanPenandatangan" placeholder="Contoh: Kepala Bagian Umum" type="text">
+                            </div>
+                        </div>
+
+                        <div class="form-group upload-group">
+                            <label for="fileTandaTangan">Upload Tanda Tangan</label>
+                            <input accept="image/*" id="fileTandaTangan" type="file">
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="namaPenandatangan">Nama Penandatangan</label>
-                        <input id="namaPenandatangan" placeholder="Contoh: Budi Santoso, S.A.P." type="text">
+                    <div class="button-group action-bar">
+                        <button class="btn btn-primary" id="btnPreview">Buat Preview</button>
+                        <button class="btn btn-danger" id="btnSave">Simpan ke Supabase</button>
+                        <button class="btn btn-secondary" id="btnPrint">Cetak / Simpan PDF</button>
+                        <button class="btn btn-light" id="btnReset">Reset</button>
+                    </div>
+                </section>
+
+                <section class="card preview-card">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">Dokumen</p>
+                            <h2>Preview Surat</h2>
+                        </div>
+                        <span class="panel-badge">A4</span>
                     </div>
 
-                    <div class="form-group">
-                        <label for="jabatanPenandatangan">Jabatan Penandatangan</label>
-                        <input id="jabatanPenandatangan" placeholder="Contoh: Kepala Bagian Umum" type="text">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="fileTandaTangan">Upload Tanda Tangan</label>
-                        <input accept="image/*" id="fileTandaTangan" type="file">
-                    </div>
-
-                    <div class="button-group">
-                        <button class="btn-primary" id="btnPreview">Buat Preview</button>
-                        <button class="btn-danger" id="btnSave">Simpan ke Supabase</button>
-                        <button class="btn-secondary" id="btnPrint">Cetak / Simpan PDF</button>
-                        <button class="btn-light" id="btnReset">Reset</button>
-                    </div>
-                </div>
-
-                <div class="card preview-card">
-                    <h2>Preview Surat</h2>
                     <div class="preview-wrapper">
                         <div class="paper" id="areaSurat">
                             <div class="kop-surat">
@@ -182,13 +294,16 @@
                             <div id="previewContent"></div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
 
-            <div class="card data-card">
-                <div class="button-group data-card-header">
-                    <h3 class="no-margin-bottom">Data Surat dari Supabase</h3>
-                    <button class="btn-light" id="btnRefresh">Muat Ulang Data</button>
+            <section class="card data-card">
+                <div class="data-card-header">
+                    <div>
+                        <p class="eyebrow">Arsip</p>
+                        <h3 class="no-margin-bottom">Data Surat dari Supabase</h3>
+                    </div>
+                    <button class="btn btn-light" id="btnRefresh">Muat Ulang Data</button>
                 </div>
 
                 <div class="table-wrap">
@@ -210,9 +325,9 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-    </div>
+            </section>
+        </section>
+    </main>
 
     <script type="module" src="./assets/app.js"></script>
 </body>
