@@ -1,6 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-        const SUPABASE_URL = "https://bthfcygxkblqrvihuqml.supabase.co/rest/v1/";
+        const SUPABASE_URL = "https://bthfcygxkblqrvihuqml.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_4-aj-RTytZxFi1UAihr9lw_3ER8uFbr";
         const TABLE_SURAT = "surat";
         const BUCKET_SURAT_ASLI = "surat-asli";
