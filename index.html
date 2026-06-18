@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem Surat - Supabase Auth</title>
+<link rel="stylesheet" href="./assets/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+<div id="authBox" class="card">
+  <h2>Login Admin</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
+
+<div id="app" style="display:none;">
+
+  <div class="header">
+    <h2>Sistem Surat Digital</h2>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div class="layout">
+
+    <div class="card">
+
+      <select id="jenisSurat">
+        <option value="masuk">Surat Masuk</option>
+        <option value="keluar">Surat Keluar</option>
+      </select>
+
+      <input id="nomorSurat" placeholder="Nomor">
+      <input type="date" id="tanggalSurat">
+      <input id="perihal" placeholder="Perihal">
+
+      <div id="formMasuk">
+        <input id="pengirim" placeholder="Pengirim">
+        <input type="file" id="fileSurat">
+      </div>
+
+      <div id="formKeluar" style="display:none;">
+        <input id="tujuan" placeholder="Tujuan">
+        <textarea id="isi"></textarea>
+      </div>
+
+      <button onclick="save()">Simpan</button>
+
+    </div>
+
+    <div class="card">
+      <h3>Data Surat</h3>
+      <div id="list"></div>
+    </div>
+
+  </div>
+
+  <div class="card">
+    <h3>Preview File</h3>
+    <iframe id="viewer" style="width:100%;height:500px;"></iframe>
+  </div>
+
+</div>
+
+</div>
+
+<script type="module" src="./assets/app.js"></script>
+
+</body>
+</html>
