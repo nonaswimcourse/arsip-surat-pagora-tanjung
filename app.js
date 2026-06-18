@@ -1,6 +1,15 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-        const SUPABASE_URL = "https://bthfcygxkblqrvihuqml.supabase.co";
+
+        function normalizeSupabaseUrl(url) {
+            return String(url || "")
+                .trim()
+                .replace(/\/rest\/v1\/?$/i, "")
+                .replace(/\/+$/g, "");
+        }
+
+        const RAW_SUPABASE_URL = "https://bthfcygxkblqrvihuqml.supabase.co";
+        const SUPABASE_URL = normalizeSupabaseUrl(RAW_SUPABASE_URL);
         const SUPABASE_ANON_KEY = "sb_publishable_4-aj-RTytZxFi1UAihr9lw_3ER8uFbr";
         const TABLE_SURAT = "surat";
         const BUCKET_SURAT_ASLI = "surat-asli";
@@ -35,11 +44,17 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         }
 
         function validateConfig() {
-            const urlEmpty = SUPABASE_URL === "ISI_SUPABASE_URL_ANDA" || !SUPABASE_URL.trim();
+            const urlEmpty = !SUPABASE_URL.trim();
             const keyEmpty = SUPABASE_ANON_KEY === "ISI_SUPABASE_ANON_KEY_ANDA" || !SUPABASE_ANON_KEY.trim();
+            const urlInvalid = !/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(SUPABASE_URL);
 
             if (urlEmpty || keyEmpty) {
-                showAuthMessage("Isi SUPABASE_URL dan SUPABASE_ANON_KEY di dalam file HTML terlebih dahulu.", "error");
+                showAuthMessage("Isi SUPABASE_URL dan SUPABASE_ANON_KEY di file assets/app.js terlebih dahulu.", "error");
+                return false;
+            }
+
+            if (urlInvalid) {
+                showAuthMessage("SUPABASE_URL harus memakai Project URL, contoh: https://project-ref.supabase.co. Jangan pakai /rest/v1/.", "error");
                 return false;
             }
 
@@ -353,6 +368,10 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         async function createPdfBlob() {
             generatePreview();
 
+            if (!window.html2pdf) {
+                throw new Error("Library html2pdf gagal dimuat. Jalankan aplikasi dengan Live Server dan pastikan koneksi internet aktif.");
+            }
+
             const areaSurat = document.getElementById("areaSurat");
             const options = {
                 margin: 0,
@@ -575,6 +594,15 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
             if (!element) return;
             element.addEventListener("input", generatePreview);
             element.addEventListener("change", generatePreview);
+        });
+
+
+        document.getElementById("email").addEventListener("keydown", (event) => {
+            if (event.key === "Enter") login();
+        });
+
+        document.getElementById("password").addEventListener("keydown", (event) => {
+            if (event.key === "Enter") login();
         });
 
         window.addEventListener("load", () => {

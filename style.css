@@ -459,3 +459,14 @@
 .no-margin-bottom {
     margin-bottom: 0 !important;
 }
+
+.error-detail {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.auth-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
