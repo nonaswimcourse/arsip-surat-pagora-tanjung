@@ -1030,3 +1030,102 @@ body { overflow-x: hidden; }
     margin-left: auto;
     margin-right: auto;
 }
+
+/* =========================================================
+   Revisi logo dan teks login
+   - Hanya logo login yang dibuat tengah.
+   - Teks Sistem Digital di halaman login dibuat tengah.
+   - Logo dashboard dan logo kop surat tetap mengikuti layout awal.
+   ========================================================= */
+
+/* Logo utama pada halaman login */
+.auth-brand .logo-box-hero {
+    display: grid !important;
+    place-items: center !important;
+    width: 220px !important;
+    height: 260px !important;
+    margin: 0 auto 18px auto !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+.auth-brand .logo-box-hero .login-logo,
+.auth-brand .logo-box-hero .logo-img,
+.auth-brand .logo-box-hero img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Tengah hanya teks Sistem Digital yang berada tepat di bawah logo login */
+.auth-brand > .eyebrow {
+    display: block !important;
+    width: fit-content !important;
+    margin: 0 auto 18px auto !important;
+    text-align: center !important;
+}
+
+/* Biarkan judul dan deskripsi login tetap mengikuti posisi awal */
+.auth-brand > h1,
+.auth-brand > .brand-desc,
+.auth-brand > .feature-list {
+    text-align: left !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/* Logo dashboard tetap sesuai layout topbar */
+.topbar .brand-mini {
+    display: grid !important;
+    place-items: center !important;
+    width: 56px !important;
+    height: 68px !important;
+    flex: 0 0 56px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+.topbar .brand-mini .logo-img,
+.topbar .brand-mini img[data-app-logo] {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Logo kop surat tetap di kiri dalam kop surat */
+.kop-surat .logo-box-kop {
+    display: grid !important;
+    place-items: center !important;
+    width: 90px !important;
+    height: 110px !important;
+    flex: 0 0 90px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+.kop-surat .logo-box-kop .logo-img,
+.kop-surat .logo-box-kop img[data-app-logo] {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
