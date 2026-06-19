@@ -93,7 +93,9 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 }
 
                 if (query.includes("code=")) {
-                    const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+                    const queryParams = new URLSearchParams(window.location.search);
+                    const code = queryParams.get("code");
+                    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
                     window.history.replaceState({}, document.title, window.location.pathname);
 
                     if (error) throw error;
@@ -272,6 +274,8 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         }
 
         function generatePreview() {
+            if (!jenisSurat) return;
+
             const jenis = jenisSurat.value;
             const namaInstansi = getValue("namaInstansi", "Nama Instansi / Lembaga");
             const alamatInstansi = getValue("alamatInstansi", "Alamat lengkap instansi.");
@@ -281,8 +285,11 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
             const namaPenandatangan = getValue("namaPenandatangan");
             const jabatanPenandatangan = getValue("jabatanPenandatangan", "Petugas Administrasi");
 
-            document.getElementById("previewInstansi").textContent = namaInstansi;
-            document.getElementById("previewAlamat").textContent = alamatInstansi;
+            const previewInstansi = document.getElementById("previewInstansi");
+            const previewAlamat = document.getElementById("previewAlamat");
+
+            if (previewInstansi) previewInstansi.textContent = namaInstansi;
+            if (previewAlamat) previewAlamat.textContent = alamatInstansi;
 
             if (jenis === "masuk") {
                 generateSuratMasuk(nomorSurat, tanggalSurat, perihalSurat, namaPenandatangan, jabatanPenandatangan);
@@ -357,7 +364,8 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 </div>
             `;
 
-            document.getElementById("previewContent").innerHTML = html;
+            const previewContent = document.getElementById("previewContent");
+            if (previewContent) previewContent.innerHTML = html;
         }
 
         function generateSuratKeluar(nomorSurat, tanggalSurat, perihalSurat, namaPenandatangan, jabatanPenandatangan) {
@@ -409,7 +417,8 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 </div>
             `;
 
-            document.getElementById("previewContent").innerHTML = html;
+            const previewContent = document.getElementById("previewContent");
+            if (previewContent) previewContent.innerHTML = html;
         }
 
         function sanitizeFileName(text) {
@@ -572,6 +581,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
         async function loadSurat() {
             const tbody = document.getElementById("suratTableBody");
+            if (!tbody) return;
             tbody.innerHTML = `<tr><td colspan="6">Memuat data...</td></tr>`;
 
             const { data, error } = await supabase
@@ -692,6 +702,11 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         });
 
         window.addEventListener("load", () => {
-            generatePreview();
-            checkSession();
+            try {
+                generatePreview();
+                checkSession();
+            } catch (error) {
+                console.error("Aplikasi gagal dimuat:", error);
+                showAuthMessage(`Aplikasi gagal dimuat: ${error.message}`, "error");
+            }
         });

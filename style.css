@@ -959,3 +959,9 @@ button:disabled {
         padding: 45px 60px;
     }
 }
+
+
+/* Tambahan perbaikan tampilan */
+img, video, canvas { max-width: 100%; }
+body { overflow-x: hidden; }
+.preview-wrapper { -webkit-overflow-scrolling: touch; }
