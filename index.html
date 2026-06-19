@@ -2,52 +2,57 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SIPAS KKG PJOK SD KECAMATAN TANJUNG</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIPAS KKG PJOK SD Kecamatan Tanjung</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
 <div id="loginPage" class="login-page">
-<div class="login-box">
-<img src="logo.png" class="login-logo">
-<h1>SIPAS KKG PJOK</h1>
-<p>SD Kecamatan Tanjung</p>
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
-<button class="btn-login" onclick="login()">Masuk</button>
-</div>
+  <div class="login-card">
+    <img src="logo.png" class="login-logo">
+    <h1>SIPAS KKG PJOK</h1>
+    <p>SD Kecamatan Tanjung</p>
+
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+
+    <button onclick="doLogin()" class="btn-login">Masuk</button>
+    <div id="loginError"></div>
+  </div>
 </div>
 
 <div id="app" style="display:none;">
-<div class="sidebar">
-<div class="brand">
-<img src="logo.png" class="sidebar-logo">
-<h3>SIPAS</h3>
-</div>
-<button>🏠 Dashboard</button>
-<button>📥 Surat Masuk</button>
-<button>📤 Surat Keluar</button>
-<button>📝 Surat Tugas</button>
-<button>📨 Undangan</button>
-<button>📜 SK</button>
-<button>🗂 Arsip</button>
-<button>⚙ Pengaturan</button>
-<button class="logout-btn" onclick="logout()">🚪 Logout</button>
+  <aside class="sidebar">
+    <img src="logo.png" class="sidebar-logo">
+    <h2>SIPAS</h2>
+
+    <button>Dashboard</button>
+    <button>Surat Masuk</button>
+    <button>Surat Keluar</button>
+    <button>Surat Tugas</button>
+    <button>Undangan</button>
+    <button>SK</button>
+    <button>Arsip</button>
+    <button>Pengaturan</button>
+
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </aside>
+
+  <main class="content">
+    <div class="topbar">
+      <h1>SIPAS KKG PJOK SD KECAMATAN TANJUNG</h1>
+    </div>
+
+    <div class="stats">
+      <div class="card"><h3>Total Surat</h3><p id="totalSurat">0</p></div>
+      <div class="card"><h3>Surat Masuk</h3><p id="totalMasuk">0</p></div>
+      <div class="card"><h3>Total Arsip</h3><p id="totalArsip">0</p></div>
+    </div>
+  </main>
 </div>
 
-<div class="content">
-<div class="topbar">
-<h1>SIPAS KKG PJOK SD KECAMATAN TANJUNG</h1>
-</div>
-
-<div class="stats">
-<div class="stat-card"><h3>Total Surat</h3><p id="totalSurat">0</p></div>
-<div class="stat-card"><h3>Surat Masuk</h3><p id="totalMasuk">0</p></div>
-<div class="stat-card"><h3>Arsip</h3><p id="totalArsip">0</p></div>
-</div>
-</div>
-</div>
 <script src="app.js"></script>
 </body>
 </html>
