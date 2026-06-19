@@ -1,84 +1,86 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIPAS KKG PJOK</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIPAS KKG PJOK SD Kecamatan Tanjung</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-YcsIPGdhPK4P/uRW6/sruonlYj/9jKb1zIOQ+Kbn0CpyvLAQuLoAPJpfkPhYYoPP7VnrUQnvbGzm4+o0gC4dlw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
+  <div id="loginPage" class="login-page">
+    <div class="login-card">
+      <div class="brand-logo-wrap">
+        <img src="logo.png" class="login-logo" alt="Logo" onerror="this.style.display='none';document.getElementById('loginLogoFallback').style.display='grid'">
+        <div id="loginLogoFallback" class="logo-fallback" style="display:none">S</div>
+      </div>
+      <h1>SIPAS KKG PJOK</h1>
+      <p>SD Kecamatan Tanjung</p>
 
-<div id="loginPage" class="login-page">
-<div class="login-card">
-<img src="logo.png" class="login-logo">
-<h1>SIPAS KKG PJOK</h1>
-<p>SD Kecamatan Tanjung</p>
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
-<button onclick="doLogin()" class="btn-login">Masuk</button>
-<div id="loginError"></div>
-</div>
-</div>
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="Masukkan email" autocomplete="email">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Masukkan password" autocomplete="current-password">
 
-<div id="app" style="display:none;">
-<aside class="sidebar">
-<img src="logo.png" class="sidebar-logo">
-<h2>SIPAS</h2>
+      <button onclick="doLogin()" class="btn-login">Masuk</button>
+      <div id="loginError" class="error-message"></div>
+    </div>
+  </div>
 
-<button onclick="showPage('dashboard')">Dashboard</button>
-<button onclick="showPage('suratMasuk')">Surat Masuk</button>
-<button onclick="showPage('suratKeluar')">Surat Keluar</button>
-<button onclick="showPage('template')">Template Surat</button>
-<button onclick="showPage('arsip')">Arsip</button>
-<button onclick="showPage('pengaturan')">Pengaturan</button>
+  <div id="app" class="app-shell" style="display:none;">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img src="logo.png" class="sidebar-logo" alt="Logo" onerror="this.style.display='none';document.getElementById('sidebarLogoFallback').style.display='grid'">
+        <div id="sidebarLogoFallback" class="logo-fallback small" style="display:none">S</div>
+        <div>
+          <h2>SIPAS</h2>
+          <p>KKG PJOK SD Kecamatan Tanjung</p>
+        </div>
+      </div>
 
-<button class="logout-btn" onclick="logout()">Logout</button>
-</aside>
+      <nav class="menu-list" aria-label="Menu utama">
+        <button class="menu-item active" data-route="dashboard" onclick="navigate('dashboard')"><span>▦</span>Dashboard</button>
+        <button class="menu-item" data-route="masuk" onclick="navigate('masuk')"><span>↙</span>Surat Masuk</button>
+        <button class="menu-item" data-route="keluar" onclick="navigate('keluar')"><span>↗</span>Surat Keluar</button>
+        <button class="menu-item" data-route="tugas" onclick="navigate('tugas')"><span>✓</span>Surat Tugas</button>
+        <button class="menu-item" data-route="undangan" onclick="navigate('undangan')"><span>✉</span>Undangan</button>
+        <button class="menu-item" data-route="sk" onclick="navigate('sk')"><span>§</span>SK</button>
+        <button class="menu-item" data-route="arsip" onclick="navigate('arsip')"><span>▣</span>Arsip</button>
+        <button class="menu-item" data-route="pengaturan" onclick="navigate('pengaturan')"><span>⚙</span>Pengaturan</button>
+      </nav>
 
-<main class="content">
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </aside>
 
-<section id="dashboard" class="page">
-<div class="topbar"><h1>Dashboard SIPAS</h1></div>
-<div class="stats">
-<div class="card"><h3>Total Surat</h3><p id="totalSurat">0</p></div>
-<div class="card"><h3>Surat Masuk</h3><p id="totalMasuk">0</p></div>
-<div class="card"><h3>Total Arsip</h3><p id="totalArsip">0</p></div>
-</div>
-</section>
+    <main class="content">
+      <div class="topbar">
+        <div>
+          <h1 id="pageTitle">SIPAS KKG PJOK SD KECAMATAN TANJUNG</h1>
+          <p id="pageSubtitle">Sistem informasi administrasi surat berbasis Supabase dan PDF otomatis.</p>
+        </div>
+        <button class="btn secondary" onclick="refreshCurrentPage()">Muat Ulang</button>
+      </div>
 
-<section id="suratMasuk" class="page hidden">
-<h2>Surat Masuk</h2>
-<button onclick="loadSuratMasuk()">Refresh</button>
-<div id="suratMasukList"></div>
-</section>
+      <section id="toast" class="toast" hidden></section>
+      <section id="pageContent"></section>
+    </main>
+  </div>
 
-<section id="suratKeluar" class="page hidden">
-<h2>Surat Keluar</h2>
-<input id="perihal" placeholder="Perihal">
-<textarea id="isiSurat" placeholder="Isi Surat"></textarea>
-<button onclick="simpanSurat()">Simpan Surat</button>
-</section>
+  <div id="previewModal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Preview Dokumen</h2>
+        <button class="icon-btn" onclick="closePreview()">×</button>
+      </div>
+      <div id="previewContent" class="preview-content"></div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="printPreview()">Cetak</button>
+        <button class="btn" onclick="downloadPreviewPdf()">Download PDF</button>
+      </div>
+    </div>
+  </div>
 
-<section id="template" class="page hidden">
-<h2>Template Surat</h2>
-<button onclick="loadTemplate('Surat Tugas')">Surat Tugas</button>
-<button onclick="loadTemplate('Surat Undangan')">Undangan</button>
-<textarea id="templateIsi"></textarea>
-</section>
-
-<section id="arsip" class="page hidden">
-<h2>Arsip</h2>
-<div id="arsipList"></div>
-</section>
-
-<section id="pengaturan" class="page hidden">
-<h2>Pengaturan</h2>
-<p>Data dibaca dari tabel pengaturan.</p>
-</section>
-
-</main>
-</div>
-<script src="app.js"></script>
+  <script src="assets/app.js"></script>
 </body>
 </html>
