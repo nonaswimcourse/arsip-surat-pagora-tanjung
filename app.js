@@ -15,7 +15,13 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         const BUCKET_SURAT_ASLI = "surat-asli";
         const BUCKET_SURAT_HASIL = "surat-hasil";
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        });
         let tandaTanganBase64 = "";
         let currentUser = null;
 
@@ -34,13 +40,73 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         const fileTandaTangan = document.getElementById("fileTandaTangan");
 
         function showMessage(text, type = "info") {
+            if (!messageBox) {
+                console.log(`[${type}] ${text}`);
+                return;
+            }
             messageBox.className = `notice notice-${type}`;
             messageBox.textContent = text;
         }
 
         function showAuthMessage(text, type = "info") {
+            if (!authMessage) {
+                console.log(`[auth:${type}] ${text}`);
+                return;
+            }
             authMessage.className = `notice notice-${type}`;
             authMessage.textContent = text;
+        }
+
+        async function handleSupabaseVerifyRedirect() {
+            const hash = window.location.hash || "";
+            const query = window.location.search || "";
+
+            if (!hash.includes("access_token") && !hash.includes("error") && !query.includes("code=")) {
+                return false;
+            }
+
+            const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+            const errorCode = hashParams.get("error");
+            const errorDescription = hashParams.get("error_description");
+            const accessToken = hashParams.get("access_token");
+            const refreshToken = hashParams.get("refresh_token");
+
+            if (errorCode) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+                showAuthMessage(`Verifikasi gagal: ${errorDescription || errorCode}`, "error");
+                return false;
+            }
+
+            try {
+                if (accessToken && refreshToken) {
+                    const { data, error } = await supabase.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    });
+
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
+                    if (error) throw error;
+                    currentUser = data.session?.user || data.user || null;
+                    showAuthMessage("Verifikasi berhasil. Anda sudah login.", "success");
+                    return true;
+                }
+
+                if (query.includes("code=")) {
+                    const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
+                    if (error) throw error;
+                    currentUser = data.session?.user || data.user || null;
+                    showAuthMessage("Verifikasi berhasil. Anda sudah login.", "success");
+                    return true;
+                }
+            } catch (error) {
+                showAuthMessage(`Verify gagal: ${error.message}`, "error");
+                return false;
+            }
+
+            return false;
         }
 
         function validateConfig() {
@@ -58,45 +124,6 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 return false;
             }
 
-            return true;
-        }
-
-        async function handleSupabaseVerifyRedirect() {
-            const hash = window.location.hash || "";
-            if (!hash.includes("access_token") && !hash.includes("error")) {
-                return false;
-            }
-
-            const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
-            const errorCode = hashParams.get("error");
-            const errorDescription = hashParams.get("error_description");
-            const accessToken = hashParams.get("access_token");
-            const refreshToken = hashParams.get("refresh_token");
-
-            if (errorCode) {
-                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                showAuthMessage(`Verifikasi gagal: ${errorDescription || errorCode}`, "error");
-                return false;
-            }
-
-            if (!accessToken || !refreshToken) {
-                return false;
-            }
-
-            const { data, error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-            });
-
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-
-            if (error) {
-                showAuthMessage(`Verify gagal: ${error.message}`, "error");
-                return false;
-            }
-
-            currentUser = data.session?.user || data.user || null;
-            showAuthMessage("Verifikasi berhasil. Anda sudah login.", "success");
             return true;
         }
 
@@ -143,8 +170,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         async function checkSession() {
             if (!validateConfig()) return;
 
-            await handleSupabaseVerifyRedirect();
-
+            const verifiedFromUrl = await handleSupabaseVerifyRedirect();
             const { data, error } = await supabase.auth.getSession();
 
             if (error) {
@@ -152,17 +178,20 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 return;
             }
 
-            currentUser = data.session?.user || null;
+            currentUser = data.session?.user || currentUser || null;
 
             if (currentUser) {
-                authBox.classList.add("hidden");
-                app.classList.remove("hidden");
-                showMessage("Login berhasil. Aplikasi siap digunakan.", "success");
+                authBox?.classList.add("hidden");
+                app?.classList.remove("hidden");
                 generatePreview();
                 await loadSurat();
+
+                if (verifiedFromUrl) {
+                    showMessage("Verifikasi berhasil. Aplikasi siap digunakan.", "success");
+                }
             } else {
-                app.classList.add("hidden");
-                authBox.classList.remove("hidden");
+                authBox?.classList.remove("hidden");
+                app?.classList.add("hidden");
             }
         }
 
@@ -613,24 +642,27 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
             }
         }
 
-        supabase.auth.onAuthStateChange((event, session) => {
-            currentUser = session?.user || null;
+        function safeAddListener(element, eventName, handler) {
+            if (!element) return;
+            element.addEventListener(eventName, handler);
+        }
 
-            if (currentUser) {
-                authBox.classList.add("hidden");
-                app.classList.remove("hidden");
-            }
-        });
+        function safeAddInputListener(id) {
+            const element = document.getElementById(id);
+            if (!element) return;
+            element.addEventListener("input", generatePreview);
+            element.addEventListener("change", generatePreview);
+        }
 
-        btnLogin.addEventListener("click", login);
-        btnLogout.addEventListener("click", logout);
-        btnPreview.addEventListener("click", generatePreview);
-        btnSave.addEventListener("click", saveToSupabase);
-        btnPrint.addEventListener("click", () => window.print());
-        btnReset.addEventListener("click", () => resetForm(true));
-        btnRefresh.addEventListener("click", loadSurat);
-        jenisSurat.addEventListener("change", ubahJenisSurat);
-        fileTandaTangan.addEventListener("change", uploadTandaTangan);
+        safeAddListener(btnLogin, "click", login);
+        safeAddListener(btnLogout, "click", logout);
+        safeAddListener(btnPreview, "click", generatePreview);
+        safeAddListener(btnSave, "click", saveToSupabase);
+        safeAddListener(btnPrint, "click", () => window.print());
+        safeAddListener(btnReset, "click", () => resetForm(true));
+        safeAddListener(btnRefresh, "click", loadSurat);
+        safeAddListener(jenisSurat, "change", ubahJenisSurat);
+        safeAddListener(fileTandaTangan, "change", uploadTandaTangan);
 
         [
             "namaInstansi",
@@ -649,19 +681,13 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
             "statusKeluar",
             "namaPenandatangan",
             "jabatanPenandatangan"
-        ].forEach((id) => {
-            const element = document.getElementById(id);
-            if (!element) return;
-            element.addEventListener("input", generatePreview);
-            element.addEventListener("change", generatePreview);
-        });
+        ].forEach(safeAddInputListener);
 
-
-        document.getElementById("email").addEventListener("keydown", (event) => {
+        safeAddListener(document.getElementById("email"), "keydown", (event) => {
             if (event.key === "Enter") login();
         });
 
-        document.getElementById("password").addEventListener("keydown", (event) => {
+        safeAddListener(document.getElementById("password"), "keydown", (event) => {
             if (event.key === "Enter") login();
         });
 
