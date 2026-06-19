@@ -958,6 +958,24 @@ button:disabled {
         box-shadow: none;
         padding: 45px 60px;
     }
+    .logo-box {
+    width: 78px;
+    height: 78px;
+    border: 2px solid #1e40af;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    padding: 6px;
+    }
 }
 
 
