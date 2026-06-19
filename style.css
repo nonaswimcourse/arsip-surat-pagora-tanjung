@@ -1172,3 +1172,86 @@ body { overflow-x: hidden; }
 #alamatTujuan,#isiSurat{
   font-family:inherit;
 }
+
+
+/* ===== FIX LOGIN MOBILE ===== */
+@media (max-width:768px){
+
+    .auth-shell{
+        min-height:auto !important;
+        gap:12px !important;
+        padding:0 !important;
+    }
+
+    .auth-brand{
+        min-height:auto !important;
+        padding:20px !important;
+    }
+
+    .auth-card{
+        margin-top:0 !important;
+        padding:20px !important;
+    }
+
+    .auth-brand .logo-box-hero{
+        width:120px !important;
+        height:140px !important;
+        margin:0 auto 10px auto !important;
+    }
+
+    .auth-brand h1{
+        font-size:26px !important;
+        line-height:1.2 !important;
+        margin-bottom:10px !important;
+    }
+
+    .brand-desc{
+        font-size:14px !important;
+        line-height:1.5 !important;
+    }
+
+    .feature-list{
+        margin-top:15px !important;
+    }
+}
+
+/* ===== LOGIN PREMIUM ===== */
+.auth-card{
+    border-radius:30px !important;
+    box-shadow:0 20px 60px rgba(37,99,235,.15) !important;
+}
+
+.auth-card .btn-primary{
+    height:56px;
+    font-size:18px;
+    border-radius:16px;
+}
+
+input,textarea,select{
+    border-radius:16px !important;
+}
+
+.auth-brand{
+    background:linear-gradient(135deg,#0f172a 0%,#1e40af 50%,#2563eb 100%) !important;
+}
+
+.auth-brand .logo-box-hero{
+    width:170px !important;
+    height:200px !important;
+}
+
+/* ===== SURAT FIX ===== */
+.letter-body{
+    min-height:320px;
+    margin-top:10px;
+    font-size:14px;
+    line-height:1.4 !important;
+    text-align:justify;
+    white-space:pre-wrap !important;
+}
+
+.recipient{
+    margin-bottom:10px !important;
+    line-height:1.4 !important;
+    white-space:pre-wrap !important;
+}
