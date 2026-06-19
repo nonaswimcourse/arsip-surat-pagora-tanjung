@@ -1022,3 +1022,11 @@ body { overflow-x: hidden; }
     box-shadow: none !important;
     color: transparent;
 }
+/* Tengah hanya tulisan Sistem Digital di halaman login */
+.auth-brand > .eyebrow {
+    width: 100%;
+    display: block;
+    text-align: center !important;
+    margin-left: auto;
+    margin-right: auto;
+}
