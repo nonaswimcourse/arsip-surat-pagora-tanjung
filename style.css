@@ -1129,3 +1129,46 @@ body { overflow-x: hidden; }
     opacity: 1 !important;
     visibility: visible !important;
 }
+
+
+/* Modern responsive login */
+@media (max-width: 1024px){
+  .auth-shell{
+    grid-template-columns:1fr;
+    gap:20px;
+  }
+  .auth-brand,.auth-card{
+    min-height:auto;
+    padding:32px;
+  }
+}
+@media (max-width: 768px){
+  .container{padding:12px;}
+  .auth-brand,.auth-card{
+    padding:24px;
+    border-radius:20px;
+  }
+  .topbar{
+    flex-direction:column;
+    gap:12px;
+  }
+  .topbar-title{
+    width:100%;
+  }
+  .layout{
+    grid-template-columns:1fr !important;
+  }
+  .field-grid{
+    grid-template-columns:1fr !important;
+  }
+}
+.recipient{
+  white-space:pre-line;
+}
+.letter-body{
+  text-align:justify;
+  white-space:pre-wrap;
+}
+#alamatTujuan,#isiSurat{
+  font-family:inherit;
+}

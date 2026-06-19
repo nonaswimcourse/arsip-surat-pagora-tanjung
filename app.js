@@ -418,7 +418,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                     </p>
                 </div>
 
-                <div class="letter-body">${escapeHtml(isiSurat)}</div>
+                <div class="letter-body">${escapeHtml(isiSurat).replaceAll("\n","<br><br>")}</div>
 
                 <div class="signature-area">
                     <p>Indonesia, ${escapeHtml(tanggalSurat)}</p>
