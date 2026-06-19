@@ -492,5 +492,39 @@ document.addEventListener('DOMContentLoaded',()=>{
  };
 });
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ const firstTextarea=document.querySelector('textarea');
+ if(firstTextarea){
+   const box=document.createElement('div');
+   box.className='template-menu';
+   box.innerHTML=`
+   <select id="templateCepat">
+      <option value="">📄 Template Cepat</option>
+      <option value="tugas">Surat Tugas</option>
+      <option value="undangan">Surat Undangan</option>
+      <option value="keterangan">Surat Keterangan</option>
+      <option value="berita">Berita Acara</option>
+      <option value="sk">Surat Keputusan</option>
+   </select>
+   <button type="button">💾 Simpan Draft</button>
+   <button type="button">🖨️ Cetak PDF</button>`;
+   firstTextarea.parentNode.insertBefore(box,firstTextarea);
+
+   document.getElementById('templateCepat').onchange=function(){
+      const t=this.value;
+      const data={
+       tugas:'SURAT TUGAS\n\nNomor : ...\n\nMenugaskan kepada...',
+       undangan:'SURAT UNDANGAN\n\nDengan hormat, mengundang...',
+       keterangan:'SURAT KETERANGAN\n\nYang bertanda tangan...',
+       berita:'BERITA ACARA\n\nPada hari ini...',
+       sk:'SURAT KEPUTUSAN\n\nMenimbang...'
+      };
+      if(data[t]) firstTextarea.value=data[t];
+   }
+}
+});
+</script>
 </body>
 </html>
