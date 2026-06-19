@@ -14,6 +14,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         const TABLE_SURAT = "surat";
         const BUCKET_SURAT_ASLI = "surat-asli";
         const BUCKET_SURAT_HASIL = "surat-hasil";
+        const APP_LOGO_SRC = "./assets/logo-kkg-pjok-sd.png";
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
@@ -664,6 +665,15 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
             element.addEventListener("change", generatePreview);
         }
 
+        function applyLogoImages() {
+            document.querySelectorAll("[data-app-logo]").forEach((image) => {
+                image.setAttribute("src", APP_LOGO_SRC);
+                image.setAttribute("loading", "eager");
+                image.setAttribute("decoding", "async");
+            });
+        }
+
+
         safeAddListener(btnLogin, "click", login);
         safeAddListener(btnLogout, "click", logout);
         safeAddListener(btnPreview, "click", generatePreview);
@@ -703,6 +713,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
         window.addEventListener("load", () => {
             try {
+                applyLogoImages();
                 generatePreview();
                 checkSession();
             } catch (error) {

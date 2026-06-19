@@ -133,8 +133,7 @@ body {
     border: 44px solid rgba(255, 255, 255, 0.08);
 }
 
-.brand-mark,
-.brand-mini {
+.brand-mark {
     display: grid;
     place-items: center;
     border-radius: 18px;
@@ -152,9 +151,15 @@ body {
 }
 
 .brand-mini {
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 68px;
     flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
 }
 
 .eyebrow {
@@ -620,16 +625,38 @@ button:disabled {
 }
 
 .logo-box {
-    width: 78px;
-    height: 78px;
-    border: 2px solid #1e40af;
-    border-radius: 14px;
+    width: 86px;
+    height: 104px;
     display: grid;
     place-items: center;
-    color: #1e40af;
-    font-size: 13px;
-    font-weight: 900;
-    text-align: center;
+    flex: 0 0 auto;
+    overflow: visible;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.logo-box-hero {
+    width: 132px;
+    height: 160px;
+    margin-bottom: 28px;
+}
+
+.logo-box-kop {
+    width: 90px;
+    height: 110px;
+}
+
+.logo-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .kop-text {
@@ -958,33 +985,15 @@ button:disabled {
         box-shadow: none;
         padding: 45px 60px;
     }
-    .logo-box {
-    width: 78px;
-    height: 78px;
-    border: 2px solid #1e40af;
-    border-radius: 14px;
-    display: grid;
-    place-items: center;
-    overflow: hidden;
-    background: #ffffff;
+
+    .logo-box,
+    .logo-box-kop {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
 }
 
-.logo-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    padding: 6px;
-    }
-    
-    .brand-logo {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    padding: 8px;
-    }
-}
 
 
 /* Tambahan perbaikan tampilan */
