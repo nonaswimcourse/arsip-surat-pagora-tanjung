@@ -1,6 +1,21 @@
-
-body{margin:0;font-family:Arial,sans-serif;background:#f4f6f9}
-.sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;background:#1565C0;padding:20px;color:#fff}
-.sidebar button{width:100%;margin:6px 0;padding:10px;border:none;border-radius:8px}
-.content{margin-left:260px;padding:20px}
-.card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif}
+body{background:#f5f7fb}
+.login-page{height:100vh;display:flex;justify-content:center;align-items:center;background:linear-gradient(135deg,#1565C0,#0D47A1)}
+.login-box{width:380px;background:#fff;padding:35px;border-radius:20px;box-shadow:0 15px 40px rgba(0,0,0,.15);text-align:center}
+.login-logo{width:120px;height:auto;margin-bottom:15px}
+.login-box h1{color:#1565C0}
+.login-box p{margin:10px 0 20px;color:#666}
+.login-box input{width:100%;padding:12px;margin-bottom:12px;border:1px solid #ddd;border-radius:10px}
+.btn-login{width:100%;padding:12px;background:#F4B400;color:#fff;border:none;border-radius:10px}
+.sidebar{position:fixed;left:0;top:0;width:250px;height:100vh;background:#1565C0;padding:20px;color:#fff}
+.brand{text-align:center;margin-bottom:20px}
+.sidebar-logo{width:70px}
+.sidebar button{width:100%;padding:12px;margin-bottom:8px;border:none;border-radius:10px}
+.logout-btn{background:#e53935;color:#fff}
+.content{margin-left:250px;padding:25px}
+.topbar,.stat-card{background:#fff;border-radius:15px;box-shadow:0 3px 15px rgba(0,0,0,.08)}
+.topbar{padding:20px;margin-bottom:20px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.stat-card{padding:25px}
+.stat-card h3{color:#1565C0}
+.stat-card p{font-size:30px;font-weight:bold;color:#F4B400}

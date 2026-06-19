@@ -2,46 +2,51 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SIPAS KKG PJOK SD KECAMATAN TANJUNG</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<div class="sidebar">
-  <h2>SIPAS KKG PJOK</h2>
-  <button>Dashboard</button>
-  <button>Surat</button>
-  <button>Arsip</button>
-  <button>Pengaturan</button>
+<div id="loginPage" class="login-page">
+<div class="login-box">
+<img src="logo.png" class="login-logo">
+<h1>SIPAS KKG PJOK</h1>
+<p>SD Kecamatan Tanjung</p>
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Password">
+<button class="btn-login" onclick="login()">Masuk</button>
 </div>
-<div class="content">
-  <div id="loginPage">
-  <img src="logo.png" class="logo">
-
-  <h2>SIPAS KKG PJOK</h2>
-
-  <input
-    type="email"
-    id="email"
-    placeholder="Email">
-
-  <input
-    type="password"
-    id="password"
-    placeholder="Password">
-
-  <button onclick="login()">
-    Masuk
-  </button>
 </div>
-<button onclick="logout()">
-Logout
-</button>
+
 <div id="app" style="display:none;">
+<div class="sidebar">
+<div class="brand">
+<img src="logo.png" class="sidebar-logo">
+<h3>SIPAS</h3>
 </div>
-  <h1>SIPAS KKG PJOK SD KECAMATAN TANJUNG</h1>
-  <div class="card">Dashboard siap dihubungkan ke Supabase.</div>
+<button>🏠 Dashboard</button>
+<button>📥 Surat Masuk</button>
+<button>📤 Surat Keluar</button>
+<button>📝 Surat Tugas</button>
+<button>📨 Undangan</button>
+<button>📜 SK</button>
+<button>🗂 Arsip</button>
+<button>⚙ Pengaturan</button>
+<button class="logout-btn" onclick="logout()">🚪 Logout</button>
+</div>
+
+<div class="content">
+<div class="topbar">
+<h1>SIPAS KKG PJOK SD KECAMATAN TANJUNG</h1>
+</div>
+
+<div class="stats">
+<div class="stat-card"><h3>Total Surat</h3><p id="totalSurat">0</p></div>
+<div class="stat-card"><h3>Surat Masuk</h3><p id="totalMasuk">0</p></div>
+<div class="stat-card"><h3>Arsip</h3><p id="totalArsip">0</p></div>
+</div>
+</div>
 </div>
 <script src="app.js"></script>
 </body>
