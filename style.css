@@ -1000,3 +1000,25 @@ button:disabled {
 img, video, canvas { max-width: 100%; }
 body { overflow-x: hidden; }
 .preview-wrapper { -webkit-overflow-scrolling: touch; }
+
+
+/* Fix logo: tanpa box biru dan tanpa background. */
+.logo-box,
+.logo-box-hero,
+.logo-box-kop,
+.brand-mini {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.logo-img[data-app-logo] {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: transparent;
+}
