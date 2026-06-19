@@ -61,6 +61,45 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
             return true;
         }
 
+        async function handleSupabaseVerifyRedirect() {
+            const hash = window.location.hash || "";
+            if (!hash.includes("access_token") && !hash.includes("error")) {
+                return false;
+            }
+
+            const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+            const errorCode = hashParams.get("error");
+            const errorDescription = hashParams.get("error_description");
+            const accessToken = hashParams.get("access_token");
+            const refreshToken = hashParams.get("refresh_token");
+
+            if (errorCode) {
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                showAuthMessage(`Verifikasi gagal: ${errorDescription || errorCode}`, "error");
+                return false;
+            }
+
+            if (!accessToken || !refreshToken) {
+                return false;
+            }
+
+            const { data, error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+            });
+
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+
+            if (error) {
+                showAuthMessage(`Verify gagal: ${error.message}`, "error");
+                return false;
+            }
+
+            currentUser = data.session?.user || data.user || null;
+            showAuthMessage("Verifikasi berhasil. Anda sudah login.", "success");
+            return true;
+        }
+
         async function login() {
             if (!validateConfig()) return;
 
@@ -104,14 +143,26 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         async function checkSession() {
             if (!validateConfig()) return;
 
-            const { data } = await supabase.auth.getSession();
+            await handleSupabaseVerifyRedirect();
+
+            const { data, error } = await supabase.auth.getSession();
+
+            if (error) {
+                showAuthMessage(`Gagal membaca sesi login: ${error.message}`, "error");
+                return;
+            }
+
             currentUser = data.session?.user || null;
 
             if (currentUser) {
                 authBox.classList.add("hidden");
                 app.classList.remove("hidden");
+                showMessage("Login berhasil. Aplikasi siap digunakan.", "success");
                 generatePreview();
                 await loadSurat();
+            } else {
+                app.classList.add("hidden");
+                authBox.classList.remove("hidden");
             }
         }
 
@@ -561,6 +612,15 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 showMessage("Form sudah dikosongkan.", "info");
             }
         }
+
+        supabase.auth.onAuthStateChange((event, session) => {
+            currentUser = session?.user || null;
+
+            if (currentUser) {
+                authBox.classList.add("hidden");
+                app.classList.remove("hidden");
+            }
+        });
 
         btnLogin.addEventListener("click", login);
         btnLogout.addEventListener("click", logout);
