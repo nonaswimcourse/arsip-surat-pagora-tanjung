@@ -385,6 +385,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
             const lampiranSurat = getValue("lampiranSurat", "-");
             const isiSurat = getValue("isiSurat", "Isi surat belum ditulis.");
             const statusKeluar = getValue("statusKeluar", "Draft");
+            const lineSpacing = getValue("lineSpacing","1.5");
 
             const html = `
                 <table class="meta-table">
@@ -418,7 +419,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                     </p>
                 </div>
 
-                <div class="letter-body">${escapeHtml(isiSurat).replaceAll("\n","<br><br>")}</div>
+                <div class="letter-body" style="line-height:${lineSpacing}">${escapeHtml(isiSurat).replaceAll("\n","<br><br>")}</div>
 
                 <div class="signature-area">
                     <p>Indonesia, ${escapeHtml(tanggalSurat)}</p>
@@ -731,3 +732,22 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 showAuthMessage(`Aplikasi gagal dimuat: ${error.message}`, "error");
             }
         });
+
+document.addEventListener("DOMContentLoaded",()=>{
+ const t=document.getElementById("templateSurat");
+ const isi=document.getElementById("isiSurat");
+ if(t&&isi){
+  t.addEventListener("change",()=>{
+   if(t.value==="tugas"){
+    isi.value=`Dalam rangka pelaksanaan kegiatan, maka dengan ini diberikan tugas kepada:
+
+Nama : ................................
+Jabatan : ............................
+
+Untuk melaksanakan tugas dengan penuh tanggung jawab.
+
+Demikian surat tugas ini dibuat untuk dipergunakan sebagaimana mestinya.`;
+   }
+  });
+ }
+});

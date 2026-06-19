@@ -111,6 +111,8 @@
         });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 </head>
 <body>
     <div class="app-background" aria-hidden="true">
@@ -347,7 +349,26 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="isiSurat">Isi Surat</label>
+                            
+<div class="field-grid">
+<div class="form-group">
+<label for="templateSurat">Template Surat</label>
+<select id="templateSurat">
+<option value="">Pilih Template</option>
+<option value="tugas">Surat Tugas</option>
+</select>
+</div>
+<div class="form-group">
+<label for="lineSpacing">Jarak Baris</label>
+<select id="lineSpacing">
+<option value="1">1.0</option>
+<option value="1.15">1.15</option>
+<option value="1.5" selected>1.5</option>
+<option value="2">2.0</option>
+</select>
+</div>
+</div>
+<label for="isiSurat">Isi Surat</label>
                             <textarea id="isiSurat" rows="12" placeholder="Tulis isi surat keluar di sini. Gunakan Enter untuk paragraf baru."></textarea>
                         </div>
                     </div>
@@ -440,5 +461,36 @@
     </main>
 
     <script type="module" src="./app.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+ const ta=document.querySelector('textarea');
+ if(!ta) return;
+
+ const panel=document.createElement('div');
+ panel.className='card';
+ panel.style.margin='10px 0';
+ panel.innerHTML=`
+ <div style="padding:12px">
+ <label><b>Template Surat</b></label>
+ <select id="templateSurat">
+ <option value="">Pilih Template</option>
+ <option value="tugas">Surat Tugas</option>
+ <option value="undangan">Surat Undangan</option>
+ <option value="keterangan">Surat Keterangan</option>
+ <option value="berita">Berita Acara</option>
+ </select>
+ </div>`;
+ ta.parentNode.insertBefore(panel,ta);
+
+ document.getElementById('templateSurat').onchange=(e)=>{
+  const v=e.target.value;
+  if(v==='tugas') ta.value='SURAT TUGAS\n\nMenugaskan kepada:\nNama :\nJabatan :\n\nUntuk melaksanakan tugas....';
+  if(v==='undangan') ta.value='SURAT UNDANGAN\n\nDengan hormat, kami mengundang....';
+  if(v==='keterangan') ta.value='SURAT KETERANGAN\n\nYang bertanda tangan di bawah ini menerangkan bahwa....';
+  if(v==='berita') ta.value='BERITA ACARA\n\nPada hari ini....';
+ };
+});
+</script>
 </body>
 </html>
