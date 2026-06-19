@@ -1301,3 +1301,15 @@ padding:10px 14px;
 border-radius:10px;
 border:1px solid #dbe3ef;
 }
+
+.sipas-sidebar{
+position:fixed;left:0;top:0;width:240px;height:100vh;
+background:#0f172a;color:#fff;padding:20px;z-index:999;
+overflow:auto;
+}
+.sipas-sidebar a{
+display:block;color:#fff;text-decoration:none;
+padding:10px;border-radius:8px;margin:4px 0;
+}
+.sipas-sidebar a:hover{background:rgba(255,255,255,.12);}
+body{padding-left:250px!important;}
