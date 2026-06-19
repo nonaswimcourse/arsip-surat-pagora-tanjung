@@ -117,7 +117,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
             const urlInvalid = !/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(SUPABASE_URL);
 
             if (urlEmpty || keyEmpty) {
-                showAuthMessage("Isi SUPABASE_URL dan SUPABASE_ANON_KEY di file assets/app.js terlebih dahulu.", "error");
+                showAuthMessage("Isi SUPABASE_URL dan SUPABASE_ANON_KEY di file app.js terlebih dahulu.", "error");
                 return false;
             }
 
