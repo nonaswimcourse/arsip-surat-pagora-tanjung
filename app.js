@@ -8,9 +8,9 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 .replace(/\/+$/g, "");
         }
 
-        const RAW_SUPABASE_URL = "https://bthfcygxkblqrvihuqml.supabase.co";
+        const RAW_SUPABASE_URL = "https://toelltwumbadffoxnjjk.supabase.co";
         const SUPABASE_URL = normalizeSupabaseUrl(RAW_SUPABASE_URL);
-        const SUPABASE_ANON_KEY = "sb_publishable_4-aj-RTytZxFi1UAihr9lw_3ER8uFbr";
+        const SUPABASE_ANON_KEY = "sb_publishable_mNWooRD5HVKMi085byEHcw_M_2ouAEK";
         const TABLE_SURAT = "surat";
         const BUCKET_SURAT_ASLI = "surat-asli";
         const BUCKET_SURAT_HASIL = "surat-hasil";
