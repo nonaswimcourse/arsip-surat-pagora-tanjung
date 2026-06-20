@@ -117,13 +117,28 @@ input, textarea, select {
     width: 210mm;
     min-height: 330mm;
   }
-}
-
 /* --- RESPONSIVE --- */
 @media(max-width: 768px) {
   .pdf-page {
     width: 100%;
     min-height: auto;
     padding: 28px;
-  }
+}
+/* Membatasi logo login agar tidak membesar */
+.login-card .brand-logo-wrap .login-logo {
+  width: 86px !important;
+  height: 86px !important;
+  max-width: 86px !important;
+  max-height: 86px !important;
+  min-width: 86px !important;
+  min-height: 86px !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+/* Memastikan wrapper logo tetap di tengah */
+.login-card .brand-logo-wrap {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
