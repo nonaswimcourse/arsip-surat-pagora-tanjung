@@ -1280,8 +1280,7 @@ function buildOutgoingTemplate(row, profile) {
           ['Sifat', row.sifat_surat],
           ['Perihal', row.perihal]
         ])}</div>
-        <div class="date-right">${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat)}</div>
-      </div>
+              </div>
       <div class="recipient">
         <p>Kepada Yth.</p>
         <p><strong>${safe(row.pengirim)}</strong></p>
@@ -1350,8 +1349,7 @@ function buildInvitationTemplate(row, profile) {
           ['Sifat', row.sifat_surat],
           ['Perihal', row.perihal]
         ])}</div>
-        <div class="date-right">${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat)}</div>
-      </div>
+              </div>
       <div class="recipient">
         <p>Kepada Yth.</p>
         <p><strong>${safe(row.pengirim)}</strong></p>
