@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIPAS KKG PJOK SD Kecamatan Tanjung</title>
+  <title>SIPAS Kantor Final</title>
   <link rel="stylesheet" href="assets/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-YcsIPGdhPK4P/uRW6/sruonlYj/9jKb1zIOQ+Kbn0CpyvLAQuLoAPJpfkPhYYoPP7VnrUQnvbGzm4+o0gC4dlw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -15,17 +15,24 @@
         <img src="logo.png" class="login-logo" alt="Logo" onerror="this.style.display='none';document.getElementById('loginLogoFallback').style.display='grid'">
         <div id="loginLogoFallback" class="logo-fallback" style="display:none">S</div>
       </div>
-      <h1>SIPAS KKG PJOK</h1>
-      <p>SD Kecamatan Tanjung</p>
+      <h1>SIPAS Kantor</h1>
+      <p>Sistem administrasi surat dan arsip kantor</p>
 
       <label for="email">Email</label>
-      <input type="email" id="email" placeholder="Masukkan email" autocomplete="email">
+      <input type="email" id="email" placeholder="admin@sipas.local" autocomplete="email">
+
       <label for="password">Password</label>
-      <input type="password" id="password" placeholder="Masukkan password" autocomplete="current-password">
+      <input type="password" id="password" placeholder="admin123" autocomplete="current-password">
 
       <button onclick="doLogin()" class="btn-login">Masuk</button>
       <div id="loginError" class="error-message"></div>
-      <p class="login-note">Jika akun Supabase belum dibuat, sistem tetap bisa dibuka dalam mode lokal.</p>
+
+      <div class="demo-box">
+        <strong>Akun demo lokal</strong>
+        <span>Admin: admin@sipas.local / admin123</span>
+        <span>Staf: staf@sipas.local / staf123</span>
+        <span>Pimpinan: pimpinan@sipas.local / pimpinan123</span>
+      </div>
     </div>
   </div>
 
@@ -36,7 +43,7 @@
         <div id="sidebarLogoFallback" class="logo-fallback small" style="display:none">S</div>
         <div>
           <h2>SIPAS</h2>
-          <p>KKG PJOK SD Kecamatan Tanjung</p>
+          <p id="sidebarProfileName">Administrasi Surat</p>
         </div>
       </div>
 
@@ -48,19 +55,26 @@
         <button class="menu-item" data-route="undangan" onclick="navigate('undangan')"><span>✉</span>Undangan</button>
         <button class="menu-item" data-route="sk" onclick="navigate('sk')"><span>§</span>SK</button>
         <button class="menu-item" data-route="arsip" onclick="navigate('arsip')"><span>▣</span>Arsip</button>
-        <button class="menu-item" data-route="pengaturan" onclick="navigate('pengaturan')"><span>⚙</span>Pengaturan</button>
+        <button class="menu-item admin-only" data-route="pengaturan" onclick="navigate('pengaturan')"><span>⚙</span>Pengaturan</button>
       </nav>
 
+      <div class="user-panel">
+        <strong id="currentUserEmail">-</strong>
+        <span id="currentUserRole">-</span>
+      </div>
       <button class="logout-btn" onclick="logout()">Logout</button>
     </aside>
 
     <main class="content">
       <div class="topbar">
         <div>
-          <h1 id="pageTitle">SIPAS KKG PJOK SD KECAMATAN TANJUNG</h1>
-          <p id="pageSubtitle">Sistem informasi administrasi surat berbasis Supabase dan PDF otomatis.</p>
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle">Sistem informasi administrasi surat dan arsip kantor.</p>
         </div>
-        <button class="btn secondary" onclick="refreshCurrentPage()">Muat Ulang</button>
+        <div class="topbar-actions">
+          <button class="btn secondary" onclick="refreshCurrentPage()">Muat Ulang</button>
+          <button class="btn" onclick="navigate('keluar')">Buat Surat</button>
+        </div>
       </div>
 
       <section id="toast" class="toast" hidden></section>
@@ -69,7 +83,7 @@
   </div>
 
   <div id="previewModal" class="modal" hidden>
-    <div class="modal-card">
+    <div class="modal-card modal-wide">
       <div class="modal-header">
         <h2>Preview Dokumen</h2>
         <button class="icon-btn" onclick="closePreview()">×</button>
@@ -79,6 +93,16 @@
         <button class="btn secondary" onclick="printPreview()">Cetak</button>
         <button class="btn" onclick="downloadPreviewPdf()">Download PDF</button>
       </div>
+    </div>
+  </div>
+
+  <div id="editModal" class="modal" hidden>
+    <div class="modal-card modal-form">
+      <div class="modal-header">
+        <h2 id="editModalTitle">Edit Dokumen</h2>
+        <button class="icon-btn" onclick="closeEditModal()">×</button>
+      </div>
+      <div id="editModalContent" class="modal-scroll"></div>
     </div>
   </div>
 
