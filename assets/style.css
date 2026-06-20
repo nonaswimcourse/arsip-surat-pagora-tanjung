@@ -63,7 +63,8 @@ input, textarea, select {
 
 .letterhead {
   display: grid;
-  grid-template-columns: 100px 1fr 100px;
+  /* Kolom: 80px untuk logo, 1fr untuk teks (tengah), 80px untuk penyeimbang kanan */
+  grid-template-columns: 80px 1fr 80px; 
   align-items: center;
   text-align: center;
   position: relative;
@@ -71,15 +72,16 @@ input, textarea, select {
 }
 
 .letterhead img {
-  grid-column: 1;
-  width: 80px;
-  height: 80px;
+  grid-column: 1; /* Logo menempati kolom pertama */
+  width: 70px;
+  height: 70px;
   object-fit: contain;
-  justify-self: start;
+  justify-self: start; /* Logo rata kiri */
 }
 
 .letterhead div {
-  grid-column: 2;
+  grid-column: 2; /* Teks menempati kolom kedua (tengah halaman) */
+  padding: 0 10px;
 }
 
 .letterhead h1 {
@@ -91,7 +93,7 @@ input, textarea, select {
 .letterhead p {
   font-size: 10.5pt;
   margin: 1px 0;
-  font-style: italic;
+  font-style: italic; /* Alamat dibuat miring sesuai permintaan Anda */
 }
 
 .letter-line {
