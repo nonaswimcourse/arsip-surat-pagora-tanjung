@@ -6,6 +6,7 @@ const STORAGE_BUCKET = 'dokumen-surat';
 const LOCAL_SESSION_KEY = 'sipas_kantor_session';
 const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
+const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
@@ -29,9 +30,9 @@ const demoAccounts = {
 };
 
 const permissions = {
-  admin: { create: true, edit: true, delete: true, archive: true, approve: true, settings: true, export: true, pdf: true },
-  staf: { create: true, edit: true, delete: false, archive: true, approve: false, settings: true, export: true, pdf: true },
-  pimpinan: { create: false, edit: false, delete: false, archive: true, approve: true, settings: true, export: true, pdf: true }
+  admin: { create: true, edit: true, delete: true, reset: true, archive: true, approve: true, settings: true, export: true, pdf: true },
+  staf: { create: true, edit: true, delete: true, reset: true, archive: true, approve: false, settings: true, export: true, pdf: true },
+  pimpinan: { create: false, edit: true, delete: true, reset: true, archive: true, approve: true, settings: true, export: true, pdf: true }
 };
 
 const documentTypes = {
@@ -291,6 +292,55 @@ function setLocalDocuments(rows) {
   writeJSON(LOCAL_DOC_KEY, rows);
 }
 
+function getDeletedDocumentIds() {
+  return readJSON(LOCAL_DELETED_KEY, []);
+}
+
+function setDeletedDocumentIds(ids) {
+  const uniqueIds = [...new Set((ids || []).map((id) => String(id)).filter(Boolean))];
+  writeJSON(LOCAL_DELETED_KEY, uniqueIds);
+}
+
+function markDocumentDeleted(id) {
+  if (!id) return;
+  setDeletedDocumentIds([...getDeletedDocumentIds(), String(id)]);
+}
+
+function unmarkDocumentDeleted(id) {
+  if (!id) return;
+  setDeletedDocumentIds(getDeletedDocumentIds().filter((item) => String(item) !== String(id)));
+}
+
+function isDocumentDeleted(id) {
+  return getDeletedDocumentIds().some((item) => String(item) === String(id));
+}
+
+function documentTimestamp(row) {
+  const date = new Date(row?.updated_at || row?.created_at || 0);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function mergeDocumentRows(onlineRows = [], localRows = []) {
+  const deletedIds = new Set(getDeletedDocumentIds().map(String));
+  const merged = new Map();
+
+  onlineRows.forEach((row) => {
+    const id = String(row.id);
+    if (!deletedIds.has(id)) merged.set(id, row);
+  });
+
+  localRows.forEach((row) => {
+    const id = String(row.id);
+    if (deletedIds.has(id)) return;
+    const current = merged.get(id);
+    if (!current || row.local_only || documentTimestamp(row) >= documentTimestamp(current)) {
+      merged.set(id, row);
+    }
+  });
+
+  return Array.from(merged.values());
+}
+
 function getLocalProfile() {
   return readJSON(LOCAL_PROFILE_KEY, null);
 }
@@ -482,8 +532,8 @@ function stripLocalOnly(row) {
 }
 
 async function fetchDocuments(filter = {}) {
-  const localRows = getLocalDocuments().map(normalizeDocument);
-  let rows = localRows;
+  const localRows = getLocalDocuments().map(normalizeDocument).filter((row) => !isDocumentDeleted(row.id));
+  let onlineRows = [];
 
   try {
     if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
@@ -492,12 +542,12 @@ async function fetchDocuments(filter = {}) {
     if (filter.status) query = query.eq('status', filter.status);
     const { data, error } = await query;
     if (error) throw error;
-    const onlineRows = (data || []).map(normalizeDocument);
-    const onlineIds = new Set(onlineRows.map((row) => String(row.id)));
-    rows = [...onlineRows, ...localRows.filter((row) => !onlineIds.has(String(row.id)))];
+    onlineRows = (data || []).map(normalizeDocument).filter((row) => !isDocumentDeleted(row.id));
   } catch (error) {
     console.warn('Data Supabase belum terbaca. Aplikasi memakai data lokal:', error);
   }
+
+  let rows = mergeDocumentRows(onlineRows, localRows);
 
   if (filter.jenis) rows = rows.filter((row) => row.jenis === filter.jenis);
   if (filter.status) rows = rows.filter((row) => row.status === filter.status);
@@ -518,6 +568,7 @@ async function fetchDocuments(filter = {}) {
 
 async function saveDocumentToStorage(row) {
   const normalized = normalizeDocument(row);
+  unmarkDocumentDeleted(normalized.id);
   const localRows = getLocalDocuments().filter((item) => String(item.id) !== String(normalized.id));
 
   // Simpan lokal lebih dulu agar data langsung muncul di tabel meskipun Supabase/RLS/bucket belum siap.
@@ -544,13 +595,78 @@ async function saveDocumentToStorage(row) {
 }
 
 async function deleteDocumentFromStorage(row) {
-  if (row.local_only || String(row.id).startsWith('local-')) {
-    setLocalDocuments(getLocalDocuments().filter((item) => String(item.id) !== String(row.id)));
-    return;
+  const id = String(row?.id || '');
+  if (!id) throw new Error('ID dokumen tidak valid.');
+
+  // Hapus dari tampilan lokal lebih dulu agar data tidak muncul lagi ketika RLS Supabase menolak delete.
+  markDocumentDeleted(id);
+  setLocalDocuments(getLocalDocuments().filter((item) => String(item.id) !== id));
+  cachedDocuments = cachedDocuments.filter((item) => String(item.id) !== id);
+
+  if (!supabaseClient || row.local_only || id.startsWith('local-')) {
+    return { onlineDeleted: false, localDeleted: true };
   }
-  if (!supabaseClient) throw new Error('Supabase belum aktif. Data online tidak dapat dihapus.');
+
+  let storageError = null;
+  if (row.pdf_path) {
+    try {
+      const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).remove([row.pdf_path]);
+      if (error) storageError = error;
+    } catch (error) {
+      storageError = error;
+    }
+  }
+
   const { error } = await supabaseClient.from(TABLE_SURAT).delete().eq('id', row.id);
-  if (error) throw error;
+  if (error) {
+    return {
+      onlineDeleted: false,
+      localDeleted: true,
+      error: errorText(error, 'Supabase menolak hapus data. Data sudah dihapus dari tampilan lokal.')
+    };
+  }
+
+  return {
+    onlineDeleted: true,
+    localDeleted: true,
+    storageWarning: storageError ? errorText(storageError, 'File PDF di Storage belum terhapus.') : ''
+  };
+}
+
+async function deleteAllDocumentsFromStorage(rows = []) {
+  const ids = rows.map((row) => String(row.id)).filter(Boolean);
+  const pdfPaths = rows.map((row) => row.pdf_path).filter(Boolean);
+  const oldDeletedIds = getDeletedDocumentIds();
+
+  setLocalDocuments([]);
+  setDeletedDocumentIds([...oldDeletedIds, ...ids]);
+  cachedDocuments = [];
+
+  if (!supabaseClient) {
+    return { onlineDeleted: false, localDeleted: true, error: 'Supabase belum aktif. Data lokal sudah dikosongkan.' };
+  }
+
+  let storageWarning = '';
+  try {
+    if (pdfPaths.length) {
+      const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).remove(pdfPaths);
+      if (error) storageWarning = errorText(error, 'Sebagian file PDF di Storage belum terhapus.');
+    }
+  } catch (error) {
+    storageWarning = errorText(error, 'Sebagian file PDF di Storage belum terhapus.');
+  }
+
+  const { error } = await supabaseClient.from(TABLE_SURAT).delete().not('id', 'is', null);
+  if (error) {
+    return {
+      onlineDeleted: false,
+      localDeleted: true,
+      error: errorText(error, 'Supabase menolak reset data. Data sudah dikosongkan dari tampilan lokal.'),
+      storageWarning
+    };
+  }
+
+  return { onlineDeleted: true, localDeleted: true, storageWarning };
 }
 
 function getFormData(form, typeKey, existing = {}) {
@@ -784,6 +900,7 @@ async function renderDashboard() {
         <div class="topbar-actions">
           <button class="btn secondary" onclick="exportCsv()">Export CSV</button>
           <button class="btn secondary" onclick="backupJson()">Backup JSON</button>
+          <button class="btn danger" onclick="resetAllData()">Reset Semua Data</button>
         </div>
       </div>
       ${renderTable(rows.slice(0, 10), { showType: true })}
@@ -879,13 +996,13 @@ function renderTable(rows, options = {}) {
 
 function actionButtons(row) {
   const buttons = [];
-  buttons.push(`<button onclick="previewById(${js(row.id)})">Preview</button>`);
-  if (getPerm('pdf')) buttons.push(`<button onclick="downloadById(${js(row.id)})">PDF</button>`);
-  if (getPerm('edit')) buttons.push(`<button onclick="editById(${js(row.id)})">Edit</button>`);
-  if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button class="green" onclick="approveById(${js(row.id)})">Setujui</button>`);
-  if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button onclick="archiveById(${js(row.id)})">Arsip</button>`);
-  if (getPerm('archive') && row.status === 'diarsipkan') buttons.push(`<button onclick="restoreById(${js(row.id)})">Aktifkan</button>`);
-  if (getPerm('delete')) buttons.push(`<button class="danger" onclick="deleteById(${js(row.id)})">Hapus</button>`);
+  buttons.push(`<button type="button" onclick="previewById(${js(row.id)})">Preview</button>`);
+  if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById(${js(row.id)})">PDF</button>`);
+  if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById(${js(row.id)})">Edit</button>`);
+  if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById(${js(row.id)})">Setujui</button>`);
+  if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button type="button" onclick="archiveById(${js(row.id)})">Arsip</button>`);
+  if (getPerm('archive') && row.status === 'diarsipkan') buttons.push(`<button type="button" onclick="restoreById(${js(row.id)})">Aktifkan</button>`);
+  if (getPerm('delete')) buttons.push(`<button type="button" class="danger" onclick="deleteById(${js(row.id)})">Delete</button>`);
   return buttons.join('');
 }
 
@@ -952,17 +1069,42 @@ async function approveById(id) {
 
 async function deleteById(id) {
   if (!getPerm('delete')) return showToast('Role ini tidak dapat menghapus dokumen.', 'error');
-  if (!confirm('Hapus data ini? Tindakan ini tidak dapat dibatalkan.')) return;
   const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
-  try {
-    await deleteDocumentFromStorage(row);
-    showToast('Data berhasil dihapus.');
-    await refreshCurrentPage();
-  } catch (error) {
-    showToast(error.message || 'Gagal menghapus data.', 'error');
-    console.warn(error);
+  if (!confirm(`Hapus dokumen "${row.nomor_surat || row.perihal || row.id}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+  const result = await deleteDocumentFromStorage(row);
+  await refreshCurrentPage();
+
+  if (result.onlineDeleted) {
+    showToast(result.storageWarning ? `Data terhapus. ${result.storageWarning}` : 'Data berhasil dihapus permanen.');
+    return;
   }
+
+  showToast(result.error || 'Data berhasil dihapus dari tampilan lokal.', 'warning');
+}
+
+async function resetAllData() {
+  if (!getPerm('reset')) return showToast('Role ini tidak dapat mereset data.', 'error');
+  const rows = await fetchDocuments();
+  const total = rows.length;
+
+  if (!confirm(`Reset semua data surat? Total data yang akan dikosongkan: ${total}.`)) return;
+  const confirmation = prompt('Ketik RESET untuk menghapus semua data surat dari aplikasi.');
+  if (confirmation !== 'RESET') {
+    showToast('Reset dibatalkan.', 'warning');
+    return;
+  }
+
+  const result = await deleteAllDocumentsFromStorage(rows);
+  await refreshCurrentPage();
+
+  if (result.onlineDeleted) {
+    showToast(result.storageWarning ? `Semua data berhasil direset. ${result.storageWarning}` : 'Semua data surat berhasil direset.');
+    return;
+  }
+
+  showToast(result.error || 'Data lokal berhasil direset. Data online mungkin perlu dihapus lewat SQL Supabase.', 'warning');
 }
 
 async function renderArchivePage() {
@@ -1006,6 +1148,13 @@ async function renderSettingsPage() {
         <div class="alert">Frontend ini tetap aman dari crash saat Supabase belum siap karena sistem memakai localStorage sebagai fallback.</div>
         <div class="alert">Keamanan produksi yang sebenarnya tetap harus memakai Supabase Auth, Row Level Security, dan kebijakan akses database.</div>
       </div>
+    </div>
+    <div class="panel danger-zone">
+      <div class="panel-header">
+        <div><h2>Reset Data Surat</h2><p>Gunakan tombol ini untuk mengosongkan seluruh data surat dari tampilan aplikasi dan mencoba menghapus data online Supabase.</p></div>
+        <button type="button" class="btn danger" onclick="resetAllData()">Reset Semua Data</button>
+      </div>
+      <div class="alert">Reset hanya menghapus data surat. Profil instansi dan pengaturan aplikasi tetap dipertahankan.</div>
     </div>`;
 }
 
@@ -1367,6 +1516,7 @@ window.archiveById = archiveById;
 window.restoreById = restoreById;
 window.approveById = approveById;
 window.deleteById = deleteById;
+window.resetAllData = resetAllData;
 window.saveProfile = saveProfile;
 window.saveSettings = saveProfile;
 window.exportCsv = exportCsv;
