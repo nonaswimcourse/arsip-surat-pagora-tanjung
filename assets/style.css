@@ -19,3 +19,9 @@ textarea{resize:vertical;line-height:1.55}.hidden{display:none!important}
 @media print{body{background:#fff}.sidebar,.topbar,.modal-header,.modal-footer,.toast{display:none!important}.content{margin:0;padding:0}.preview-content{padding:0;background:#fff}.pdf-page{box-shadow:none;margin:0;width:210mm;min-height:297mm}.modal{position:static;background:#fff;padding:0}.modal-card{box-shadow:none;max-height:none;width:100%;border-radius:0}}
 
 .danger-zone{border-color:#fecaca;background:#fffafa}.danger-zone h2{color:#991b1b}
+@media print {
+  .preview-content, #previewContent {
+    display: block !important;
+    visibility: visible !important;
+  }
+}
