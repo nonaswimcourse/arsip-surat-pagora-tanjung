@@ -226,7 +226,23 @@ function printableHTML(content) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dokumen SIPAS</title>
   <link rel="stylesheet" href="assets/style.css">
-</head>
+<style>
+/* GOVERNMENT LETTER STYLE */
+.pdf-page{
+  width:210mm;
+  min-height:297mm;
+  padding:12mm;
+  box-sizing:border-box;
+  background:white;
+  font-family:Arial;
+  font-size:12px;
+}
+
+@page{
+  size:A4;
+  margin:10mm;
+}
+</style></head>
 <body class="print-body">${content}</body>
 </html>`;
 }
@@ -1210,18 +1226,32 @@ async function saveProfile(event) {
   }
 }
 
+
 function letterhead(profile) {
   return `
-    <div class="letterhead">
-      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
-      <div>
-        <h1>${safe(profile.nama_instansi)}</h1>
-        <p>${safe(profile.alamat)}</p>
-        <p>Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
-      </div>
-    </div>
-    <div class="letter-line"></div>`;
+  <div style="text-align:center;border-bottom:3px double #000;padding-bottom:10px;">
+
+    <table style="width:100%;border:none;">
+      <tr>
+        <td style="width:90px;"></td>
+        <td style="text-align:center;">
+          <div style="font-weight:bold;font-size:18px;text-transform:uppercase;line-height:1.2;">
+            ${safe(profile.nama_instansi)}
+          </div>
+          <div style="font-size:12px;">
+            ${safe(profile.alamat)}<br>
+            Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}
+          </div>
+        </td>
+        <td style="width:90px;text-align:right;">
+          <img src="${safe(profile.logo_url || 'logo.png')}" style="width:70px;height:auto;" onerror="this.style.display='none'">
+        </td>
+      </tr>
+    </table>
+
+  </div>`;
 }
+
 
 function signature(profile, row = {}) {
   return `
@@ -1269,29 +1299,64 @@ function buildDocumentHTML(documentRow) {
   return buildOutgoingTemplate(row, profile, type);
 }
 
+
 function buildOutgoingTemplate(row, profile) {
   return `
-    <article class="pdf-page">
-      ${letterhead(profile)}
-      <div class="letter-meta-grid">
-        <div>${metaTable([
-          ['Nomor', row.nomor_surat],
-          ['Lampiran', row.lampiran],
-          ['Sifat', row.sifat_surat],
-          ['Perihal', row.perihal]
-        ])}</div>
-              </div>
-      <div class="recipient">
-        <p>Kepada Yth.</p>
-        <p><strong>${safe(row.pengirim)}</strong></p>
-        <p>${safe(row.penerima)}</p>
-        <p>${safe(row.alamat_tujuan || '')}</p>
-      </div>
-      ${buildActivityMeta(row)}
-      <div class="body-text"><p>Dengan hormat,</p>${paragraphText(row.isi_surat)}</div>
-      ${signature(profile, row)}
-    </article>`;
+  <article class="pdf-page">
+
+    ${letterhead(profile)}
+
+    <div style="margin-top:10px;font-size:12px;">
+      <table style="width:100%;">
+        <tr>
+          <td style="width:65%;">
+            <strong>Nomor:</strong> ${row.nomor_surat}<br>
+            <strong>Lampiran:</strong> ${row.lampiran}<br>
+            <strong>Sifat:</strong> ${row.sifat_surat}<br>
+            <strong>Perihal:</strong> ${row.perihal}
+          </td>
+          <td style="text-align:right;">
+            ${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="margin-top:15px;font-size:12px;">
+      <p>Kepada Yth.</p>
+      <p><strong>${safe(row.pengirim)}</strong></p>
+      <p>${safe(row.penerima)}</p>
+      <p>${safe(row.alamat_tujuan || '')}</p>
+    </div>
+
+    <div style="margin-top:10px;font-size:12px;line-height:1.5;">
+      <p>Dengan hormat,</p>
+      ${paragraphText(row.isi_surat)}
+    </div>
+
+    <div style="margin-top:20px;font-size:12px;">
+      <table style="width:100%;">
+        <tr>
+          <td style="vertical-align:top;width:50%;">
+            <strong>Tembusan:</strong>
+            <ol style="margin-top:5px;">
+              <li>Korwil Satpendik Kec. Tanjung</li>
+              <li>Ketua K3S Kec. Tanjung</li>
+              <li>Ketua Sekbin Se Kec. Tanjung</li>
+              <li>Arsip</li>
+            </ol>
+          </td>
+
+          <td style="text-align:center;width:50%;">
+            ${signature(profile, row)}
+          </td>
+        </tr>
+      </table>
+    </div>
+
+  </article>`;
 }
+
 
 function buildIncomingTemplate(row, profile, type) {
   return `
@@ -1408,7 +1473,23 @@ function printPreview() {
   if (!printWindow) return showToast('Popup cetak diblokir browser.', 'error');
   printWindow.document.write(`
     <!DOCTYPE html><html><head><title>Cetak Dokumen</title>
-    <link rel="stylesheet" href="assets/style.css"></head><body class="print-body">${lastPreviewElement.outerHTML}</body></html>`);
+    <link rel="stylesheet" href="assets/style.css"><style>
+/* GOVERNMENT LETTER STYLE */
+.pdf-page{
+  width:210mm;
+  min-height:297mm;
+  padding:12mm;
+  box-sizing:border-box;
+  background:white;
+  font-family:Arial;
+  font-size:12px;
+}
+
+@page{
+  size:A4;
+  margin:10mm;
+}
+</style></head><body class="print-body">${lastPreviewElement.outerHTML}</body></html>`);
   printWindow.document.close();
   printWindow.focus();
   setTimeout(() => printWindow.print(), 500);
@@ -1444,69 +1525,7 @@ async function downloadPreviewPdf() {
   }
 }
 
-
 async function createPdfFromDocument(documentRow, options = {}) {
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = buildDocumentHTML(documentRow);
-
-  const page = wrapper.querySelector('.pdf-page');
-  if (!page) {
-    showToast('Template dokumen tidak ditemukan.', 'error');
-    return;
-  }
-
-  document.body.appendChild(wrapper);
-
-  wrapper.style.position = 'fixed';
-  wrapper.style.left = '-99999px';
-  wrapper.style.top = '0';
-  wrapper.style.width = '210mm';
-  wrapper.style.background = '#fff';
-
-  await new Promise(r => setTimeout(r, 60));
-
-  const scale = calculateScaleToFit(page);
-  page.style.transform = `scale(${scale})`;
-  page.style.transformOrigin = 'top left';
-
-  await new Promise(r => setTimeout(r, 80));
-
-  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
-
-  const opt = {
-    margin: 0,
-    filename: fileName,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      scrollY: 0
-    },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait'
-    }
-  };
-
-  try {
-    const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
-
-    if (options.download) downloadBlob(pdfBlob, fileName);
-    if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
-
-    showToast('PDF ANTI OVERFLOW ACTIVE (PRODUCTION MODE)');
-    return pdfBlob;
-
-  } catch (err) {
-    console.warn(err);
-    showToast('Gagal generate PDF.', 'error');
-  } finally {
-    wrapper.remove();
-  }
-}
-) {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = buildDocumentHTML(documentRow);
   const page = wrapper.querySelector('.pdf-page');
