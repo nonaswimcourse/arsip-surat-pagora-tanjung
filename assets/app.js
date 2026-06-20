@@ -1428,7 +1428,7 @@ async function downloadPreviewPdf() {
     filename:     `surat-${new Date().getTime()}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
-      scale: 1.15, 
+      scale: 1.4, 
       useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
       logging: false 
     },
@@ -1444,7 +1444,69 @@ async function downloadPreviewPdf() {
   }
 }
 
+
 async function createPdfFromDocument(documentRow, options = {}) {
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = buildDocumentHTML(documentRow);
+
+  const page = wrapper.querySelector('.pdf-page');
+  if (!page) {
+    showToast('Template dokumen tidak ditemukan.', 'error');
+    return;
+  }
+
+  document.body.appendChild(wrapper);
+
+  wrapper.style.position = 'fixed';
+  wrapper.style.left = '-99999px';
+  wrapper.style.top = '0';
+  wrapper.style.width = '210mm';
+  wrapper.style.background = '#fff';
+
+  await new Promise(r => setTimeout(r, 60));
+
+  const scale = calculateScaleToFit(page);
+  page.style.transform = `scale(${scale})`;
+  page.style.transformOrigin = 'top left';
+
+  await new Promise(r => setTimeout(r, 80));
+
+  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
+
+  const opt = {
+    margin: 0,
+    filename: fileName,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      scrollY: 0
+    },
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    }
+  };
+
+  try {
+    const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
+
+    if (options.download) downloadBlob(pdfBlob, fileName);
+    if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
+
+    showToast('PDF ANTI OVERFLOW ACTIVE (PRODUCTION MODE)');
+    return pdfBlob;
+
+  } catch (err) {
+    console.warn(err);
+    showToast('Gagal generate PDF.', 'error');
+  } finally {
+    wrapper.remove();
+  }
+}
+) {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = buildDocumentHTML(documentRow);
   const page = wrapper.querySelector('.pdf-page');
@@ -1464,7 +1526,7 @@ async function createPdfFromDocument(documentRow, options = {}) {
     margin: 0,
     filename: fileName,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 1.15, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+    html2canvas: { scale: 1.4, useCORS: true, logging: false, backgroundColor: '#ffffff' },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
