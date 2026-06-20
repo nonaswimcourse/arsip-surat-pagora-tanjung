@@ -19,20 +19,14 @@
       <p>Sistem administrasi surat dan arsip kantor</p>
 
       <label for="email">Email</label>
-      <input type="email" id="email" placeholder="admin@sipas.local" autocomplete="email">
+      <input type="email" id="email" placeholder="Masukkan email" autocomplete="email">
 
       <label for="password">Password</label>
-      <input type="password" id="password" placeholder="admin123" autocomplete="current-password">
+      <input type="password" id="password" placeholder="Masukkan password" autocomplete="current-password">
 
       <button onclick="doLogin()" class="btn-login">Masuk</button>
       <div id="loginError" class="error-message"></div>
 
-      <div class="demo-box">
-        <strong>Akun demo lokal</strong>
-        <span>Admin: admin@sipas.local / admin123</span>
-        <span>Staf: staf@sipas.local / staf123</span>
-        <span>Pimpinan: pimpinan@sipas.local / pimpinan123</span>
-      </div>
     </div>
   </div>
 
@@ -55,7 +49,7 @@
         <button class="menu-item" data-route="undangan" onclick="navigate('undangan')"><span>✉</span>Undangan</button>
         <button class="menu-item" data-route="sk" onclick="navigate('sk')"><span>§</span>SK</button>
         <button class="menu-item" data-route="arsip" onclick="navigate('arsip')"><span>▣</span>Arsip</button>
-        <button class="menu-item admin-only" data-route="pengaturan" onclick="navigate('pengaturan')"><span>⚙</span>Pengaturan</button>
+        <button class="menu-item" data-route="pengaturan" onclick="navigate('pengaturan')"><span>⚙</span>Pengaturan</button>
       </nav>
 
       <div class="user-panel">
