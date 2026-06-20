@@ -1,8 +1,3 @@
-Berikut adalah perbaikan penuh kode untuk file **`assets/app.js`** Anda. Saya sudah menata ulangnya dengan mengembalikan semua fungsi bawaan asli (`archiveById`, `approveById`, `saveDocumentAndPdf`, dll.) secara utuh tanpa ada yang terpotong, membersihkan teks tanggal yang melayang di bagian atas, serta memastikan semua tanda kurung kurawal (`}`) dan tanda backtick penutup literal string (```) menutup dengan sempurna.
-
-### Salin seluruh kode di bawah ini dan pakai untuk menggantikan isi `assets/app.js`:
-
-```javascript
 const SUPABASE_URL = 'https://bixyaowckwvjpgwffoci.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_phZErDKE6oDEDN5whvlk3Q_8LpXylcG';
 const TABLE_SURAT = 'surat';
@@ -1116,7 +1111,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (el('loginPage')) el('loginPage').style.display = 'block';
   }
 });
-
-```
-
-Pastikan setelah menyimpan perubahan ini, Anda melakukan penyegaran browser secara penuh (**Ctrl + F5**) untuk menghilangkan sisa cache error sebelumnya. Semua fitur cadangan instansi dan cetak halaman tunggal kini berjalan optimal dan aman dari error baris.
