@@ -138,4 +138,18 @@ input, textarea, select {
 .field textarea::placeholder {
   font-style: italic;
  }
+  /* Pastikan ini ada di style.css untuk mengatur ukuran logo login */
+.brand-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.login-logo {
+  width: 86px !important;    /* Paksa lebar tetap */
+  height: 86px !important;   /* Paksa tinggi tetap */
+  max-width: 86px;
+  max-height: 86px;
+  object-fit: contain;       /* Agar tidak terdistorsi */
+  }
 }
