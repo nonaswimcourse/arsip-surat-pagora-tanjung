@@ -1428,7 +1428,7 @@ async function downloadPreviewPdf() {
     filename:     `surat-${new Date().getTime()}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
-      scale: 1.4, 
+      scale: 1.15, 
       useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
       logging: false 
     },
@@ -1464,7 +1464,7 @@ async function createPdfFromDocument(documentRow, options = {}) {
     margin: 0,
     filename: fileName,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 1.4, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+    html2canvas: { scale: 1.15, useCORS: true, logging: false, backgroundColor: '#ffffff' },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
