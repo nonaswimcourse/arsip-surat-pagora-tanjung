@@ -122,8 +122,9 @@ function safe(value) {
   }[char]));
 }
 
-function js(value) {
-  return JSON.stringify(String(value ?? ''));
+// DIPERBAIKI: Mengamankan argumen string agar aman masuk ke dalam atribut onclick HTML
+function jsAttr(value) {
+  return String(value ?? '').replace(/'/g, "\\'");
 }
 
 function todayInput() {
@@ -246,9 +247,12 @@ function validateForm(form) {
   return true;
 }
 
+// DIPERBAIKI: Cek eksistensi element sebelum manipulasi DOM agar mencegah crash
 function setPageHeader(title, subtitle) {
-  el('pageTitle').textContent = title;
-  el('pageSubtitle').textContent = subtitle;
+  const pageTitle = el('pageTitle');
+  const pageSubtitle = el('pageSubtitle');
+  if (pageTitle) pageTitle.textContent = title;
+  if (pageSubtitle) pageSubtitle.textContent = subtitle;
 }
 
 function setActiveMenu(route) {
@@ -349,8 +353,8 @@ function setLocalProfile(profile) {
 }
 
 function showApplication() {
-  el('loginPage').style.display = 'none';
-  el('app').style.display = 'block';
+  if (el('loginPage')) el('loginPage').style.display = 'none';
+  if (el('app')) el('app').style.display = 'block';
 }
 
 function showLoginError(message) {
@@ -362,9 +366,9 @@ function applyRoleUI() {
   const email = currentUser?.email || '-';
   const role = currentUser?.role || 'staf';
   const profileName = cachedProfile?.nama_instansi || defaultProfile.nama_instansi;
-  el('currentUserEmail').textContent = email;
-  el('currentUserRole').textContent = `Role: ${titleCase(role)}`;
-  el('sidebarProfileName').textContent = profileName;
+  if (el('currentUserEmail')) el('currentUserEmail').textContent = email;
+  if (el('currentUserRole')) el('currentUserRole').textContent = `Role: ${titleCase(role)}`;
+  if (el('sidebarProfileName')) el('sidebarProfileName').textContent = profileName;
   document.querySelectorAll('[data-route="pengaturan"]').forEach((item) => item.classList.remove('hidden'));
   document.querySelectorAll('.admin-only').forEach((item) => item.classList.toggle('hidden', !getPerm('settings')));
 }
@@ -490,7 +494,8 @@ async function refreshCurrentPage() {
 
 function renderEmptyState(title, message) {
   setPageHeader(title, message);
-  el('pageContent').innerHTML = `<div class="empty-state"><h2>${safe(title)}</h2><p>${safe(message)}</p></div>`;
+  const pageContent = el('pageContent');
+  if (pageContent) pageContent.innerHTML = `<div class="empty-state"><h2>${safe(title)}</h2><p>${safe(message)}</p></div>`;
 }
 
 function normalizeDocument(row) {
@@ -693,13 +698,14 @@ function getFormData(form, typeKey, existing = {}) {
   });
 }
 
+// DIPERBAIKI: Mengganti penggunaan ${js(x)} dengan ${jsAttr(x)} dan tanda kutip tunggal ('') agar parameter fungsi onclick HTML valid
 function documentFormHTML(typeKey, row = {}, mode = 'create') {
   const type = documentTypes[typeKey];
   const data = normalizeDocument({ jenis: typeKey, status: type.defaultStatus, ...row });
   const formId = mode === 'edit' ? 'editDocumentForm' : 'documentForm';
   const submitHandler = mode === 'edit'
-    ? `saveEditedDocument(event, ${js(data.id)})`
-    : `saveDocument(event, ${js(typeKey)})`;
+    ? `saveEditedDocument(event, '${jsAttr(data.id)}')`
+    : `saveDocument(event, '${jsAttr(typeKey)}')`;
   const disabled = !getPerm(mode === 'edit' ? 'edit' : 'create') ? 'disabled' : '';
 
   return `
@@ -779,10 +785,10 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn secondary" onclick="previewForm(${js(typeKey)}, ${js(formId)})">Preview Template</button>
-        ${mode === 'edit' ? '<button type="button" class="btn secondary" onclick="closeEditModal()">Batal</button>' : ''}
+        <button type="button" class="btn secondary" onclick="previewForm('${jsAttr(typeKey)}', '${jsAttr(formId)}')">Preview Template</button>
+        ${mode === 'edit' ? `<button type="button" class="btn secondary" onclick="closeEditModal()">Batal</button>` : ''}
         <button type="submit" class="btn" ${disabled}>${mode === 'edit' ? 'Simpan Perubahan' : 'Simpan Data'}</button>
-        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, ${js(typeKey)})" ${disabled}>Simpan & Download PDF</button>` : ''}
+        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${jsAttr(typeKey)}')" ${disabled}>Simpan & Download PDF</button>` : ''}
       </div>
     </form>`;
 }
@@ -841,6 +847,7 @@ async function previewForm(typeKey, formId = 'documentForm') {
   openPreview(row);
 }
 
+// DIPERBAIKI: Menggunakan jsAttr() untuk navigasi menu dashboard agar menu dapat diklik
 async function renderDashboard() {
   setPageHeader('Dashboard', 'Ringkasan administrasi surat, persetujuan, dan arsip dokumen.');
   const rows = await fetchDocuments();
@@ -853,7 +860,10 @@ async function renderDashboard() {
     return result;
   }, {});
 
-  el('pageContent').innerHTML = `
+  const pageContent = el('pageContent');
+  if (!pageContent) return;
+
+  pageContent.innerHTML = `
     <div class="stats">
       <div class="card stat-card"><span>Total Surat</span><strong>${rows.length}</strong><small>Semua jenis dokumen</small></div>
       <div class="card stat-card"><span>Surat Aktif</span><strong>${activeRows.length}</strong><small>Belum diarsipkan</small></div>
@@ -871,7 +881,7 @@ async function renderDashboard() {
         </div>
         <div class="quick-menu">
           ${Object.entries(documentTypes).map(([key, type]) => `
-            <button onclick="navigate(${js(key)})">
+            <button onclick="navigate('${jsAttr(key)}')">
               <strong>${safe(type.title)}</strong>
               <span>${countByType[key] || 0} data</span>
             </button>`).join('')}
@@ -909,7 +919,10 @@ async function renderDocumentPage(typeKey) {
   const rows = await fetchDocuments({ jenis: typeKey });
   const canCreate = getPerm('create');
 
-  el('pageContent').innerHTML = `
+  const pageContent = el('pageContent');
+  if (!pageContent) return;
+
+  pageContent.innerHTML = `
     ${!canCreate ? '<div class="alert">Role Anda hanya dapat melihat, menyetujui, mencetak, atau mengarsipkan sesuai hak akses. Pembuatan dan edit dokumen dibatasi.</div>' : ''}
     <div class="two-column">
       <div class="panel form-panel">
@@ -939,7 +952,7 @@ function tableToolbar(typeKey = '') {
       <div><label>Kata Kunci</label><input id="search-${safe(typeKey || 'all')}" placeholder="Cari nomor, perihal, pihak, status, acara, atau tempat"></div>
       <div><label>Dari Tanggal</label><input type="date" id="start-${safe(typeKey || 'all')}"></div>
       <div><label>Sampai Tanggal</label><input type="date" id="end-${safe(typeKey || 'all')}"></div>
-      <button class="btn secondary" onclick="filterTable(${js(typeKey)})">Terapkan</button>
+      <button class="btn secondary" onclick="filterTable('${jsAttr(typeKey)}')">Terapkan</button>
     </div>`;
 }
 
@@ -950,7 +963,8 @@ async function filterTable(typeKey = '') {
   const endDate = el(`end-${key}`)?.value || '';
   const rows = await fetchDocuments({ jenis: typeKey || undefined, keyword, startDate, endDate, status: currentRoute === 'arsip' ? 'diarsipkan' : undefined });
   const target = typeKey ? `table-${typeKey}` : 'table-arsip';
-  el(target).innerHTML = renderTable(rows, { showType: !typeKey });
+  const targetEl = el(target);
+  if (targetEl) targetEl.innerHTML = renderTable(rows, { showType: !typeKey });
 }
 
 function renderTable(rows, options = {}) {
@@ -990,15 +1004,16 @@ function renderTable(rows, options = {}) {
     </div>`;
 }
 
+// DIPERBAIKI: Mengubah ${js(row.id)} ke '${jsAttr(row.id)}' pada semua aksi tombol agar aksi data bekerja lancar
 function actionButtons(row) {
   const buttons = [];
-  buttons.push(`<button type="button" onclick="previewById(${js(row.id)})">Preview</button>`);
-  if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById(${js(row.id)})">PDF</button>`);
-  if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById(${js(row.id)})">Edit</button>`);
-  if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById(${js(row.id)})">Setujui</button>`);
-  if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button type="button" onclick="archiveById(${js(row.id)})">Arsip</button>`);
-  if (getPerm('archive') && row.status === 'diarsipkan') buttons.push(`<button type="button" onclick="restoreById(${js(row.id)})">Aktifkan</button>`);
-  if (getPerm('delete')) buttons.push(`<button type="button" class="danger" onclick="deleteById(${js(row.id)})">Delete</button>`);
+  buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
+  if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById('${jsAttr(row.id)}')">PDF</button>`);
+  if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById('${jsAttr(row.id)}')">Edit</button>`);
+  if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById('${jsAttr(row.id)}')">Setujui</button>`);
+  if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button type="button" onclick="archiveById('${jsAttr(row.id)}')">Arsip</button>`);
+  if (getPerm('archive') && row.status === 'diarsipkan') buttons.push(`<button type="button" onclick="restoreById('${jsAttr(row.id)}')">Aktifkan</button>`);
+  if (getPerm('delete')) buttons.push(`<button type="button" class="danger" onclick="deleteById('${jsAttr(row.id)}')">Delete</button>`);
   return buttons.join('');
 }
 
@@ -1025,15 +1040,15 @@ async function editById(id) {
   const row = rows.find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
   editTargetId = id;
-  el('editModalTitle').textContent = `Edit ${documentTypes[row.jenis]?.title || 'Dokumen'}`;
-  el('editModalContent').innerHTML = documentFormHTML(row.jenis, row, 'edit');
-  el('editModal').hidden = false;
+  if (el('editModalTitle')) el('editModalTitle').textContent = `Edit ${documentTypes[row.jenis]?.title || 'Dokumen'}`;
+  if (el('editModalContent')) el('editModalContent').innerHTML = documentFormHTML(row.jenis, row, 'edit');
+  if (el('editModal')) el('editModal').hidden = false;
 }
 
 function closeEditModal() {
   editTargetId = null;
-  el('editModal').hidden = true;
-  el('editModalContent').innerHTML = '';
+  if (el('editModal')) el('editModal').hidden = true;
+  if (el('editModalContent')) el('editModalContent').innerHTML = '';
 }
 
 async function updateStatus(id, status, extra = {}) {
@@ -1106,7 +1121,10 @@ async function resetAllData() {
 async function renderArchivePage() {
   setPageHeader('Arsip', 'Dokumen yang sudah selesai dan dipindahkan ke arsip. Data arsip tetap bisa diedit oleh role yang berwenang.');
   const rows = await fetchDocuments({ status: 'diarsipkan' });
-  el('pageContent').innerHTML = `
+  const pageContent = el('pageContent');
+  if (!pageContent) return;
+
+  pageContent.innerHTML = `
     <div class="panel">
       <div class="panel-header">
         <div><h2>Arsip Dokumen</h2><p>Seluruh dokumen berstatus diarsipkan.</p></div>
@@ -1120,7 +1138,10 @@ async function renderArchivePage() {
 async function renderSettingsPage() {
   setPageHeader('Pengaturan', 'Atur identitas instansi untuk kop surat, tanda tangan, dan template PDF.');
   const profile = await loadProfile();
-  el('pageContent').innerHTML = `
+  const pageContent = el('pageContent');
+  if (!pageContent) return;
+
+  pageContent.innerHTML = `
     <form class="panel form-panel" id="profileForm" onsubmit="saveProfile(event)">
       <div class="panel-header"><div><h2>Profil Instansi</h2><p>Data ini muncul otomatis pada kop surat dan tanda tangan.</p></div></div>
       <div class="form-grid">
@@ -1371,14 +1392,14 @@ function buildDecisionTemplate(row, profile, type) {
 
 function openPreview(row) {
   lastPreviewDocument = normalizeDocument(row);
-  el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
-  lastPreviewElement = el('previewContent').querySelector('.pdf-page');
-  el('previewModal').hidden = false;
+  if (el('previewContent')) el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
+  lastPreviewElement = el('previewContent') ? el('previewContent').querySelector('.pdf-page') : null;
+  if (el('previewModal')) el('previewModal').hidden = false;
 }
 
 function closePreview() {
-  el('previewModal').hidden = true;
-  el('previewContent').innerHTML = '';
+  if (el('previewModal')) el('previewModal').hidden = true;
+  if (el('previewContent')) el('previewContent').innerHTML = '';
   lastPreviewElement = null;
   lastPreviewDocument = null;
 }
