@@ -932,6 +932,7 @@ function renderTable(rows, options = {}) {
               <td class="actions">
                 <button onclick="previewById('${safe(row.id)}')">Preview</button>
                 <button onclick="downloadById('${safe(row.id)}')">PDF</button>
+                <button onclick="editById('${safe(row.id)}')">Edit</button>
                 <button onclick="archiveById('${safe(row.id)}')">Arsip</button>
                 <button class="danger" onclick="deleteById('${safe(row.id)}')">Hapus</button>
               </td>
@@ -1149,3 +1150,29 @@ window.deleteById = deleteById;
 window.saveProfile = saveProfile;
 
 document.addEventListener('DOMContentLoaded', checkSession);
+
+
+async function editById(id) {
+  const rows = await fetchDocuments({});
+  const row = rows.find(r => r.id === id);
+  if (!row) return alert('Data tidak ditemukan');
+
+  const perihal = prompt('Edit Perihal', row.perihal);
+  if (perihal === null) return;
+
+  const payload = { perihal };
+
+  await updateDocument(id, payload);
+  alert('Data berhasil diupdate');
+  location.reload();
+}
+
+async function updateDocument(id, payload) {
+  if (supabaseClient) {
+    await supabaseClient.from('surat').update(payload).eq('id', id);
+  } else {
+    let data = JSON.parse(localStorage.getItem('documents') || '[]');
+    data = data.map(d => d.id === id ? {...d, ...payload} : d);
+    localStorage.setItem('documents', JSON.stringify(data));
+  }
+}
