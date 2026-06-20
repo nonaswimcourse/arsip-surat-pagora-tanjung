@@ -30,8 +30,8 @@ const demoAccounts = {
 
 const permissions = {
   admin: { create: true, edit: true, delete: true, archive: true, approve: true, settings: true, export: true, pdf: true },
-  staf: { create: true, edit: true, delete: false, archive: true, approve: false, settings: false, export: true, pdf: true },
-  pimpinan: { create: false, edit: false, delete: false, archive: true, approve: true, settings: false, export: true, pdf: true }
+  staf: { create: true, edit: true, delete: false, archive: true, approve: false, settings: true, export: true, pdf: true },
+  pimpinan: { create: false, edit: false, delete: false, archive: true, approve: true, settings: true, export: true, pdf: true }
 };
 
 const documentTypes = {
@@ -172,6 +172,20 @@ function getRoleFromEmail(email) {
   return 'staf';
 }
 
+function normalizeRole(role) {
+  const value = String(role || '').trim().toLowerCase();
+  if (value === 'administrator') return 'admin';
+  if (value === 'staff') return 'staf';
+  if (value in permissions) return value;
+  return '';
+}
+
+function buildSupabaseUser(user) {
+  const metaRole = normalizeRole(user?.user_metadata?.role || user?.app_metadata?.role || user?.role);
+  const role = metaRole || getRoleFromEmail(user?.email);
+  return { id: user?.id, email: user?.email || '-', role, name: user?.user_metadata?.name || user?.email || '-' };
+}
+
 function getPerm(action) {
   const role = currentUser?.role || 'staf';
   return Boolean(permissions[role]?.[action]);
@@ -257,6 +271,7 @@ function applyRoleUI() {
   el('currentUserEmail').textContent = email;
   el('currentUserRole').textContent = `Role: ${titleCase(role)}`;
   el('sidebarProfileName').textContent = profileName;
+  document.querySelectorAll('[data-route="pengaturan"]').forEach((item) => item.classList.remove('hidden'));
   document.querySelectorAll('.admin-only').forEach((item) => item.classList.toggle('hidden', !getPerm('settings')));
 }
 
@@ -275,7 +290,7 @@ async function doLogin() {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (!error && data?.user) {
         clearLocalSession();
-        currentUser = { id: data.user.id, email: data.user.email, role: getRoleFromEmail(data.user.email), name: data.user.email };
+        currentUser = buildSupabaseUser(data.user);
         showApplication();
         await bootstrapApp();
         return;
@@ -313,7 +328,7 @@ async function getCurrentSession() {
       const { data } = await supabaseClient.auth.getSession();
       if (data?.session?.user) {
         const user = data.session.user;
-        return { user: { id: user.id, email: user.email, role: getRoleFromEmail(user.email), name: user.email } };
+        return { user: buildSupabaseUser(user) };
       }
     } catch (error) {
       console.warn('Session Supabase belum tersedia:', error);
@@ -360,8 +375,8 @@ async function loadProfile() {
 }
 
 async function navigate(route) {
-  if (route === 'pengaturan' && !getPerm('settings')) {
-    showToast('Akses pengaturan hanya untuk admin.', 'error');
+  if (route === 'pengaturan' && !currentUser) {
+    showToast('Silakan login terlebih dahulu untuk membuka pengaturan.', 'error');
     return;
   }
   currentRoute = route;
@@ -942,7 +957,7 @@ async function renderSettingsPage() {
 
 async function saveProfile(event) {
   event.preventDefault();
-  if (!getPerm('settings')) return showToast('Akses pengaturan hanya untuk admin.', 'error');
+  if (!currentUser) return showToast('Sesi login tidak valid. Silakan login ulang.', 'error');
   const form = new FormData(el('profileForm'));
   const payload = {
     id: 'default',
@@ -1288,115 +1303,8 @@ window.restoreById = restoreById;
 window.approveById = approveById;
 window.deleteById = deleteById;
 window.saveProfile = saveProfile;
+window.saveSettings = saveProfile;
 window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
-
-
-
-// ===== SETTINGS MODULE RESTORE =====
-
-async function renderSettingsPage() {
-  setPageHeader('Pengaturan', 'Profil instansi dan kop surat');
-
-  let data = null;
-
-  if (supabaseClient) {
-    const res = await supabaseClient
-      .from(TABLE_PROFIL)
-      .select('*')
-      .limit(1)
-      .maybeSingle();
-
-    data = res.data;
-  }
-
-  if (!data) {
-    data = cachedProfile || {
-      nama_instansi: '',
-      nama_aplikasi: '',
-      alamat: '',
-      telepon: '',
-      email: '',
-      website: '',
-      kota: '',
-      nama_penandatangan: '',
-      nip: ''
-    };
-  }
-
-  el('pageContent').innerHTML = `
-    <div class="card">
-      <h3>Profil Instansi</h3>
-
-      <label>Nama Instansi</label>
-      <input id="s_nama_instansi" value="${data.nama_instansi || ''}">
-
-      <label>Nama Aplikasi</label>
-      <input id="s_nama_aplikasi" value="${data.nama_aplikasi || ''}">
-
-      <label>Alamat</label>
-      <input id="s_alamat" value="${data.alamat || ''}">
-
-      <label>Telepon</label>
-      <input id="s_telepon" value="${data.telepon || ''}">
-
-      <label>Email</label>
-      <input id="s_email" value="${data.email || ''}">
-
-      <label>Website</label>
-      <input id="s_website" value="${data.website || ''}">
-
-      <label>Kota Penandatangan</label>
-      <input id="s_kota" value="${data.kota || ''}">
-
-      <label>Nama Penandatangan</label>
-      <input id="s_nama_penandatangan" value="${data.nama_penandatangan || ''}">
-
-      <label>NIP</label>
-      <input id="s_nip" value="${data.nip || ''}">
-
-      <button onclick="saveSettings()" class="btn-primary">Simpan Pengaturan</button>
-    </div>
-  `;
-}
-
-async function saveSettings() {
-  const payload = {
-    nama_instansi: el('s_nama_instansi').value,
-    nama_aplikasi: el('s_nama_aplikasi').value,
-    alamat: el('s_alamat').value,
-    telepon: el('s_telepon').value,
-    email: el('s_email').value,
-    website: el('s_website').value,
-    kota: el('s_kota').value,
-    nama_penandatangan: el('s_nama_penandatangan').value,
-    nip: el('s_nip').value
-  };
-
-  if (supabaseClient) {
-    const { data: existing } = await supabaseClient
-      .from(TABLE_PROFIL)
-      .select('id')
-      .limit(1)
-      .maybeSingle();
-
-    if (existing) {
-      await supabaseClient
-        .from(TABLE_PROFIL)
-        .update(payload)
-        .eq('id', existing.id);
-    } else {
-      await supabaseClient
-        .from(TABLE_PROFIL)
-        .insert([payload]);
-    }
-  } else {
-    cachedProfile = payload;
-    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(payload));
-  }
-
-  showToast('Pengaturan berhasil disimpan', 'success');
-}
-
