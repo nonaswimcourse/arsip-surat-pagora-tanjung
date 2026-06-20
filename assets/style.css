@@ -125,30 +125,5 @@ input, textarea, select {
     width: 100%;
     min-height: auto;
     padding: 28px;
-}
-  /* Membuat semua isian form menjadi italic */
-.field input, 
-.field textarea {
-  font-style: italic;
-}
-
-/* Opsional: Membuat placeholder juga menjadi italic agar konsisten */
-.field input::placeholder, 
-.field textarea::placeholder {
-  font-style: italic;
- }
-  /* Pastikan ini ada di style.css untuk mengatur ukuran logo login */
-.brand-logo-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 18px;
-}
-
-.login-logo {
-  width: 86px !important;    /* Paksa lebar tetap */
-  height: 86px !important;   /* Paksa tinggi tetap */
-  max-width: 86px;
-  max-height: 86px;
-  object-fit: contain;       /* Agar tidak terdistorsi */
   }
 }
