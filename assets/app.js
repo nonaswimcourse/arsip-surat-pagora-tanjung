@@ -1565,9 +1565,4 @@ window.saveProfile = saveProfile;
 window.saveSettings = saveProfile;
 window.exportCsv = exportCsv;
 window.backupJson = backupJson;
-
-document.addEventListener('DOMContentLoaded', checkSession);
-/* Memaksa tanggal kanan atas untuk tidak tampil sama sekali */
-.date-right {
-  display: none !important;
 }
