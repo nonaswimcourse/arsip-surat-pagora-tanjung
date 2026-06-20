@@ -1644,24 +1644,3 @@ window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
-
-
-// ===== CUSTOM ARSIP FEATURE =====
-function navigate(page){
-  document.querySelectorAll('.page').forEach(p=>p.style.display='none');
-  const el=document.getElementById('page-'+page);
-  if(el) el.style.display='block';
-}
-
-document.addEventListener('DOMContentLoaded',()=>{
-  const box=document.getElementById('tembusanBox');
-  if(box){
-    box.addEventListener('click',()=>{
-      const val=prompt('Edit tembusan:',
-        document.getElementById('tembusanText')?.innerText || '');
-      if(val){
-        document.getElementById('tembusanText').innerText=val;
-      }
-    });
-  }
-});

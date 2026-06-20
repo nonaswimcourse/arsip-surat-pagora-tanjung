@@ -42,18 +42,3 @@ body.print-body {
   margin: 0;
   padding: 0;
 }
-
-
-/* CUSTOM FEATURE */
-.tembusan-box{
-  position:fixed;
-  bottom:12px;
-  left:12px;
-  font-size:12px;
-  background:#ffffffee;
-  padding:8px 10px;
-  border-radius:8px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.15);
-  cursor:pointer;
-  z-index:9999;
-}
