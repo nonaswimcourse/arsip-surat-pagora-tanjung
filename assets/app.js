@@ -202,7 +202,6 @@ function showToast(message, type = 'success') {
   showToast.timer = window.setTimeout(() => { toast.hidden = true; }, 4200);
 }
 
-
 function errorText(error, fallback = 'Terjadi kesalahan.') {
   return error?.message || error?.error_description || error?.details || fallback;
 }
@@ -571,7 +570,6 @@ async function saveDocumentToStorage(row) {
   unmarkDocumentDeleted(normalized.id);
   const localRows = getLocalDocuments().filter((item) => String(item.id) !== String(normalized.id));
 
-  // Simpan lokal lebih dulu agar data langsung muncul di tabel meskipun Supabase/RLS/bucket belum siap.
   const localMirror = { ...normalized, local_only: true };
   setLocalDocuments([localMirror, ...localRows]);
 
@@ -585,7 +583,6 @@ async function saveDocumentToStorage(row) {
     if (error) throw error;
 
     const onlineRow = normalizeDocument({ ...normalized, ...(data || {}), local_only: false });
-    // Tetap simpan mirror lokal. Jika query Supabase gagal di kemudian hari, data tidak hilang dari tampilan.
     setLocalDocuments([onlineRow, ...localRows]);
     return onlineRow;
   } catch (error) {
@@ -598,7 +595,6 @@ async function deleteDocumentFromStorage(row) {
   const id = String(row?.id || '');
   if (!id) throw new Error('ID dokumen tidak valid.');
 
-  // Hapus dari tampilan lokal lebih dulu agar data tidak muncul lagi ketika RLS Supabase menolak delete.
   markDocumentDeleted(id);
   setLocalDocuments(getLocalDocuments().filter((item) => String(item.id) !== id));
   cachedDocuments = cachedDocuments.filter((item) => String(item.id) !== id);
@@ -759,7 +755,7 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
         </div>
         <div class="field">
           <label>Tanggal Kegiatan</label>
-          <input name="tanggal_kegiatan" value="${safe(data.tanggal_kegiatan)}" placeholder="Contoh: 19 Februari 2025" ${disabled}>
+          <input name="tanggal_kegiatan" value="${safe(data.tanggal_kegiatan)}" placeholder="Contoh: 19 Februari 2026" ${disabled}>
         </div>
         <div class="field">
           <label>Waktu</label>
