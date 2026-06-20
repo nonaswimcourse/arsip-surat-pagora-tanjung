@@ -1,125 +1,83 @@
 const SUPABASE_URL = 'https://rwbbxytowtnoyjcngevk.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_1Vq-L40vJKQMT6CfuORWMQ_Iom2dRSj';
+const TABLE_SURAT = 'surat';
+const TABLE_PROFIL = 'profil_instansi';
+const STORAGE_BUCKET = 'dokumen-surat';
+const LOCAL_SESSION_KEY = 'sipas_kantor_session';
+const LOCAL_DOC_KEY = 'sipas_kantor_documents';
+const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
+
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
   && typeof window.supabase.createClient === 'function';
 const supabaseClient = hasSupabaseSdk
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
-const LOCAL_SESSION_KEY = 'sipas_local_session';
-
-function getLocalSession() {
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_SESSION_KEY) || 'null');
-  } catch (error) {
-    return null;
-  }
-}
-
-function setLocalSession(email) {
-  const session = {
-    user: { id: 'local-user', email },
-    created_at: new Date().toISOString()
-  };
-  localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(session));
-  return session;
-}
-
-function clearLocalSession() {
-  localStorage.removeItem(LOCAL_SESSION_KEY);
-}
-
-function showApplication() {
-  el('loginPage').style.display = 'none';
-  el('app').style.display = 'block';
-}
-
-function showLoginError(message) {
-  const loginError = el('loginError');
-  if (loginError) loginError.textContent = message;
-}
-
-function newLocalId() {
-  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-    return window.crypto.randomUUID();
-  }
-  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-async function getCurrentSession() {
-  if (supabaseClient) {
-    try {
-      const { data } = await supabaseClient.auth.getSession();
-      if (data?.session) return data.session;
-    } catch (error) {
-      console.warn('Session Supabase belum tersedia:', error);
-    }
-  }
-  return getLocalSession();
-}
-
-async function startLocalMode(email, message = 'Login lokal berhasil. Data akan tersimpan di browser jika Supabase belum siap.') {
-  setLocalSession(email);
-  showApplication();
-  await bootstrapApp();
-  showToast(message, 'warning');
-}
-
-
-const TABLE_SURAT = 'surat';
-const TABLE_PROFIL = 'profil_instansi';
-const STORAGE_BUCKET = 'dokumen-surat';
 
 let currentRoute = 'dashboard';
 let cachedDocuments = [];
 let cachedProfile = null;
+let currentUser = null;
 let lastPreviewDocument = null;
 let lastPreviewElement = null;
+let editTargetId = null;
+
+const demoAccounts = {
+  'admin@sipas.local': { password: 'admin123', role: 'admin', name: 'Administrator' },
+  'staf@sipas.local': { password: 'staf123', role: 'staf', name: 'Staf Administrasi' },
+  'pimpinan@sipas.local': { password: 'pimpinan123', role: 'pimpinan', name: 'Pimpinan' }
+};
+
+const permissions = {
+  admin: { create: true, edit: true, delete: true, archive: true, approve: true, settings: true, export: true, pdf: true },
+  staf: { create: true, edit: true, delete: false, archive: true, approve: false, settings: false, export: true, pdf: true },
+  pimpinan: { create: false, edit: false, delete: false, archive: true, approve: true, settings: false, export: true, pdf: true }
+};
 
 const documentTypes = {
   masuk: {
     title: 'Surat Masuk',
-    subtitle: 'Catat surat masuk dan buat lembar registrasi otomatis.',
+    subtitle: 'Catat surat masuk, disposisi awal, dan arsip dokumen masuk.',
     badge: 'Masuk',
     defaultStatus: 'diterima',
     primaryLabel: 'Pengirim',
     secondaryLabel: 'Tujuan / Penerima',
     requiresAddress: false,
     templateTitle: 'LEMBAR REGISTRASI SURAT MASUK',
-    help: 'Gunakan menu ini untuk mencatat surat yang diterima dan membuat template registrasi atau disposisi awal.'
+    help: 'Gunakan menu ini untuk mencatat surat yang diterima oleh kantor.'
   },
   keluar: {
     title: 'Surat Keluar',
-    subtitle: 'Buat konsep surat keluar, simpan datanya, lalu unduh PDF otomatis.',
+    subtitle: 'Buat konsep surat keluar resmi dan unduh PDF siap cetak.',
     badge: 'Keluar',
     defaultStatus: 'draft',
     primaryLabel: 'Nama Tujuan',
     secondaryLabel: 'Instansi Tujuan',
     requiresAddress: true,
     templateTitle: 'SURAT KELUAR',
-    help: 'Gunakan menu ini untuk membuat naskah surat keluar resmi dalam format PDF.'
+    help: 'Gunakan menu ini untuk membuat naskah surat keluar resmi.'
   },
   tugas: {
     title: 'Surat Tugas',
-    subtitle: 'Buat surat tugas resmi berdasarkan data kegiatan.',
+    subtitle: 'Buat surat tugas resmi berdasarkan kegiatan dan petugas.',
     badge: 'Tugas',
     defaultStatus: 'draft',
     primaryLabel: 'Nama Petugas',
     secondaryLabel: 'Kegiatan / Tujuan Tugas',
     requiresAddress: false,
     templateTitle: 'SURAT TUGAS',
-    help: 'Gunakan menu ini untuk menerbitkan surat tugas guru, pengurus, atau anggota KKG.'
+    help: 'Gunakan menu ini untuk menerbitkan surat tugas guru, pengurus, atau pegawai.'
   },
   undangan: {
     title: 'Undangan',
-    subtitle: 'Buat surat undangan kegiatan secara otomatis.',
+    subtitle: 'Buat surat undangan kegiatan dengan format hari, tanggal, waktu, tempat, dan acara yang rapi.',
     badge: 'Undangan',
     defaultStatus: 'draft',
     primaryLabel: 'Penerima Undangan',
     secondaryLabel: 'Nama Kegiatan',
     requiresAddress: true,
     templateTitle: 'SURAT UNDANGAN',
-    help: 'Gunakan menu ini untuk membuat undangan rapat, pelatihan, atau kegiatan KKG.'
+    help: 'Gunakan menu ini untuk membuat undangan rapat, sosialisasi, pelatihan, atau kegiatan kantor.'
   },
   sk: {
     title: 'Surat Keputusan',
@@ -130,14 +88,14 @@ const documentTypes = {
     secondaryLabel: 'Dasar Keputusan',
     requiresAddress: false,
     templateTitle: 'SURAT KEPUTUSAN',
-    help: 'Gunakan menu ini untuk menyusun SK sederhana dengan data tersimpan.'
+    help: 'Gunakan menu ini untuk menyusun surat keputusan sederhana.'
   }
 };
 
 const defaultProfile = {
   id: 'default',
   nama_instansi: 'KKG PJOK SD Kecamatan Tanjung',
-  nama_aplikasi: 'SIPAS KKG PJOK',
+  nama_aplikasi: 'SIPAS Kantor',
   alamat: 'Kecamatan Tanjung',
   telepon: '-',
   email: '-',
@@ -163,26 +121,35 @@ function safe(value) {
   }[char]));
 }
 
+function js(value) {
+  return JSON.stringify(String(value ?? ''));
+}
+
 function todayInput() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function titleCase(value) {
+  return String(value || '-')
+    .replace(/_/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 function formatDateLong(value) {
   if (!value) return '-';
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('id-ID', {
-    day: '2-digit', month: 'long', year: 'numeric'
-  });
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 function formatDateShort(value) {
   if (!value) return '-';
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('id-ID', {
-    day: '2-digit', month: '2-digit', year: 'numeric'
-  });
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function slugify(value) {
@@ -190,6 +157,24 @@ function slugify(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'dokumen';
+}
+
+function newId() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getRoleFromEmail(email) {
+  const cleanEmail = String(email || '').toLowerCase();
+  if (cleanEmail.includes('admin')) return 'admin';
+  if (cleanEmail.includes('pimpinan') || cleanEmail.includes('kepala')) return 'pimpinan';
+  if (cleanEmail.includes('staf') || cleanEmail.includes('staff')) return 'staf';
+  return 'staf';
+}
+
+function getPerm(action) {
+  const role = currentUser?.role || 'staf';
+  return Boolean(permissions[role]?.[action]);
 }
 
 function showToast(message, type = 'success') {
@@ -213,32 +198,70 @@ function setActiveMenu(route) {
   });
 }
 
-function getLocalDocuments() {
+function readJSON(key, fallback) {
   try {
-    return JSON.parse(localStorage.getItem('sipas_documents') || '[]');
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
   } catch (error) {
-    return [];
+    return fallback;
   }
+}
+
+function writeJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getLocalSession() {
+  return readJSON(LOCAL_SESSION_KEY, null);
+}
+
+function setLocalSession(user) {
+  const session = { user, created_at: new Date().toISOString() };
+  writeJSON(LOCAL_SESSION_KEY, session);
+  return session;
+}
+
+function clearLocalSession() {
+  localStorage.removeItem(LOCAL_SESSION_KEY);
+}
+
+function getLocalDocuments() {
+  return readJSON(LOCAL_DOC_KEY, []);
 }
 
 function setLocalDocuments(rows) {
-  localStorage.setItem('sipas_documents', JSON.stringify(rows));
+  writeJSON(LOCAL_DOC_KEY, rows);
 }
 
 function getLocalProfile() {
-  try {
-    return JSON.parse(localStorage.getItem('sipas_profile') || 'null');
-  } catch (error) {
-    return null;
-  }
+  return readJSON(LOCAL_PROFILE_KEY, null);
 }
 
 function setLocalProfile(profile) {
-  localStorage.setItem('sipas_profile', JSON.stringify(profile));
+  writeJSON(LOCAL_PROFILE_KEY, profile);
+}
+
+function showApplication() {
+  el('loginPage').style.display = 'none';
+  el('app').style.display = 'block';
+}
+
+function showLoginError(message) {
+  const loginError = el('loginError');
+  if (loginError) loginError.textContent = message;
+}
+
+function applyRoleUI() {
+  const email = currentUser?.email || '-';
+  const role = currentUser?.role || 'staf';
+  const profileName = cachedProfile?.nama_instansi || defaultProfile.nama_instansi;
+  el('currentUserEmail').textContent = email;
+  el('currentUserRole').textContent = `Role: ${titleCase(role)}`;
+  el('sidebarProfileName').textContent = profileName;
+  document.querySelectorAll('.admin-only').forEach((item) => item.classList.toggle('hidden', !getPerm('settings')));
 }
 
 async function doLogin() {
-  const email = el('email').value.trim();
+  const email = el('email').value.trim().toLowerCase();
   const password = el('password').value;
   showLoginError('');
 
@@ -249,47 +272,68 @@ async function doLogin() {
 
   if (supabaseClient) {
     try {
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (!error) {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (!error && data?.user) {
         clearLocalSession();
+        currentUser = { id: data.user.id, email: data.user.email, role: getRoleFromEmail(data.user.email), name: data.user.email };
         showApplication();
         await bootstrapApp();
         return;
       }
-      console.warn('Login Supabase gagal. Sistem masuk mode lokal:', error);
+      console.warn('Login Supabase gagal, cek akun demo lokal.', error);
     } catch (error) {
-      console.warn('Koneksi Supabase belum siap. Sistem masuk mode lokal:', error);
+      console.warn('Supabase belum siap, cek akun demo lokal.', error);
     }
   }
 
-  await startLocalMode(email);
-}
+  const demo = demoAccounts[email];
+  if (!demo || demo.password !== password) {
+    showLoginError('Login gagal. Gunakan akun Supabase aktif atau akun demo lokal yang tersedia.');
+    return;
+  }
 
+  currentUser = { id: email, email, role: demo.role, name: demo.name, local_only: true };
+  setLocalSession(currentUser);
+  showApplication();
+  await bootstrapApp();
+  showToast('Login lokal berhasil. Data tersimpan di browser sampai Supabase disiapkan.', 'warning');
+}
 
 async function logout() {
   clearLocalSession();
   if (supabaseClient) {
-    try {
-      await supabaseClient.auth.signOut();
-    } catch (error) {
-      console.warn('Logout Supabase gagal:', error);
-    }
+    try { await supabaseClient.auth.signOut(); } catch (error) { console.warn('Logout Supabase gagal:', error); }
   }
   location.reload();
 }
 
+async function getCurrentSession() {
+  if (supabaseClient) {
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      if (data?.session?.user) {
+        const user = data.session.user;
+        return { user: { id: user.id, email: user.email, role: getRoleFromEmail(user.email), name: user.email } };
+      }
+    } catch (error) {
+      console.warn('Session Supabase belum tersedia:', error);
+    }
+  }
+  return getLocalSession();
+}
 
 async function checkSession() {
   const session = await getCurrentSession();
-  if (session) {
+  if (session?.user) {
+    currentUser = session.user;
     showApplication();
     await bootstrapApp();
   }
 }
 
-
 async function bootstrapApp() {
   await loadProfile();
+  applyRoleUI();
   await navigate('dashboard');
 }
 
@@ -304,19 +348,22 @@ async function loadProfile() {
       .select('*')
       .eq('id', 'default')
       .maybeSingle();
-
-    if (!error && data) {
+    if (error) throw error;
+    if (data) {
       cachedProfile = { ...defaultProfile, ...data };
       setLocalProfile(cachedProfile);
     }
   } catch (error) {
-    console.warn('Profil instansi memakai data lokal:', error);
+    console.warn('Profil memakai data lokal:', error);
   }
-
   return cachedProfile;
 }
 
 async function navigate(route) {
+  if (route === 'pengaturan' && !getPerm('settings')) {
+    showToast('Akses pengaturan hanya untuk admin.', 'error');
+    return;
+  }
   currentRoute = route;
   setActiveMenu(route);
 
@@ -334,46 +381,291 @@ async function refreshCurrentPage() {
 
 function renderEmptyState(title, message) {
   setPageHeader(title, message);
-  el('pageContent').innerHTML = `
-    <div class="empty-state">
-      <h2>${safe(title)}</h2>
-      <p>${safe(message)}</p>
-    </div>`;
+  el('pageContent').innerHTML = `<div class="empty-state"><h2>${safe(title)}</h2><p>${safe(message)}</p></div>`;
+}
+
+function normalizeDocument(row) {
+  return {
+    id: row.id || newId(),
+    jenis: row.jenis || 'keluar',
+    nomor_surat: row.nomor_surat || '',
+    nomor_agenda: row.nomor_agenda || '',
+    tanggal_surat: row.tanggal_surat || todayInput(),
+    pengirim: row.pengirim || '',
+    penerima: row.penerima || '',
+    alamat_tujuan: row.alamat_tujuan || '',
+    perihal: row.perihal || '',
+    sifat_surat: row.sifat_surat || 'Biasa',
+    lampiran: row.lampiran || '-',
+    isi_surat: row.isi_surat || '',
+    hari: row.hari || '',
+    tanggal_kegiatan: row.tanggal_kegiatan || '',
+    waktu: row.waktu || '',
+    tempat: row.tempat || '',
+    acara: row.acara || '',
+    status: row.status || 'draft',
+    catatan: row.catatan || '',
+    dibuat_oleh: row.dibuat_oleh || currentUser?.email || '-',
+    disetujui_oleh: row.disetujui_oleh || '',
+    pdf_url: row.pdf_url || '',
+    pdf_path: row.pdf_path || '',
+    local_only: Boolean(row.local_only),
+    created_at: row.created_at || new Date().toISOString(),
+    updated_at: row.updated_at || new Date().toISOString()
+  };
+}
+
+function stripLocalOnly(row) {
+  const copy = { ...row };
+  delete copy.local_only;
+  return copy;
 }
 
 async function fetchDocuments(filter = {}) {
-  const localRows = getLocalDocuments();
+  const localRows = getLocalDocuments().map(normalizeDocument);
   let rows = localRows;
 
   try {
     if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
-    let query = supabaseClient
-      .from(TABLE_SURAT)
-      .select('*')
-      .order('created_at', { ascending: false });
-
+    let query = supabaseClient.from(TABLE_SURAT).select('*').order('created_at', { ascending: false });
     if (filter.jenis) query = query.eq('jenis', filter.jenis);
     if (filter.status) query = query.eq('status', filter.status);
-
     const { data, error } = await query;
     if (error) throw error;
-    rows = data || [];
+    const onlineRows = (data || []).map(normalizeDocument);
+    const onlineIds = new Set(onlineRows.map((row) => String(row.id)));
+    rows = [...onlineRows, ...localRows.filter((row) => !onlineIds.has(String(row.id)))];
   } catch (error) {
     console.warn('Data Supabase belum terbaca. Aplikasi memakai data lokal:', error);
   }
 
   if (filter.jenis) rows = rows.filter((row) => row.jenis === filter.jenis);
   if (filter.status) rows = rows.filter((row) => row.status === filter.status);
+  if (filter.keyword) {
+    const keyword = filter.keyword.toLowerCase();
+    rows = rows.filter((row) => [row.nomor_surat, row.nomor_agenda, row.perihal, row.pengirim, row.penerima, row.status, row.acara, row.tempat]
+      .join(' ')
+      .toLowerCase()
+      .includes(keyword));
+  }
+  if (filter.startDate) rows = rows.filter((row) => row.tanggal_surat >= filter.startDate);
+  if (filter.endDate) rows = rows.filter((row) => row.tanggal_surat <= filter.endDate);
 
+  rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   cachedDocuments = rows;
   return rows;
 }
 
+async function saveDocumentToStorage(row) {
+  const normalized = normalizeDocument(row);
+  const localRows = getLocalDocuments().filter((item) => String(item.id) !== String(normalized.id));
+
+  try {
+    if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
+    const { data, error } = await supabaseClient
+      .from(TABLE_SURAT)
+      .upsert(stripLocalOnly(normalized), { onConflict: 'id' })
+      .select()
+      .single();
+    if (error) throw error;
+    setLocalDocuments(localRows);
+    return normalizeDocument(data);
+  } catch (error) {
+    console.warn('Simpan ke Supabase gagal. Data disimpan lokal:', error);
+    const localRow = { ...normalized, local_only: true };
+    setLocalDocuments([localRow, ...localRows]);
+    return localRow;
+  }
+}
+
+async function deleteDocumentFromStorage(row) {
+  if (row.local_only || String(row.id).startsWith('local-')) {
+    setLocalDocuments(getLocalDocuments().filter((item) => String(item.id) !== String(row.id)));
+    return;
+  }
+  if (!supabaseClient) throw new Error('Supabase belum aktif. Data online tidak dapat dihapus.');
+  const { error } = await supabaseClient.from(TABLE_SURAT).delete().eq('id', row.id);
+  if (error) throw error;
+}
+
+function getFormData(form, typeKey, existing = {}) {
+  const data = new FormData(form);
+  return normalizeDocument({
+    ...existing,
+    id: existing.id || newId(),
+    jenis: typeKey,
+    nomor_surat: data.get('nomor_surat')?.trim(),
+    nomor_agenda: data.get('nomor_agenda')?.trim(),
+    tanggal_surat: data.get('tanggal_surat') || todayInput(),
+    pengirim: data.get('pengirim')?.trim(),
+    penerima: data.get('penerima')?.trim(),
+    alamat_tujuan: data.get('alamat_tujuan')?.trim(),
+    perihal: data.get('perihal')?.trim(),
+    sifat_surat: data.get('sifat_surat') || 'Biasa',
+    lampiran: data.get('lampiran')?.trim() || '-',
+    isi_surat: data.get('isi_surat')?.trim(),
+    hari: data.get('hari')?.trim(),
+    tanggal_kegiatan: data.get('tanggal_kegiatan')?.trim(),
+    waktu: data.get('waktu')?.trim(),
+    tempat: data.get('tempat')?.trim(),
+    acara: data.get('acara')?.trim(),
+    status: data.get('status') || documentTypes[typeKey].defaultStatus,
+    catatan: data.get('catatan')?.trim(),
+    dibuat_oleh: existing.dibuat_oleh || currentUser?.email || '-',
+    updated_at: new Date().toISOString()
+  });
+}
+
+function documentFormHTML(typeKey, row = {}, mode = 'create') {
+  const type = documentTypes[typeKey];
+  const data = normalizeDocument({ jenis: typeKey, status: type.defaultStatus, ...row });
+  const formId = mode === 'edit' ? 'editDocumentForm' : 'documentForm';
+  const submitHandler = mode === 'edit'
+    ? `saveEditedDocument(event, ${js(data.id)})`
+    : `saveDocument(event, ${js(typeKey)})`;
+  const disabled = !getPerm(mode === 'edit' ? 'edit' : 'create') ? 'disabled' : '';
+
+  return `
+    <form id="${formId}" onsubmit="${submitHandler}">
+      <div class="form-grid">
+        <div class="field">
+          <label>Nomor Surat</label>
+          <input name="nomor_surat" required value="${safe(data.nomor_surat)}" placeholder="Contoh: 001/KKG-PJOK/VI/2026" ${disabled}>
+        </div>
+        <div class="field">
+          <label>Nomor Agenda</label>
+          <input name="nomor_agenda" value="${safe(data.nomor_agenda)}" placeholder="Opsional" ${disabled}>
+        </div>
+        <div class="field">
+          <label>Tanggal Surat</label>
+          <input type="date" name="tanggal_surat" value="${safe(data.tanggal_surat || todayInput())}" required ${disabled}>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select name="status" ${disabled}>
+            ${statusOptions(data.status)}
+          </select>
+        </div>
+        <div class="field">
+          <label>${safe(type.primaryLabel)}</label>
+          <input name="pengirim" required value="${safe(data.pengirim)}" placeholder="Isi nama pihak terkait" ${disabled}>
+        </div>
+        <div class="field">
+          <label>${safe(type.secondaryLabel)}</label>
+          <input name="penerima" required value="${safe(data.penerima)}" placeholder="Isi tujuan atau keterangan utama" ${disabled}>
+        </div>
+        <div class="field full">
+          <label>Perihal</label>
+          <input name="perihal" required value="${safe(data.perihal)}" placeholder="Tulis perihal surat" ${disabled}>
+        </div>
+        <div class="field full">
+          <label>Alamat Tujuan</label>
+          <textarea name="alamat_tujuan" rows="2" placeholder="Tulis alamat tujuan jika ada" ${disabled}>${safe(data.alamat_tujuan)}</textarea>
+        </div>
+        <div class="field">
+          <label>Sifat Surat</label>
+          <select name="sifat_surat" ${disabled}>
+            ${['Biasa', 'Penting', 'Segera', 'Rahasia'].map((item) => `<option value="${item}" ${data.sifat_surat === item ? 'selected' : ''}>${item}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Lampiran</label>
+          <input name="lampiran" value="${safe(data.lampiran)}" placeholder="Contoh: 1 berkas / -" ${disabled}>
+        </div>
+        <div class="field">
+          <label>Hari Kegiatan</label>
+          <input name="hari" value="${safe(data.hari)}" placeholder="Contoh: Rabu" ${disabled}>
+        </div>
+        <div class="field">
+          <label>Tanggal Kegiatan</label>
+          <input name="tanggal_kegiatan" value="${safe(data.tanggal_kegiatan)}" placeholder="Contoh: 19 Februari 2025" ${disabled}>
+        </div>
+        <div class="field">
+          <label>Waktu</label>
+          <input name="waktu" value="${safe(data.waktu)}" placeholder="Contoh: 09.00 - Selesai" ${disabled}>
+        </div>
+        <div class="field">
+          <label>Tempat</label>
+          <input name="tempat" value="${safe(data.tempat)}" placeholder="Contoh: SD Negeri Lemahabang 01" ${disabled}>
+        </div>
+        <div class="field full">
+          <label>Acara</label>
+          <input name="acara" value="${safe(data.acara)}" placeholder="Contoh: Sosialisasi Hasil Coaching Clinic" ${disabled}>
+        </div>
+        <div class="field full">
+          <label>Isi Surat / Ringkasan</label>
+          <textarea name="isi_surat" rows="8" required placeholder="Tulis isi surat. Data kegiatan di atas akan tampil rapi dengan titik dua sejajar." ${disabled}>${safe(data.isi_surat)}</textarea>
+        </div>
+        <div class="field full">
+          <label>Catatan Internal</label>
+          <textarea name="catatan" rows="3" placeholder="Catatan internal, disposisi, atau tindak lanjut" ${disabled}>${safe(data.catatan)}</textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn secondary" onclick="previewForm(${js(typeKey)}, ${js(formId)})">Preview Template</button>
+        ${mode === 'edit' ? '<button type="button" class="btn secondary" onclick="closeEditModal()">Batal</button>' : ''}
+        <button type="submit" class="btn" ${disabled}>${mode === 'edit' ? 'Simpan Perubahan' : 'Simpan Data'}</button>
+        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, ${js(typeKey)})" ${disabled}>Simpan & Download PDF</button>` : ''}
+      </div>
+    </form>`;
+}
+
+function statusOptions(selected) {
+  const statuses = ['draft', 'diterima', 'diproses', 'diajukan', 'disetujui', 'selesai', 'diarsipkan'];
+  return statuses.map((status) => `<option value="${status}" ${selected === status ? 'selected' : ''}>${titleCase(status)}</option>`).join('');
+}
+
+async function saveDocument(event, typeKey) {
+  event.preventDefault();
+  if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
+  const form = event.target;
+  const row = getFormData(form, typeKey);
+  const saved = await saveDocumentToStorage(row);
+  form.reset();
+  const dateInput = form.querySelector('[name="tanggal_surat"]');
+  if (dateInput) dateInput.value = todayInput();
+  showToast(saved.local_only ? 'Data tersimpan lokal. Supabase belum aktif.' : 'Data berhasil disimpan.');
+  await refreshCurrentPage();
+}
+
+async function saveDocumentAndPdf(event, typeKey) {
+  event.preventDefault();
+  if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
+  const form = el('documentForm');
+  const row = getFormData(form, typeKey);
+  const saved = await saveDocumentToStorage(row);
+  await createPdfFromDocument(saved, { download: true, upload: !saved.local_only });
+  form.reset();
+  const dateInput = form.querySelector('[name="tanggal_surat"]');
+  if (dateInput) dateInput.value = todayInput();
+  await refreshCurrentPage();
+}
+
+async function saveEditedDocument(event, id) {
+  event.preventDefault();
+  if (!getPerm('edit')) return showToast('Role ini tidak dapat mengedit dokumen.', 'error');
+  const existing = findDocumentById(id);
+  if (!existing) return showToast('Data tidak ditemukan.', 'error');
+  const row = getFormData(event.target, existing.jenis, existing);
+  await saveDocumentToStorage(row);
+  closeEditModal();
+  showToast('Data berhasil diperbarui.');
+  await refreshCurrentPage();
+}
+
+async function previewForm(typeKey, formId = 'documentForm') {
+  const form = el(formId);
+  if (!form) return showToast('Form tidak ditemukan.', 'error');
+  const row = getFormData(form, typeKey);
+  openPreview(row);
+}
+
 async function renderDashboard() {
-  setPageHeader('Dashboard', 'Ringkasan administrasi surat dan arsip dokumen.');
+  setPageHeader('Dashboard', 'Ringkasan administrasi surat, persetujuan, dan arsip dokumen.');
   const rows = await fetchDocuments();
   const activeRows = rows.filter((row) => row.status !== 'diarsipkan');
   const archiveRows = rows.filter((row) => row.status === 'diarsipkan');
+  const approvalRows = rows.filter((row) => row.status === 'diajukan');
 
   const countByType = Object.keys(documentTypes).reduce((result, key) => {
     result[key] = rows.filter((row) => row.jenis === key).length;
@@ -382,22 +674,23 @@ async function renderDashboard() {
 
   el('pageContent').innerHTML = `
     <div class="stats">
-      <div class="card stat-card"><span>Total Surat</span><strong id="totalSurat">${rows.length}</strong><small>Semua jenis dokumen</small></div>
-      <div class="card stat-card"><span>Surat Aktif</span><strong id="totalMasuk">${activeRows.length}</strong><small>Belum diarsipkan</small></div>
-      <div class="card stat-card"><span>Total Arsip</span><strong id="totalArsip">${archiveRows.length}</strong><small>Dokumen selesai</small></div>
+      <div class="card stat-card"><span>Total Surat</span><strong>${rows.length}</strong><small>Semua jenis dokumen</small></div>
+      <div class="card stat-card"><span>Surat Aktif</span><strong>${activeRows.length}</strong><small>Belum diarsipkan</small></div>
+      <div class="card stat-card"><span>Menunggu Persetujuan</span><strong>${approvalRows.length}</strong><small>Status diajukan</small></div>
+      <div class="card stat-card"><span>Total Arsip</span><strong>${archiveRows.length}</strong><small>Dokumen selesai</small></div>
     </div>
 
     <div class="section-grid">
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h2>Ringkasan Menu</h2>
-            <p>Semua menu sudah aktif dan terhubung dengan form pembuatan dokumen.</p>
+            <h2>Menu Surat</h2>
+            <p>Semua menu sudah aktif, dapat dibuat, diedit, dicetak, dan diarsipkan.</p>
           </div>
         </div>
         <div class="quick-menu">
           ${Object.entries(documentTypes).map(([key, type]) => `
-            <button onclick="navigate('${key}')">
+            <button onclick="navigate(${js(key)})">
               <strong>${safe(type.title)}</strong>
               <span>${countByType[key] || 0} data</span>
             </button>`).join('')}
@@ -405,30 +698,26 @@ async function renderDashboard() {
       </div>
 
       <div class="panel">
-        <div class="panel-header">
-          <div>
-            <h2>Alur Sistem</h2>
-            <p>Konsep kerja menu yang sudah disiapkan.</p>
-          </div>
-        </div>
+        <div class="panel-header"><div><h2>Alur Kantor</h2><p>Alur kerja final yang disiapkan di sistem.</p></div></div>
         <ol class="workflow">
-          <li>Isi data surat melalui menu sesuai jenis dokumen.</li>
-          <li>Sistem menyimpan data ke tabel Supabase.</li>
-          <li>Sistem membuat tampilan template resmi otomatis.</li>
-          <li>PDF dapat diunduh, dicetak, dan diunggah ke Supabase Storage jika bucket tersedia.</li>
-          <li>Dokumen selesai dapat dipindahkan ke menu arsip.</li>
+          <li>Staf membuat konsep surat dan mengisi data kegiatan.</li>
+          <li>Dokumen dapat diedit kapan pun, termasuk setelah masuk arsip.</li>
+          <li>Pimpinan dapat menyetujui dokumen berstatus diajukan.</li>
+          <li>Sistem membuat PDF resmi dengan kop surat otomatis.</li>
+          <li>Admin mengatur profil instansi, tanda tangan, dan identitas aplikasi.</li>
         </ol>
       </div>
     </div>
 
     <div class="panel">
       <div class="panel-header">
-        <div>
-          <h2>Dokumen Terbaru</h2>
-          <p>Data terakhir yang masuk ke sistem.</p>
+        <div><h2>Dokumen Terbaru</h2><p>Data terakhir yang tersimpan di sistem.</p></div>
+        <div class="topbar-actions">
+          <button class="btn secondary" onclick="exportCsv()">Export CSV</button>
+          <button class="btn secondary" onclick="backupJson()">Backup JSON</button>
         </div>
       </div>
-      ${renderTable(rows.slice(0, 8), { showType: true })}
+      ${renderTable(rows.slice(0, 10), { showType: true })}
     </div>`;
 }
 
@@ -436,467 +725,50 @@ async function renderDocumentPage(typeKey) {
   const type = documentTypes[typeKey];
   setPageHeader(type.title, type.subtitle);
   const rows = await fetchDocuments({ jenis: typeKey });
+  const canCreate = getPerm('create');
 
   el('pageContent').innerHTML = `
+    ${!canCreate ? '<div class="alert">Role Anda hanya dapat melihat, menyetujui, mencetak, atau mengarsipkan sesuai hak akses. Pembuatan dan edit dokumen dibatasi.</div>' : ''}
     <div class="two-column">
-      <form class="panel form-panel" id="documentForm" onsubmit="saveDocument(event, '${typeKey}')">
-        <div class="panel-header">
-          <div>
-            <h2>Form ${safe(type.title)}</h2>
-            <p>${safe(type.help)}</p>
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <div class="field">
-            <label>Nomor Surat</label>
-            <input name="nomor_surat" required placeholder="Contoh: 001/KKG-PJOK/VI/2026">
-          </div>
-          <div class="field">
-            <label>Tanggal Surat</label>
-            <input type="date" name="tanggal_surat" value="${todayInput()}" required>
-          </div>
-          <div class="field">
-            <label>${safe(type.primaryLabel)}</label>
-            <input name="pengirim" required placeholder="Isi nama pihak terkait">
-          </div>
-          <div class="field">
-            <label>${safe(type.secondaryLabel)}</label>
-            <input name="penerima" required placeholder="Isi tujuan atau keterangan utama">
-          </div>
-          <div class="field full">
-            <label>Perihal</label>
-            <input name="perihal" required placeholder="Tulis perihal surat">
-          </div>
-          ${type.requiresAddress ? `
-          <div class="field full">
-            <label>Alamat Tujuan</label>
-            <textarea name="alamat_tujuan" rows="2" placeholder="Tulis alamat tujuan"></textarea>
-          </div>` : ''}
-          <div class="field">
-            <label>Sifat Surat</label>
-            <select name="sifat_surat">
-              <option value="Biasa">Biasa</option>
-              <option value="Penting">Penting</option>
-              <option value="Segera">Segera</option>
-              <option value="Rahasia">Rahasia</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Lampiran</label>
-            <input name="lampiran" placeholder="Contoh: 1 berkas / -">
-          </div>
-          <div class="field full">
-            <label>Isi Surat / Ringkasan</label>
-            <textarea name="isi_surat" rows="7" required placeholder="Tulis isi surat. Untuk surat keluar, bagian ini akan menjadi badan surat pada PDF."></textarea>
-          </div>
-          <div class="field">
-            <label>Status</label>
-            <select name="status">
-              <option value="${safe(type.defaultStatus)}">${safe(titleCase(type.defaultStatus))}</option>
-              <option value="draft">Draft</option>
-              <option value="diterima">Diterima</option>
-              <option value="diproses">Diproses</option>
-              <option value="selesai">Selesai</option>
-              <option value="diarsipkan">Diarsipkan</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn secondary" onclick="previewForm('${typeKey}')">Preview Template</button>
-          <button type="submit" class="btn">Simpan Data</button>
-          <button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${typeKey}')">Simpan & Download PDF</button>
-        </div>
-      </form>
-
+      <div class="panel form-panel">
+        <div class="panel-header"><div><h2>Form ${safe(type.title)}</h2><p>${safe(type.help)}</p></div></div>
+        ${documentFormHTML(typeKey, {}, 'create')}
+      </div>
       <div class="panel concept-card">
-        <h2>Konsep Menu</h2>
-        <p>Menu ${safe(type.title)} dibuat agar data tidak hanya tampil di layar, tetapi juga dapat menjadi dokumen PDF siap pakai.</p>
+        <h2>Fitur Menu</h2>
+        <p>Menu ${safe(type.title)} sudah dibuat untuk kebutuhan kantor. Semua data dapat dicari, diedit, dicetak PDF, disetujui, dan diarsipkan.</p>
         <div class="concept-list">
-          <div><span>1</span><p>Data diinput melalui form.</p></div>
-          <div><span>2</span><p>Data tersimpan ke Supabase.</p></div>
-          <div><span>3</span><p>Template PDF dibuat otomatis.</p></div>
-          <div><span>4</span><p>Dokumen dapat dicetak atau diarsipkan.</p></div>
+          <div><span>1</span><p>Data disimpan ke Supabase. Jika Supabase belum siap, sistem menyimpan ke localStorage.</p></div>
+          <div><span>2</span><p>Format hari, tanggal, waktu, tempat, dan acara tampil sejajar pada PDF.</p></div>
+          <div><span>3</span><p>Dokumen arsip tetap bisa diedit oleh role yang berwenang.</p></div>
         </div>
       </div>
     </div>
-
     <div class="panel">
-      <div class="panel-header">
-        <div>
-          <h2>Data ${safe(type.title)}</h2>
-          <p>Daftar dokumen yang sudah dibuat pada menu ini.</p>
-        </div>
-        <input class="table-search" id="search-${typeKey}" oninput="filterTable('${typeKey}')" placeholder="Cari nomor, perihal, atau pihak terkait...">
-      </div>
-      <div id="table-${typeKey}">${renderTable(rows, { showType: false })}</div>
+      <div class="panel-header"><div><h2>Data ${safe(type.title)}</h2><p>Gunakan filter untuk mencari dokumen dengan cepat.</p></div></div>
+      ${tableToolbar(typeKey)}
+      <div id="table-${safe(typeKey)}">${renderTable(rows, { showType: false })}</div>
     </div>`;
 }
 
-function titleCase(value) {
-  return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function readFormData(typeKey) {
-  const form = el('documentForm');
-  const data = new FormData(form);
-  const type = documentTypes[typeKey];
-
-  return {
-    jenis: typeKey,
-    nomor_surat: data.get('nomor_surat')?.trim(),
-    tanggal_surat: data.get('tanggal_surat'),
-    perihal: data.get('perihal')?.trim(),
-    pengirim: data.get('pengirim')?.trim(),
-    penerima: data.get('penerima')?.trim(),
-    instansi_tujuan: data.get('penerima')?.trim(),
-    alamat_tujuan: data.get('alamat_tujuan')?.trim() || '',
-    isi_surat: data.get('isi_surat')?.trim(),
-    lampiran: data.get('lampiran')?.trim() || '-',
-    sifat_surat: data.get('sifat_surat') || 'Biasa',
-    status: data.get('status') || type.defaultStatus
-  };
-}
-
-function validateDocument(payload) {
-  const required = ['nomor_surat', 'tanggal_surat', 'perihal', 'pengirim', 'penerima', 'isi_surat'];
-  const missing = required.filter((key) => !payload[key]);
-  return missing.length === 0;
-}
-
-async function saveDocument(event, typeKey, options = {}) {
-  if (event) event.preventDefault();
-  const payload = readFormData(typeKey);
-
-  if (!validateDocument(payload)) {
-    showToast('Data belum lengkap. Lengkapi nomor, tanggal, perihal, pihak terkait, dan isi surat.', 'error');
-    return null;
-  }
-
-  const session = await getCurrentSession();
-  payload.created_by = session?.user?.id || session?.user?.email || null;
-  payload.created_at = new Date().toISOString();
-
-  let savedRow = null;
-  try {
-    if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
-    const { data, error } = await supabaseClient
-      .from(TABLE_SURAT)
-      .insert(payload)
-      .select()
-      .single();
-
-    if (error) throw error;
-    savedRow = data;
-    showToast('Data berhasil disimpan ke Supabase.');
-  } catch (error) {
-    const localRows = getLocalDocuments();
-    savedRow = { ...payload, id: newLocalId(), local_only: true };
-    localRows.unshift(savedRow);
-    setLocalDocuments(localRows);
-    showToast('Data tersimpan lokal. Jalankan SQL Supabase agar data tersimpan online.', 'warning');
-    console.warn('Gagal menyimpan ke Supabase:', error);
-  }
-
-  if (options.downloadPdf && savedRow) {
-    await createPdfFromDocument(savedRow, { download: true, upload: true });
-  }
-
-  el('documentForm')?.reset();
-  await renderDocumentPage(typeKey);
-  return savedRow;
-}
-
-async function saveDocumentAndPdf(event, typeKey) {
-  if (event) event.preventDefault();
-  await saveDocument(event, typeKey, { downloadPdf: true });
-}
-
-async function previewForm(typeKey) {
-  const payload = readFormData(typeKey);
-  if (!validateDocument(payload)) {
-    showToast('Isi data utama terlebih dahulu sebelum preview.', 'error');
-    return;
-  }
-  openPreview({ ...payload, id: 'preview' });
-}
-
-function openPreview(documentRow) {
-  lastPreviewDocument = documentRow;
-  const content = el('previewContent');
-  content.innerHTML = buildDocumentHTML(documentRow);
-  lastPreviewElement = content.querySelector('.pdf-page');
-  el('previewModal').hidden = false;
-}
-
-function closePreview() {
-  el('previewModal').hidden = true;
-  lastPreviewDocument = null;
-  lastPreviewElement = null;
-}
-
-function printPreview() {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    showToast('Popup cetak diblokir browser. Izinkan popup lalu coba lagi.', 'error');
-    return;
-  }
-  printWindow.document.write(`
-    <html><head><title>Cetak Dokumen</title><link rel="stylesheet" href="assets/style.css"></head>
-    <body class="print-body">${el('previewContent').innerHTML}</body></html>`);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => printWindow.print(), 350);
-}
-
-
-async function downloadPreviewPdf() {
-  if (!lastPreviewDocument) return;
-  await createPdfFromDocument(lastPreviewDocument, { download: true, upload: false });
-}
-
-async function createPdfFromDocument(documentRow, options = { download: true, upload: false }) {
-  await loadProfile();
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = buildDocumentHTML(documentRow);
-  document.body.appendChild(wrapper);
-  const pdfElement = wrapper.querySelector('.pdf-page');
-  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat)}.pdf`;
-
-  try {
-    if (typeof html2pdf === 'undefined') {
-      openPreview(documentRow);
-      showToast('Library PDF belum terbaca. Gunakan tombol Cetak untuk simpan sebagai PDF.', 'warning');
-      return;
-    }
-
-    const worker = html2pdf()
-      .set({
-        margin: [8, 8, 8, 8],
-        filename: fileName,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      })
-      .from(pdfElement);
-
-    if (options.upload && !documentRow.local_only && documentRow.id) {
-      const pdfBlob = await worker.outputPdf('blob');
-      await uploadPdfBlob(documentRow, pdfBlob, fileName);
-      if (options.download) {
-        await html2pdf().set({ filename: fileName, jsPDF: { unit: 'mm', format: 'a4' } }).from(pdfElement).save();
-      }
-    } else if (options.download) {
-      await worker.save();
-    }
-  } catch (error) {
-    console.warn('Gagal membuat PDF otomatis:', error);
-    openPreview(documentRow);
-    showToast('PDF otomatis gagal dibuat. Preview tetap tersedia untuk dicetak manual.', 'warning');
-  } finally {
-    wrapper.remove();
-  }
-}
-
-async function uploadPdfBlob(documentRow, pdfBlob, fileName) {
-  if (!supabaseClient) {
-    showToast('Supabase Storage belum aktif. PDF tetap dapat diunduh secara lokal.', 'warning');
-    return;
-  }
-  const path = `${documentRow.jenis}/${Date.now()}-${fileName}`;
-  const { error: uploadError } = await supabaseClient
-    .storage
-    .from(STORAGE_BUCKET)
-    .upload(path, pdfBlob, { contentType: 'application/pdf', upsert: true });
-
-  if (uploadError) {
-    console.warn('Upload PDF ke storage gagal:', uploadError);
-    showToast('PDF berhasil dibuat, tetapi belum terunggah ke Supabase Storage. Pastikan bucket dokumen-surat sudah dibuat.', 'warning');
-    return;
-  }
-
-  const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-  await supabaseClient
-    .from(TABLE_SURAT)
-    .update({ pdf_path: path, pdf_url: data?.publicUrl || null })
-    .eq('id', documentRow.id);
-
-  showToast('PDF berhasil dibuat dan diunggah ke Supabase Storage.');
-}
-
-function buildDocumentHTML(documentRow) {
-  const profile = { ...defaultProfile, ...(cachedProfile || {}) };
-  const type = documentTypes[documentRow.jenis] || documentTypes.keluar;
-
-  if (documentRow.jenis === 'masuk') return buildIncomingTemplate(documentRow, profile, type);
-  if (documentRow.jenis === 'tugas') return buildAssignmentTemplate(documentRow, profile, type);
-  if (documentRow.jenis === 'undangan') return buildInvitationTemplate(documentRow, profile, type);
-  if (documentRow.jenis === 'sk') return buildDecisionTemplate(documentRow, profile, type);
-  return buildOutgoingTemplate(documentRow, profile, type);
-}
-
-function letterhead(profile) {
+function tableToolbar(typeKey = '') {
   return `
-    <div class="letterhead">
-      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
-      <div>
-        <h1>${safe(profile.nama_instansi)}</h1>
-        <p>${safe(profile.alamat)}</p>
-        <p>Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
-      </div>
-    </div>
-    <div class="letter-line"></div>`;
-}
-
-function signature(profile) {
-  return `
-    <div class="signature-block">
-      <p>${safe(profile.kota)}, ${formatDateLong(todayInput())}</p>
-      <p>${safe(profile.jabatan)}</p>
-      <div class="signature-space"></div>
-      <p><strong>${safe(profile.kepala_nama)}</strong></p>
-      <p>NIP. ${safe(profile.kepala_nip)}</p>
+    <div class="toolbar">
+      <div><label>Kata Kunci</label><input id="search-${safe(typeKey || 'all')}" placeholder="Cari nomor, perihal, pihak, status, acara, atau tempat"></div>
+      <div><label>Dari Tanggal</label><input type="date" id="start-${safe(typeKey || 'all')}"></div>
+      <div><label>Sampai Tanggal</label><input type="date" id="end-${safe(typeKey || 'all')}"></div>
+      <button class="btn secondary" onclick="filterTable(${js(typeKey)})">Terapkan</button>
     </div>`;
 }
 
-function metaTable(rows) {
-  return `
-    <table class="meta-table">
-      ${rows.map(([label, value]) => `
-        <tr><td>${safe(label)}</td><td>:</td><td>${safe(value || '-')}</td></tr>`).join('')}
-    </table>`;
-}
-
-function paragraphText(value) {
-  return safe(value || '-').split('\n').map((line) => `<p>${line || '&nbsp;'}</p>`).join('');
-}
-
-function buildOutgoingTemplate(row, profile, type) {
-  return `
-    <article class="pdf-page">
-      ${letterhead(profile)}
-      <div class="letter-meta-grid">
-        <div>${metaTable([
-          ['Nomor', row.nomor_surat],
-          ['Lampiran', row.lampiran],
-          ['Sifat', row.sifat_surat],
-          ['Perihal', row.perihal]
-        ])}</div>
-        <div class="date-right">${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat)}</div>
-      </div>
-
-      <div class="recipient">
-        <p>Kepada Yth.</p>
-        <p><strong>${safe(row.pengirim)}</strong></p>
-        <p>${safe(row.penerima)}</p>
-        <p>${safe(row.alamat_tujuan || '')}</p>
-      </div>
-
-      <div class="body-text">
-        <p>Dengan hormat,</p>
-        ${paragraphText(row.isi_surat)}
-      </div>
-      ${signature(profile)}
-    </article>`;
-}
-
-function buildIncomingTemplate(row, profile, type) {
-  return `
-    <article class="pdf-page">
-      ${letterhead(profile)}
-      <h2 class="template-title">${safe(type.templateTitle)}</h2>
-      ${metaTable([
-        ['Nomor Surat', row.nomor_surat],
-        ['Tanggal Surat', formatDateLong(row.tanggal_surat)],
-        ['Tanggal Diterima', formatDateLong(todayInput())],
-        ['Pengirim', row.pengirim],
-        ['Tujuan/Penerima', row.penerima],
-        ['Perihal', row.perihal],
-        ['Sifat Surat', row.sifat_surat],
-        ['Lampiran', row.lampiran],
-        ['Status', titleCase(row.status)]
-      ])}
-      <div class="body-box">
-        <h3>Ringkasan Isi Surat</h3>
-        ${paragraphText(row.isi_surat)}
-      </div>
-      <div class="disposition-box">
-        <h3>Catatan Tindak Lanjut</h3>
-        <div class="blank-lines"></div>
-      </div>
-      ${signature(profile)}
-    </article>`;
-}
-
-function buildAssignmentTemplate(row, profile, type) {
-  return `
-    <article class="pdf-page">
-      ${letterhead(profile)}
-      <h2 class="template-title">${safe(type.templateTitle)}</h2>
-      <p class="center-text">Nomor: ${safe(row.nomor_surat)}</p>
-      <div class="body-text">
-        <p>Yang bertanda tangan di bawah ini memberikan tugas kepada:</p>
-        ${metaTable([
-          ['Nama Petugas', row.pengirim],
-          ['Kegiatan/Tujuan', row.penerima],
-          ['Tanggal Surat', formatDateLong(row.tanggal_surat)],
-          ['Perihal', row.perihal]
-        ])}
-        ${paragraphText(row.isi_surat)}
-        <p>Surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.</p>
-      </div>
-      ${signature(profile)}
-    </article>`;
-}
-
-function buildInvitationTemplate(row, profile, type) {
-  return `
-    <article class="pdf-page">
-      ${letterhead(profile)}
-      <div class="letter-meta-grid">
-        <div>${metaTable([
-          ['Nomor', row.nomor_surat],
-          ['Lampiran', row.lampiran],
-          ['Sifat', row.sifat_surat],
-          ['Perihal', row.perihal]
-        ])}</div>
-        <div class="date-right">${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat)}</div>
-      </div>
-      <div class="recipient">
-        <p>Kepada Yth.</p>
-        <p><strong>${safe(row.pengirim)}</strong></p>
-        <p>${safe(row.alamat_tujuan || '')}</p>
-      </div>
-      <div class="body-text">
-        <p>Dengan hormat,</p>
-        <p>Sehubungan dengan kegiatan <strong>${safe(row.penerima)}</strong>, kami mengundang Bapak/Ibu untuk hadir dalam kegiatan tersebut.</p>
-        ${paragraphText(row.isi_surat)}
-        <p>Demikian undangan ini disampaikan. Atas perhatian dan kehadirannya, kami ucapkan terima kasih.</p>
-      </div>
-      ${signature(profile)}
-    </article>`;
-}
-
-function buildDecisionTemplate(row, profile, type) {
-  return `
-    <article class="pdf-page">
-      ${letterhead(profile)}
-      <h2 class="template-title">${safe(type.templateTitle)}</h2>
-      <p class="center-text">Nomor: ${safe(row.nomor_surat)}</p>
-      <h3 class="center-text small-title">TENTANG</h3>
-      <h3 class="center-text small-title">${safe(row.pengirim)}</h3>
-      <div class="body-text">
-        ${metaTable([
-          ['Tanggal', formatDateLong(row.tanggal_surat)],
-          ['Dasar Keputusan', row.penerima],
-          ['Perihal', row.perihal]
-        ])}
-        <p><strong>MEMUTUSKAN:</strong></p>
-        ${paragraphText(row.isi_surat)}
-      </div>
-      ${signature(profile)}
-    </article>`;
+async function filterTable(typeKey = '') {
+  const key = typeKey || 'all';
+  const keyword = el(`search-${key}`)?.value || '';
+  const startDate = el(`start-${key}`)?.value || '';
+  const endDate = el(`end-${key}`)?.value || '';
+  const rows = await fetchDocuments({ jenis: typeKey || undefined, keyword, startDate, endDate, status: currentRoute === 'arsip' ? 'diarsipkan' : undefined });
+  const target = typeKey ? `table-${typeKey}` : 'table-arsip';
+  el(target).innerHTML = renderTable(rows, { showType: !typeKey });
 }
 
 function renderTable(rows, options = {}) {
@@ -924,183 +796,153 @@ function renderTable(rows, options = {}) {
             <tr>
               <td>${index + 1}</td>
               ${options.showType ? `<td><span class="badge">${safe(documentTypes[row.jenis]?.badge || row.jenis)}</span></td>` : ''}
-              <td>${safe(row.nomor_surat)}</td>
+              <td><strong>${safe(row.nomor_surat)}</strong>${row.nomor_agenda ? `<br><small>Agenda: ${safe(row.nomor_agenda)}</small>` : ''}</td>
               <td>${formatDateShort(row.tanggal_surat)}</td>
               <td>${safe(row.perihal)}</td>
-              <td>${safe(row.pengirim || row.penerima)}</td>
-              <td><span class="status ${safe(row.status)}">${safe(titleCase(row.status))}</span></td>
-              <td class="actions">
-                <button onclick="previewById('${safe(row.id)}')">Preview</button>
-                <button onclick="downloadById('${safe(row.id)}')">PDF</button>
-                <button onclick="editById('${safe(row.id)}')">Edit</button>
-                <button onclick="archiveById('${safe(row.id)}')">Arsip</button>
-                <button class="danger" onclick="deleteById('${safe(row.id)}')">Hapus</button>
-              </td>
+              <td>${safe(row.pengirim || row.penerima)}${row.penerima ? `<br><small>${safe(row.penerima)}</small>` : ''}</td>
+              <td><span class="status ${safe(row.status)}">${safe(titleCase(row.status))}</span>${row.local_only ? '<br><small>Lokal</small>' : ''}</td>
+              <td class="actions">${actionButtons(row)}</td>
             </tr>`).join('')}
         </tbody>
       </table>
     </div>`;
 }
 
-async function filterTable(typeKey) {
-  const keyword = el(`search-${typeKey}`)?.value?.toLowerCase() || '';
-  const rows = await fetchDocuments({ jenis: typeKey });
-  const filtered = rows.filter((row) => [
-    row.nomor_surat, row.perihal, row.pengirim, row.penerima, row.status
-  ].join(' ').toLowerCase().includes(keyword));
-
-  el(`table-${typeKey}`).innerHTML = renderTable(filtered, { showType: false });
+function actionButtons(row) {
+  const buttons = [];
+  buttons.push(`<button onclick="previewById(${js(row.id)})">Preview</button>`);
+  if (getPerm('pdf')) buttons.push(`<button onclick="downloadById(${js(row.id)})">PDF</button>`);
+  if (getPerm('edit')) buttons.push(`<button onclick="editById(${js(row.id)})">Edit</button>`);
+  if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button class="green" onclick="approveById(${js(row.id)})">Setujui</button>`);
+  if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button onclick="archiveById(${js(row.id)})">Arsip</button>`);
+  if (getPerm('archive') && row.status === 'diarsipkan') buttons.push(`<button onclick="restoreById(${js(row.id)})">Aktifkan</button>`);
+  if (getPerm('delete')) buttons.push(`<button class="danger" onclick="deleteById(${js(row.id)})">Hapus</button>`);
+  return buttons.join('');
 }
 
 function findDocumentById(id) {
-  return cachedDocuments.find((row) => String(row.id) === String(id)) || getLocalDocuments().find((row) => String(row.id) === String(id));
+  return cachedDocuments.find((row) => String(row.id) === String(id))
+    || getLocalDocuments().map(normalizeDocument).find((row) => String(row.id) === String(id));
 }
 
 async function previewById(id) {
-  const row = findDocumentById(id);
+  const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
   openPreview(row);
 }
 
 async function downloadById(id) {
-  const row = findDocumentById(id);
+  const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
   await createPdfFromDocument(row, { download: true, upload: !row.local_only });
 }
 
-async function archiveById(id) {
-  const row = findDocumentById(id);
+async function editById(id) {
+  if (!getPerm('edit')) return showToast('Role ini tidak dapat mengedit dokumen.', 'error');
+  const rows = await fetchDocuments();
+  const row = rows.find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
+  editTargetId = id;
+  el('editModalTitle').textContent = `Edit ${documentTypes[row.jenis]?.title || 'Dokumen'}`;
+  el('editModalContent').innerHTML = documentFormHTML(row.jenis, row, 'edit');
+  el('editModal').hidden = false;
+}
 
-  if (row.local_only) {
-    const localRows = getLocalDocuments().map((item) => item.id === id ? { ...item, status: 'diarsipkan' } : item);
-    setLocalDocuments(localRows);
-  } else {
-    if (!supabaseClient) {
-      showToast('Supabase belum aktif. Data online tidak dapat diarsipkan.', 'error');
-      return;
-    }
-    try {
-      const { error } = await supabaseClient.from(TABLE_SURAT).update({ status: 'diarsipkan' }).eq('id', id);
-      if (error) throw error;
-    } catch (error) {
-      showToast('Gagal mengarsipkan di Supabase.', 'error');
-      console.warn(error);
-      return;
-    }
-  }
+function closeEditModal() {
+  editTargetId = null;
+  el('editModal').hidden = true;
+  el('editModalContent').innerHTML = '';
+}
 
-  showToast('Dokumen berhasil dipindahkan ke arsip.');
+async function updateStatus(id, status, extra = {}) {
+  const rows = await fetchDocuments();
+  const row = rows.find((item) => String(item.id) === String(id));
+  if (!row) return showToast('Data tidak ditemukan.', 'error');
+  const updated = normalizeDocument({ ...row, status, ...extra, updated_at: new Date().toISOString() });
+  await saveDocumentToStorage(updated);
   await refreshCurrentPage();
+}
+
+async function archiveById(id) {
+  if (!getPerm('archive')) return showToast('Role ini tidak dapat mengarsipkan dokumen.', 'error');
+  await updateStatus(id, 'diarsipkan');
+  showToast('Dokumen berhasil dipindahkan ke arsip.');
+}
+
+async function restoreById(id) {
+  if (!getPerm('archive')) return showToast('Role ini tidak dapat mengaktifkan arsip.', 'error');
+  await updateStatus(id, 'selesai');
+  showToast('Arsip berhasil diaktifkan kembali.');
+}
+
+async function approveById(id) {
+  if (!getPerm('approve')) return showToast('Role ini tidak dapat menyetujui dokumen.', 'error');
+  await updateStatus(id, 'disetujui', { disetujui_oleh: currentUser?.email || '-' });
+  showToast('Dokumen berhasil disetujui.');
 }
 
 async function deleteById(id) {
+  if (!getPerm('delete')) return showToast('Role ini tidak dapat menghapus dokumen.', 'error');
   if (!confirm('Hapus data ini? Tindakan ini tidak dapat dibatalkan.')) return;
-  const row = findDocumentById(id);
+  const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
-
-  if (row.local_only) {
-    setLocalDocuments(getLocalDocuments().filter((item) => item.id !== id));
-  } else {
-    if (!supabaseClient) {
-      showToast('Supabase belum aktif. Data online tidak dapat dihapus.', 'error');
-      return;
-    }
-    try {
-      const { error } = await supabaseClient.from(TABLE_SURAT).delete().eq('id', id);
-      if (error) throw error;
-    } catch (error) {
-      showToast('Gagal menghapus data di Supabase.', 'error');
-      console.warn(error);
-      return;
-    }
+  try {
+    await deleteDocumentFromStorage(row);
+    showToast('Data berhasil dihapus.');
+    await refreshCurrentPage();
+  } catch (error) {
+    showToast(error.message || 'Gagal menghapus data.', 'error');
+    console.warn(error);
   }
-
-  showToast('Data berhasil dihapus.');
-  await refreshCurrentPage();
 }
 
 async function renderArchivePage() {
-  setPageHeader('Arsip', 'Dokumen yang sudah selesai dan dipindahkan ke arsip.');
+  setPageHeader('Arsip', 'Dokumen yang sudah selesai dan dipindahkan ke arsip. Data arsip tetap bisa diedit oleh role yang berwenang.');
   const rows = await fetchDocuments({ status: 'diarsipkan' });
   el('pageContent').innerHTML = `
     <div class="panel">
       <div class="panel-header">
-        <div>
-          <h2>Arsip Dokumen</h2>
-          <p>Seluruh dokumen berstatus diarsipkan.</p>
-        </div>
+        <div><h2>Arsip Dokumen</h2><p>Seluruh dokumen berstatus diarsipkan.</p></div>
+        <div class="topbar-actions"><button class="btn secondary" onclick="exportCsv('arsip')">Export Arsip</button></div>
       </div>
-      ${renderTable(rows, { showType: true })}
+      ${tableToolbar('')}
+      <div id="table-arsip">${renderTable(rows, { showType: true })}</div>
     </div>`;
 }
 
 async function renderSettingsPage() {
-  setPageHeader('Pengaturan', 'Atur identitas instansi untuk kop surat dan tanda tangan PDF.');
+  setPageHeader('Pengaturan', 'Atur identitas instansi untuk kop surat, tanda tangan, dan template PDF.');
   const profile = await loadProfile();
-
   el('pageContent').innerHTML = `
     <form class="panel form-panel" id="profileForm" onsubmit="saveProfile(event)">
-      <div class="panel-header">
-        <div>
-          <h2>Profil Instansi</h2>
-          <p>Data ini akan muncul otomatis pada kop surat dan bagian tanda tangan.</p>
-        </div>
-      </div>
+      <div class="panel-header"><div><h2>Profil Instansi</h2><p>Data ini muncul otomatis pada kop surat dan tanda tangan.</p></div></div>
       <div class="form-grid">
-        <div class="field">
-          <label>Nama Instansi</label>
-          <input name="nama_instansi" value="${safe(profile.nama_instansi)}" required>
-        </div>
-        <div class="field">
-          <label>Nama Aplikasi</label>
-          <input name="nama_aplikasi" value="${safe(profile.nama_aplikasi)}" required>
-        </div>
-        <div class="field full">
-          <label>Alamat</label>
-          <textarea name="alamat" rows="2">${safe(profile.alamat)}</textarea>
-        </div>
-        <div class="field">
-          <label>Telepon</label>
-          <input name="telepon" value="${safe(profile.telepon)}">
-        </div>
-        <div class="field">
-          <label>Email</label>
-          <input name="email" value="${safe(profile.email)}">
-        </div>
-        <div class="field">
-          <label>Website</label>
-          <input name="website" value="${safe(profile.website)}">
-        </div>
-        <div class="field">
-          <label>Kota Penandatanganan</label>
-          <input name="kota" value="${safe(profile.kota)}">
-        </div>
-        <div class="field">
-          <label>Nama Penandatangan</label>
-          <input name="kepala_nama" value="${safe(profile.kepala_nama)}">
-        </div>
-        <div class="field">
-          <label>NIP</label>
-          <input name="kepala_nip" value="${safe(profile.kepala_nip)}">
-        </div>
-        <div class="field">
-          <label>Jabatan</label>
-          <input name="jabatan" value="${safe(profile.jabatan)}">
-        </div>
-        <div class="field full">
-          <label>URL Logo</label>
-          <input name="logo_url" value="${safe(profile.logo_url)}" placeholder="logo.png atau URL publik Supabase Storage">
-        </div>
+        <div class="field"><label>Nama Instansi</label><input name="nama_instansi" value="${safe(profile.nama_instansi)}" required></div>
+        <div class="field"><label>Nama Aplikasi</label><input name="nama_aplikasi" value="${safe(profile.nama_aplikasi)}" required></div>
+        <div class="field full"><label>Alamat</label><textarea name="alamat" rows="2">${safe(profile.alamat)}</textarea></div>
+        <div class="field"><label>Telepon</label><input name="telepon" value="${safe(profile.telepon)}"></div>
+        <div class="field"><label>Email</label><input name="email" value="${safe(profile.email)}"></div>
+        <div class="field"><label>Website</label><input name="website" value="${safe(profile.website)}"></div>
+        <div class="field"><label>Kota Penandatanganan</label><input name="kota" value="${safe(profile.kota)}"></div>
+        <div class="field"><label>Nama Penandatangan</label><input name="kepala_nama" value="${safe(profile.kepala_nama)}"></div>
+        <div class="field"><label>NIP</label><input name="kepala_nip" value="${safe(profile.kepala_nip)}"></div>
+        <div class="field"><label>Jabatan</label><input name="jabatan" value="${safe(profile.jabatan)}"></div>
+        <div class="field full"><label>URL Logo</label><input name="logo_url" value="${safe(profile.logo_url)}" placeholder="logo.png atau URL publik Supabase Storage"></div>
       </div>
-      <div class="form-actions">
-        <button class="btn" type="submit">Simpan Pengaturan</button>
+      <div class="form-actions"><button class="btn" type="submit">Simpan Pengaturan</button></div>
+    </form>
+    <div class="panel">
+      <div class="panel-header"><div><h2>Catatan Produksi</h2><p>Untuk mode online, jalankan file supabase_schema.sql pada SQL Editor Supabase.</p></div></div>
+      <div class="report-grid">
+        <div class="alert">Frontend ini tetap aman dari crash saat Supabase belum siap karena sistem memakai localStorage sebagai fallback.</div>
+        <div class="alert">Keamanan produksi yang sebenarnya tetap harus memakai Supabase Auth, Row Level Security, dan kebijakan akses database.</div>
       </div>
-    </form>`;
+    </div>`;
 }
 
 async function saveProfile(event) {
   event.preventDefault();
+  if (!getPerm('settings')) return showToast('Akses pengaturan hanya untuk admin.', 'error');
   const form = new FormData(el('profileForm'));
   const payload = {
     id: 'default',
@@ -1120,6 +962,7 @@ async function saveProfile(event) {
 
   cachedProfile = { ...defaultProfile, ...payload };
   setLocalProfile(cachedProfile);
+  applyRoleUI();
 
   try {
     if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
@@ -1132,12 +975,305 @@ async function saveProfile(event) {
   }
 }
 
+function letterhead(profile) {
+  return `
+    <div class="letterhead">
+      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
+      <div>
+        <h1>${safe(profile.nama_instansi)}</h1>
+        <p>${safe(profile.alamat)}</p>
+        <p>Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
+      </div>
+    </div>
+    <div class="letter-line"></div>`;
+}
+
+function signature(profile, row = {}) {
+  return `
+    <div class="signature-block">
+      <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
+      <p>${safe(profile.jabatan)}</p>
+      <div class="signature-space"></div>
+      <p><strong>${safe(profile.kepala_nama)}</strong></p>
+      <p>NIP. ${safe(profile.kepala_nip)}</p>
+      ${row.disetujui_oleh ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>` : ''}
+    </div>`;
+}
+
+function metaTable(rows) {
+  return `
+    <table class="meta-table">
+      ${rows.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '').map(([label, value]) => `
+        <tr><td>${safe(label)}</td><td>:</td><td>${safe(value || '-')}</td></tr>`).join('')}
+    </table>`;
+}
+
+function paragraphText(value) {
+  const lines = safe(value || '-').split('\n');
+  return lines.map((line) => `<p>${line || '&nbsp;'}</p>`).join('');
+}
+
+function buildActivityMeta(row) {
+  return metaTable([
+    ['Hari', row.hari],
+    ['Tanggal', row.tanggal_kegiatan],
+    ['Waktu', row.waktu],
+    ['Tempat', row.tempat],
+    ['Acara', row.acara]
+  ]);
+}
+
+function buildDocumentHTML(documentRow) {
+  const profile = { ...defaultProfile, ...(cachedProfile || {}) };
+  const row = normalizeDocument(documentRow);
+  const type = documentTypes[row.jenis] || documentTypes.keluar;
+  if (row.jenis === 'masuk') return buildIncomingTemplate(row, profile, type);
+  if (row.jenis === 'tugas') return buildAssignmentTemplate(row, profile, type);
+  if (row.jenis === 'undangan') return buildInvitationTemplate(row, profile, type);
+  if (row.jenis === 'sk') return buildDecisionTemplate(row, profile, type);
+  return buildOutgoingTemplate(row, profile, type);
+}
+
+function buildOutgoingTemplate(row, profile) {
+  return `
+    <article class="pdf-page">
+      ${letterhead(profile)}
+      <div class="letter-meta-grid">
+        <div>${metaTable([
+          ['Nomor', row.nomor_surat],
+          ['Lampiran', row.lampiran],
+          ['Sifat', row.sifat_surat],
+          ['Perihal', row.perihal]
+        ])}</div>
+        <div class="date-right">${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat)}</div>
+      </div>
+      <div class="recipient">
+        <p>Kepada Yth.</p>
+        <p><strong>${safe(row.pengirim)}</strong></p>
+        <p>${safe(row.penerima)}</p>
+        <p>${safe(row.alamat_tujuan || '')}</p>
+      </div>
+      ${buildActivityMeta(row)}
+      <div class="body-text"><p>Dengan hormat,</p>${paragraphText(row.isi_surat)}</div>
+      ${signature(profile, row)}
+    </article>`;
+}
+
+function buildIncomingTemplate(row, profile, type) {
+  return `
+    <article class="pdf-page">
+      ${letterhead(profile)}
+      <h2 class="template-title">${safe(type.templateTitle)}</h2>
+      ${metaTable([
+        ['Nomor Agenda', row.nomor_agenda],
+        ['Nomor Surat', row.nomor_surat],
+        ['Tanggal Surat', formatDateLong(row.tanggal_surat)],
+        ['Pengirim', row.pengirim],
+        ['Tujuan/Penerima', row.penerima],
+        ['Perihal', row.perihal],
+        ['Sifat Surat', row.sifat_surat],
+        ['Lampiran', row.lampiran],
+        ['Status', titleCase(row.status)]
+      ])}
+      ${buildActivityMeta(row)}
+      <div class="body-box"><h3>Ringkasan Isi Surat</h3>${paragraphText(row.isi_surat)}</div>
+      <div class="disposition-box"><h3>Catatan Tindak Lanjut</h3>${paragraphText(row.catatan || '........................................................................................................')}</div>
+      ${signature(profile, row)}
+    </article>`;
+}
+
+function buildAssignmentTemplate(row, profile, type) {
+  return `
+    <article class="pdf-page">
+      ${letterhead(profile)}
+      <h2 class="template-title">${safe(type.templateTitle)}</h2>
+      <p class="center-text">Nomor: ${safe(row.nomor_surat)}</p>
+      <div class="body-text">
+        <p>Yang bertanda tangan di bawah ini memberikan tugas kepada:</p>
+        ${metaTable([
+          ['Nama Petugas', row.pengirim],
+          ['Kegiatan/Tujuan', row.penerima],
+          ['Tanggal Surat', formatDateLong(row.tanggal_surat)],
+          ['Perihal', row.perihal]
+        ])}
+        ${buildActivityMeta(row)}
+        ${paragraphText(row.isi_surat)}
+        <p>Surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.</p>
+      </div>
+      ${signature(profile, row)}
+    </article>`;
+}
+
+function buildInvitationTemplate(row, profile) {
+  return `
+    <article class="pdf-page">
+      ${letterhead(profile)}
+      <div class="letter-meta-grid">
+        <div>${metaTable([
+          ['Nomor', row.nomor_surat],
+          ['Lampiran', row.lampiran],
+          ['Sifat', row.sifat_surat],
+          ['Perihal', row.perihal]
+        ])}</div>
+        <div class="date-right">${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat)}</div>
+      </div>
+      <div class="recipient">
+        <p>Kepada Yth.</p>
+        <p><strong>${safe(row.pengirim)}</strong></p>
+        <p>${safe(row.alamat_tujuan || '')}</p>
+      </div>
+      <div class="body-text">
+        <p>Dengan hormat,</p>
+        <p>Sehubungan dengan kegiatan <strong>${safe(row.penerima || row.acara)}</strong>, kami mengundang Bapak/Ibu untuk hadir pada:</p>
+        ${buildActivityMeta(row)}
+        ${paragraphText(row.isi_surat)}
+        <p>Demikian undangan ini disampaikan. Atas perhatian dan kehadirannya, kami ucapkan terima kasih.</p>
+      </div>
+      ${signature(profile, row)}
+    </article>`;
+}
+
+function buildDecisionTemplate(row, profile, type) {
+  return `
+    <article class="pdf-page">
+      ${letterhead(profile)}
+      <h2 class="template-title">${safe(type.templateTitle)}</h2>
+      <p class="center-text">Nomor: ${safe(row.nomor_surat)}</p>
+      <h3 class="center-text small-title">TENTANG</h3>
+      <h3 class="center-text small-title">${safe(row.pengirim)}</h3>
+      <div class="body-text">
+        ${metaTable([
+          ['Tanggal', formatDateLong(row.tanggal_surat)],
+          ['Dasar Keputusan', row.penerima],
+          ['Perihal', row.perihal]
+        ])}
+        ${buildActivityMeta(row)}
+        <p><strong>MEMUTUSKAN:</strong></p>
+        ${paragraphText(row.isi_surat)}
+      </div>
+      ${signature(profile, row)}
+    </article>`;
+}
+
+function openPreview(row) {
+  lastPreviewDocument = normalizeDocument(row);
+  el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
+  lastPreviewElement = el('previewContent').querySelector('.pdf-page');
+  el('previewModal').hidden = false;
+}
+
+function closePreview() {
+  el('previewModal').hidden = true;
+  el('previewContent').innerHTML = '';
+  lastPreviewElement = null;
+  lastPreviewDocument = null;
+}
+
+function printPreview() {
+  if (!lastPreviewElement) return showToast('Tidak ada dokumen untuk dicetak.', 'error');
+  const printWindow = window.open('', '_blank', 'width=900,height=700');
+  if (!printWindow) return showToast('Popup cetak diblokir browser.', 'error');
+  printWindow.document.write(`
+    <!DOCTYPE html><html><head><title>Cetak Dokumen</title>
+    <link rel="stylesheet" href="assets/style.css"></head><body class="print-body">${lastPreviewElement.outerHTML}</body></html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 500);
+}
+
+async function downloadPreviewPdf() {
+  if (!lastPreviewDocument) return showToast('Tidak ada dokumen untuk diunduh.', 'error');
+  await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
+}
+
+async function createPdfFromDocument(documentRow, options = {}) {
+  if (!window.html2pdf) {
+    showToast('Library PDF belum terbaca. Periksa koneksi internet karena html2pdf memakai CDN.', 'error');
+    return;
+  }
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = buildDocumentHTML(documentRow);
+  const page = wrapper.querySelector('.pdf-page');
+  document.body.appendChild(wrapper);
+  wrapper.style.position = 'fixed';
+  wrapper.style.left = '-10000px';
+  wrapper.style.top = '0';
+
+  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat)}.pdf`;
+  const opt = {
+    margin: 0,
+    filename: fileName,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  try {
+    const worker = window.html2pdf().set(opt).from(page);
+    if (options.download) await worker.save();
+    if (options.upload) {
+      const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
+      await uploadPdf(documentRow, pdfBlob, fileName);
+    }
+  } catch (error) {
+    console.warn('Gagal membuat PDF:', error);
+    showToast('Gagal membuat PDF. Coba preview lalu cetak manual.', 'error');
+  } finally {
+    wrapper.remove();
+  }
+}
+
+async function uploadPdf(documentRow, pdfBlob, fileName) {
+  try {
+    if (!supabaseClient) throw new Error('Supabase belum aktif');
+    const path = `${documentRow.jenis}/${Date.now()}-${fileName}`;
+    const { error: uploadError } = await supabaseClient.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, pdfBlob, { contentType: 'application/pdf', upsert: true });
+    if (uploadError) throw uploadError;
+    const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    const updated = normalizeDocument({ ...documentRow, pdf_path: path, pdf_url: data?.publicUrl || '', updated_at: new Date().toISOString() });
+    await saveDocumentToStorage(updated);
+    showToast('PDF berhasil dibuat dan diunggah ke Supabase Storage.');
+  } catch (error) {
+    console.warn('Upload PDF gagal:', error);
+    showToast('PDF berhasil dibuat, tetapi belum terunggah ke Storage.', 'warning');
+  }
+}
+
+async function exportCsv(scope = '') {
+  if (!getPerm('export')) return showToast('Role ini tidak dapat export data.', 'error');
+  const rows = await fetchDocuments(scope === 'arsip' ? { status: 'diarsipkan' } : {});
+  const headers = ['jenis','nomor_surat','nomor_agenda','tanggal_surat','perihal','pengirim','penerima','hari','tanggal_kegiatan','waktu','tempat','acara','status','dibuat_oleh','disetujui_oleh'];
+  const csv = [headers.join(',')].concat(rows.map((row) => headers.map((key) => `"${String(row[key] ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
+  downloadText(csv, `sipas-${scope || 'data'}-${todayInput()}.csv`, 'text/csv;charset=utf-8;');
+}
+
+async function backupJson() {
+  const rows = await fetchDocuments();
+  const payload = { profile: cachedProfile, documents: rows, exported_at: new Date().toISOString() };
+  downloadText(JSON.stringify(payload, null, 2), `backup-sipas-${todayInput()}.json`, 'application/json');
+}
+
+function downloadText(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 window.doLogin = doLogin;
 window.logout = logout;
 window.navigate = navigate;
 window.refreshCurrentPage = refreshCurrentPage;
 window.saveDocument = saveDocument;
 window.saveDocumentAndPdf = saveDocumentAndPdf;
+window.saveEditedDocument = saveEditedDocument;
 window.previewForm = previewForm;
 window.closePreview = closePreview;
 window.printPreview = printPreview;
@@ -1145,34 +1281,122 @@ window.downloadPreviewPdf = downloadPreviewPdf;
 window.filterTable = filterTable;
 window.previewById = previewById;
 window.downloadById = downloadById;
+window.editById = editById;
+window.closeEditModal = closeEditModal;
 window.archiveById = archiveById;
+window.restoreById = restoreById;
+window.approveById = approveById;
 window.deleteById = deleteById;
 window.saveProfile = saveProfile;
+window.exportCsv = exportCsv;
+window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
 
 
-async function editById(id) {
-  const rows = await fetchDocuments({});
-  const row = rows.find(r => r.id === id);
-  if (!row) return alert('Data tidak ditemukan');
 
-  const perihal = prompt('Edit Perihal', row.perihal);
-  if (perihal === null) return;
+// ===== SETTINGS MODULE RESTORE =====
 
-  const payload = { perihal };
+async function renderSettingsPage() {
+  setPageHeader('Pengaturan', 'Profil instansi dan kop surat');
 
-  await updateDocument(id, payload);
-  alert('Data berhasil diupdate');
-  location.reload();
-}
+  let data = null;
 
-async function updateDocument(id, payload) {
   if (supabaseClient) {
-    await supabaseClient.from('surat').update(payload).eq('id', id);
-  } else {
-    let data = JSON.parse(localStorage.getItem('documents') || '[]');
-    data = data.map(d => d.id === id ? {...d, ...payload} : d);
-    localStorage.setItem('documents', JSON.stringify(data));
+    const res = await supabaseClient
+      .from(TABLE_PROFIL)
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+    data = res.data;
   }
+
+  if (!data) {
+    data = cachedProfile || {
+      nama_instansi: '',
+      nama_aplikasi: '',
+      alamat: '',
+      telepon: '',
+      email: '',
+      website: '',
+      kota: '',
+      nama_penandatangan: '',
+      nip: ''
+    };
+  }
+
+  el('pageContent').innerHTML = `
+    <div class="card">
+      <h3>Profil Instansi</h3>
+
+      <label>Nama Instansi</label>
+      <input id="s_nama_instansi" value="${data.nama_instansi || ''}">
+
+      <label>Nama Aplikasi</label>
+      <input id="s_nama_aplikasi" value="${data.nama_aplikasi || ''}">
+
+      <label>Alamat</label>
+      <input id="s_alamat" value="${data.alamat || ''}">
+
+      <label>Telepon</label>
+      <input id="s_telepon" value="${data.telepon || ''}">
+
+      <label>Email</label>
+      <input id="s_email" value="${data.email || ''}">
+
+      <label>Website</label>
+      <input id="s_website" value="${data.website || ''}">
+
+      <label>Kota Penandatangan</label>
+      <input id="s_kota" value="${data.kota || ''}">
+
+      <label>Nama Penandatangan</label>
+      <input id="s_nama_penandatangan" value="${data.nama_penandatangan || ''}">
+
+      <label>NIP</label>
+      <input id="s_nip" value="${data.nip || ''}">
+
+      <button onclick="saveSettings()" class="btn-primary">Simpan Pengaturan</button>
+    </div>
+  `;
 }
+
+async function saveSettings() {
+  const payload = {
+    nama_instansi: el('s_nama_instansi').value,
+    nama_aplikasi: el('s_nama_aplikasi').value,
+    alamat: el('s_alamat').value,
+    telepon: el('s_telepon').value,
+    email: el('s_email').value,
+    website: el('s_website').value,
+    kota: el('s_kota').value,
+    nama_penandatangan: el('s_nama_penandatangan').value,
+    nip: el('s_nip').value
+  };
+
+  if (supabaseClient) {
+    const { data: existing } = await supabaseClient
+      .from(TABLE_PROFIL)
+      .select('id')
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      await supabaseClient
+        .from(TABLE_PROFIL)
+        .update(payload)
+        .eq('id', existing.id);
+    } else {
+      await supabaseClient
+        .from(TABLE_PROFIL)
+        .insert([payload]);
+    }
+  } else {
+    cachedProfile = payload;
+    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(payload));
+  }
+
+  showToast('Pengaturan berhasil disimpan', 'success');
+}
+
