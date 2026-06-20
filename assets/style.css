@@ -117,7 +117,6 @@ input, textarea, select {
     width: 210mm;
     min-height: 330mm;
   }
-}
 
 /* --- RESPONSIVE --- */
 @media(max-width: 768px) {
@@ -126,4 +125,15 @@ input, textarea, select {
     min-height: auto;
     padding: 28px;
   }
+  /* Membuat semua isian form menjadi italic */
+.field input, 
+.field textarea {
+  font-style: italic;
+}
+
+/* Opsional: Membuat placeholder juga menjadi italic agar konsisten */
+.field input::placeholder, 
+.field textarea::placeholder {
+  font-style: italic;
+ }
 }
