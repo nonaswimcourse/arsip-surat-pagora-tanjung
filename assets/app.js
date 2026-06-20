@@ -1417,8 +1417,33 @@ function printPreview() {
 }
 
 async function downloadPreviewPdf() {
-  if (!lastPreviewDocument) return showToast('Tidak ada dokumen untuk diunduh.', 'error');
-  await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
+  const element = document.getElementById('previewContent'); // Pastikan ID ini sesuai kontainer preview Anda
+  
+  if (!element || element.innerHTML.trim() === "") {
+    alert("Gagal mengunduh: Konten preview tidak ditemukan atau kosong!");
+    return;
+  }
+
+  // Opsi konfigurasi html2pdf
+  const opt = {
+    margin:       [10, 10, 10, 10], // margin mm
+    filename:     `surat-${new Date().getTime()}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { 
+      scale: 2, 
+      useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
+      logging: false 
+    },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  try {
+    // Jalankan perintah html2pdf secara berurutan
+    await html2pdf().set(opt).from(element).save();
+  } catch (error) {
+    console.error("PDF Error: ", error);
+    alert("Terjadi kesalahan saat memproses pembuatan file PDF.");
+  }
 }
 
 async function createPdfFromDocument(documentRow, options = {}) {
