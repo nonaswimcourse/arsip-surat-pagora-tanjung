@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'https://rwbbxytowtnoyjcngevk.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_1Vq-L40vJKQMT6CfuORWMQ_Iom2dRSj';
+const SUPABASE_URL = 'https://bixyaowckwvjpgwffoci.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_phZErDKE6oDEDN5whvlk3Q_8LpXylcG';
 const TABLE_SURAT = 'surat';
 const TABLE_PROFIL = 'profil_instansi';
 const STORAGE_BUCKET = 'dokumen-surat';
