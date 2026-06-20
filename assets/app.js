@@ -201,6 +201,51 @@ function showToast(message, type = 'success') {
   showToast.timer = window.setTimeout(() => { toast.hidden = true; }, 4200);
 }
 
+
+function errorText(error, fallback = 'Terjadi kesalahan.') {
+  return error?.message || error?.error_description || error?.details || fallback;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function printableHTML(content) {
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dokumen SIPAS</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="print-body">${content}</body>
+</html>`;
+}
+
+function getButtonForm(event, fallbackId = 'documentForm') {
+  return event?.currentTarget?.closest?.('form') || event?.target?.closest?.('form') || el(fallbackId);
+}
+
+function validateForm(form) {
+  if (!form) {
+    showToast('Form tidak ditemukan.', 'error');
+    return false;
+  }
+  if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+    showToast('Lengkapi data wajib sebelum menyimpan.', 'error');
+    return false;
+  }
+  return true;
+}
+
 function setPageHeader(title, subtitle) {
   el('pageTitle').textContent = title;
   el('pageSubtitle').textContent = subtitle;
@@ -475,6 +520,10 @@ async function saveDocumentToStorage(row) {
   const normalized = normalizeDocument(row);
   const localRows = getLocalDocuments().filter((item) => String(item.id) !== String(normalized.id));
 
+  // Simpan lokal lebih dulu agar data langsung muncul di tabel meskipun Supabase/RLS/bucket belum siap.
+  const localMirror = { ...normalized, local_only: true };
+  setLocalDocuments([localMirror, ...localRows]);
+
   try {
     if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
     const { data, error } = await supabaseClient
@@ -483,13 +532,14 @@ async function saveDocumentToStorage(row) {
       .select()
       .single();
     if (error) throw error;
-    setLocalDocuments(localRows);
-    return normalizeDocument(data);
+
+    const onlineRow = normalizeDocument({ ...normalized, ...(data || {}), local_only: false });
+    // Tetap simpan mirror lokal. Jika query Supabase gagal di kemudian hari, data tidak hilang dari tampilan.
+    setLocalDocuments([onlineRow, ...localRows]);
+    return onlineRow;
   } catch (error) {
-    console.warn('Simpan ke Supabase gagal. Data disimpan lokal:', error);
-    const localRow = { ...normalized, local_only: true };
-    setLocalDocuments([localRow, ...localRows]);
-    return localRow;
+    console.warn('Simpan ke Supabase gagal. Data tetap disimpan lokal:', error);
+    return { ...localMirror, sync_error: errorText(error, 'Supabase belum menerima data.') };
   }
 }
 
@@ -634,25 +684,28 @@ async function saveDocument(event, typeKey) {
   event.preventDefault();
   if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
   const form = event.target;
+  if (!validateForm(form)) return;
   const row = getFormData(form, typeKey);
   const saved = await saveDocumentToStorage(row);
   form.reset();
   const dateInput = form.querySelector('[name="tanggal_surat"]');
   if (dateInput) dateInput.value = todayInput();
-  showToast(saved.local_only ? 'Data tersimpan lokal. Supabase belum aktif.' : 'Data berhasil disimpan.');
+  showToast(saved.local_only ? `Data tersimpan di browser. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}` : 'Data berhasil disimpan ke tabel dan mirror lokal.');
   await refreshCurrentPage();
 }
 
 async function saveDocumentAndPdf(event, typeKey) {
   event.preventDefault();
   if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
-  const form = el('documentForm');
+  const form = getButtonForm(event, 'documentForm');
+  if (!validateForm(form)) return;
   const row = getFormData(form, typeKey);
   const saved = await saveDocumentToStorage(row);
   await createPdfFromDocument(saved, { download: true, upload: !saved.local_only });
   form.reset();
   const dateInput = form.querySelector('[name="tanggal_surat"]');
   if (dateInput) dateInput.value = todayInput();
+  showToast(saved.local_only ? `Data lokal tersimpan dan file dibuat. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}` : 'Data tersimpan dan PDF berhasil diproses.');
   await refreshCurrentPage();
 }
 
@@ -661,10 +714,11 @@ async function saveEditedDocument(event, id) {
   if (!getPerm('edit')) return showToast('Role ini tidak dapat mengedit dokumen.', 'error');
   const existing = findDocumentById(id);
   if (!existing) return showToast('Data tidak ditemukan.', 'error');
+  if (!validateForm(event.target)) return;
   const row = getFormData(event.target, existing.jenis, existing);
-  await saveDocumentToStorage(row);
+  const saved = await saveDocumentToStorage(row);
   closeEditModal();
-  showToast('Data berhasil diperbarui.');
+  showToast(saved.local_only ? `Perubahan tersimpan lokal. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}` : 'Data berhasil diperbarui.');
   await refreshCurrentPage();
 }
 
@@ -1202,37 +1256,48 @@ async function downloadPreviewPdf() {
 }
 
 async function createPdfFromDocument(documentRow, options = {}) {
-  if (!window.html2pdf) {
-    showToast('Library PDF belum terbaca. Periksa koneksi internet karena html2pdf memakai CDN.', 'error');
-    return;
-  }
   const wrapper = document.createElement('div');
   wrapper.innerHTML = buildDocumentHTML(documentRow);
   const page = wrapper.querySelector('.pdf-page');
+  if (!page) {
+    showToast('Template dokumen tidak ditemukan.', 'error');
+    return;
+  }
   document.body.appendChild(wrapper);
   wrapper.style.position = 'fixed';
   wrapper.style.left = '-10000px';
   wrapper.style.top = '0';
+  wrapper.style.width = '210mm';
+  wrapper.style.background = '#fff';
 
-  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat)}.pdf`;
+  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
   const opt = {
     margin: 0,
     filename: fileName,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
+    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
   try {
-    const worker = window.html2pdf().set(opt).from(page);
-    if (options.download) await worker.save();
-    if (options.upload) {
+    if (window.html2pdf) {
       const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
-      await uploadPdf(documentRow, pdfBlob, fileName);
+      if (options.download) downloadBlob(pdfBlob, fileName);
+      if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
+      if (options.download && !options.upload) showToast('PDF berhasil diunduh.');
+      return;
     }
+
+    const htmlName = fileName.replace(/\.pdf$/i, '.html');
+    const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+    if (options.download) downloadBlob(htmlBlob, htmlName);
+    showToast('Library PDF belum terbaca. File HTML sudah diunduh. Buka file itu lalu pilih Print > Save as PDF.', 'warning');
   } catch (error) {
     console.warn('Gagal membuat PDF:', error);
-    showToast('Gagal membuat PDF. Coba preview lalu cetak manual.', 'error');
+    const fallbackName = fileName.replace(/\.pdf$/i, '.html');
+    const fallbackBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+    if (options.download) downloadBlob(fallbackBlob, fallbackName);
+    showToast(`PDF gagal dibuat otomatis. File HTML cadangan sudah diunduh: ${errorText(error)}`, 'warning');
   } finally {
     wrapper.remove();
   }
