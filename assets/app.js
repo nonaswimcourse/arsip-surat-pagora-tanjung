@@ -1416,35 +1416,38 @@ function printPreview() {
   setTimeout(() => printWindow.print(), 500);
 }
 
-async function downloadPreviewPdf() {
-  const element = document.getElementById('previewContent'); // Pastikan ID ini sesuai kontainer preview Anda
+window.downloadPreviewPdf = async function() {
+  const element = document.getElementById('previewContent'); // Container pratinjau surat
   
   if (!element || element.innerHTML.trim() === "") {
-    alert("Gagal mengunduh: Konten preview tidak ditemukan atau kosong!");
+    alert("Gagal mengunduh: Konten tidak ditemukan!");
     return;
   }
 
-  // Opsi konfigurasi html2pdf
+  // Ambil nomor surat untuk penamaan file otomatis (opsional)
+  const docNumber = element.querySelector('.letter-number')?.textContent || 'surat';
+  
   const opt = {
-    margin:       [10, 10, 10, 10], // margin mm
-    filename:     `surat-${new Date().getTime()}.pdf`,
+    margin:       [15, 15, 15, 15], // Margin atas, kiri, bawah, kanan (dalam mm)
+    filename:     `${docNumber.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
-      scale: 2, 
-      useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
-      logging: false 
+      scale: 2,             // Meningkatkan ketajaman teks (anti-blur)
+      useCORS: true,        // Membantu memuat gambar/logo eksternal
+      logging: false,
+      width: 794,           // Mengunci lebar canvas ke standar rasio A4
+      windowWidth: 794      // Memaksa browser me-render HTML seolah-olah di layar lebar 794px
     },
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
   try {
-    // Jalankan perintah html2pdf secara berurutan
     await html2pdf().set(opt).from(element).save();
   } catch (error) {
-    console.error("PDF Error: ", error);
-    alert("Terjadi kesalahan saat memproses pembuatan file PDF.");
+    console.error("PDF Render Error:", error);
+    alert("Terjadi kesalahan saat membuat file PDF.");
   }
-}
+};
 
 async function createPdfFromDocument(documentRow, options = {}) {
   const wrapper = document.createElement('div');
