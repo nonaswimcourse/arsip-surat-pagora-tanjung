@@ -20,8 +20,6 @@ function checkAppVersion() {
   }
 }
 
-
-
 function forceClearAppCache() {
   localStorage.clear();
   sessionStorage.clear();
@@ -319,10 +317,7 @@ function documentTimestamp(row) {
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
-  });
-
-  return Array.from(merged.values());
-}
+  
 
 
 
@@ -1473,8 +1468,8 @@ async function createPdfFromDocument(documentRow, options = {}) {
   pdf.save(fileName);
 
   wrapper.remove();
-  }
 }
+
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
     if (!supabaseClient) throw new Error('Supabase belum aktif');
@@ -1577,4 +1572,14 @@ async function loadProfileFromSupabase() {
     .single();
 
   if (!error) cachedProfile = data;
+}
+
+
+function mergeDocumentRows(onlineRows = [], localRows = []) {
+  const merged = new Map();
+  [...(onlineRows || []), ...(localRows || [])].forEach((item) => {
+    if (!item?.id) return;
+    merged.set(item.id, { ...merged.get(item.id), ...item });
+  });
+  return Array.from(merged.values());
 }
