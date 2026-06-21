@@ -42,4 +42,9 @@ body.print-body {
   margin: 0;
   padding: 0;
 }
+  .pdf-page {
+  width: 794px;
+  height: auto;
+  overflow: hidden;
+}
   
