@@ -94,9 +94,8 @@ const documentTypes = {
 };
 
 const defaultProfile = {
-  id: 'default',
-  nama_instansi: 'KKG PJOK SD Kecamatan Tanjung',
-  nama_aplikasi: 'SIPAS Kantor',
+  nama_instansi: 'SISTEM INFORMASI ADMINISTRASI PAGORA TANJUNG',
+  nama_aplikasi: 'SIAP TANJUNG',
   alamat: 'Kecamatan Tanjung',
   telepon: '-',
   email: '-',
