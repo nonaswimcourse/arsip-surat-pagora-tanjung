@@ -33,18 +33,38 @@ textarea{resize:vertical;line-height:1.55}.hidden{display:none!important}
   page-break-inside: avoid;
 }
 
+
 @page {
-  size: 210mm 330mm;
-  margin: 10mm;
+  size: A4;
+  margin: 0;
+}
+
+.pdf-page {
+  width: 210mm;
+  height: 297mm;
+  padding: 10mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-page * {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 body.print-body {
   margin: 0;
   padding: 0;
+  background: white;
 }
-  .pdf-page {
-  width: 794px;
-  height: auto;
-  overflow: hidden;
+
+.body-text,
+.meta-table,
+.recipient {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
-  
+
