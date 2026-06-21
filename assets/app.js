@@ -8,22 +8,6 @@ const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
-
-const APP_VERSION = '3.0.0';
-
-function checkAppVersion() {
-  const last = localStorage.getItem('app_version');
-  if (last !== APP_VERSION) {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem('app_version', APP_VERSION);
-}
-function forceClearAppCache() {
-  localStorage.clear();
-  sessionStorage.clear();
-}
-
-
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
   && typeof window.supabase.createClient === 'function';
@@ -106,8 +90,8 @@ const documentTypes = {
     requiresAddress: false,
     templateTitle: 'SURAT KEPUTUSAN',
     help: 'Gunakan menu ini untuk menyusun surat keputusan sederhana.'
-}
-;
+  }
+};
 
 const defaultProfile = {
   id: 'default',
@@ -282,7 +266,9 @@ function readJSON(key, fallback) {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
   } catch (error) {
     return fallback;
+  }
 }
+
 function writeJSON(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
@@ -301,21 +287,70 @@ function clearLocalSession() {
   localStorage.removeItem(LOCAL_SESSION_KEY);
 }
 
+function getLocalDocuments() {
+  return readJSON(LOCAL_DOC_KEY, []);
+}
 
+function setLocalDocuments(rows) {
+  writeJSON(LOCAL_DOC_KEY, rows);
+}
 
+function getDeletedDocumentIds() {
+  return readJSON(LOCAL_DELETED_KEY, []);
+}
 
+function setDeletedDocumentIds(ids) {
+  const uniqueIds = [...new Set((ids || []).map((id) => String(id)).filter(Boolean))];
+  writeJSON(LOCAL_DELETED_KEY, uniqueIds);
+}
 
+function markDocumentDeleted(id) {
+  if (!id) return;
+  setDeletedDocumentIds([...getDeletedDocumentIds(), String(id)]);
+}
 
+function unmarkDocumentDeleted(id) {
+  if (!id) return;
+  setDeletedDocumentIds(getDeletedDocumentIds().filter((item) => String(item) !== String(id)));
+}
 
+function isDocumentDeleted(id) {
+  return getDeletedDocumentIds().some((item) => String(item) === String(id));
+}
 
 function documentTimestamp(row) {
   const date = new Date(row?.updated_at || row?.created_at || 0);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
-  
+function mergeDocumentRows(onlineRows = [], localRows = []) {
+  const deletedIds = new Set(getDeletedDocumentIds().map(String));
+  const merged = new Map();
 
+  onlineRows.forEach((row) => {
+    const id = String(row.id);
+    if (!deletedIds.has(id)) merged.set(id, row);
+  });
 
+  localRows.forEach((row) => {
+    const id = String(row.id);
+    if (deletedIds.has(id)) return;
+    const current = merged.get(id);
+    if (!current || row.local_only || documentTimestamp(row) >= documentTimestamp(current)) {
+      merged.set(id, row);
+    }
+  });
+
+  return Array.from(merged.values());
+}
+
+function getLocalProfile() {
+  return readJSON(LOCAL_PROFILE_KEY, null);
+}
+
+function setLocalProfile(profile) {
+  writeJSON(LOCAL_PROFILE_KEY, profile);
+}
 
 function showApplication() {
   if (el('loginPage')) el('loginPage').style.display = 'none';
@@ -353,7 +388,6 @@ async function doLogin() {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (!error && data?.user) {
         clearLocalSession();
-        forceClearAppCache();
         currentUser = buildSupabaseUser(data.user);
         showApplication();
         await bootstrapApp();
@@ -362,8 +396,10 @@ async function doLogin() {
       console.warn('Login Supabase gagal, cek akun demo lokal.', error);
     } catch (error) {
       console.warn('Supabase belum siap, cek akun demo lokal.', error);
-}
-const demo = demoAccounts[email];
+    }
+  }
+
+  const demo = demoAccounts[email];
   if (!demo || demo.password !== password) {
     showLoginError('Login gagal. Gunakan akun Supabase aktif atau akun demo lokal yang tersedia.');
     return;
@@ -391,11 +427,12 @@ async function getCurrentSession() {
       if (data?.session?.user) {
         const user = data.session.user;
         return { user: buildSupabaseUser(user) };
-}
-catch (error) {
+      }
+    } catch (error) {
       console.warn('Session Supabase belum tersedia:', error);
-}
-return getLocalSession();
+    }
+  }
+  return getLocalSession();
 }
 
 async function checkSession() {
@@ -404,18 +441,17 @@ async function checkSession() {
     currentUser = session.user;
     showApplication();
     await bootstrapApp();
+  }
 }
+
 async function bootstrapApp() {
-  checkAppVersion();
-  await loadProfileFromSupabase();
+  await loadProfile();
   applyRoleUI();
-  subscribeRealtime();
   await navigate('dashboard');
 }
 
 async function loadProfile() {
   const localProfile = getLocalProfile();
-  if (localProfile && String(localProfile.nama_instansi||'').includes('SIAP TANJUNG')) { setLocalProfile(null); }
   cachedProfile = { ...defaultProfile, ...(localProfile || {}) };
 
   try {
@@ -429,15 +465,14 @@ async function loadProfile() {
     if (data) {
       cachedProfile = { ...defaultProfile, ...data };
       setLocalProfile(cachedProfile);
-}
-catch (error) {
+    }
+  } catch (error) {
     console.warn('Profil memakai data lokal:', error);
   }
   return cachedProfile;
 }
 
 async function navigate(route) {
-  const pc = document.getElementById('pageContent'); if (pc) pc.innerHTML = '';
   if (route === 'pengaturan' && !currentUser) {
     showToast('Silakan login terlebih dahulu untuk membuka pengaturan.', 'error');
     return;
@@ -500,32 +535,25 @@ function stripLocalOnly(row) {
   return copy;
 }
 
-
-
 async function fetchDocuments(filter = {}) {
-  let rows = [];
+  const localRows = getLocalDocuments().map(normalizeDocument).filter((row) => !isDocumentDeleted(row.id));
+  let onlineRows = [];
 
-  if (supabaseClient) {
-    let query = supabaseClient
-      .from(TABLE_SURAT)
-      .select('*')
-      .order('created_at', { ascending: false });
-
+  try {
+    if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
+    let query = supabaseClient.from(TABLE_SURAT).select('*').order('created_at', { ascending: false });
     if (filter.jenis) query = query.eq('jenis', filter.jenis);
     if (filter.status) query = query.eq('status', filter.status);
-    if (filter.keyword) query = query.ilike('perihal', `%${filter.keyword}%`);
-
     const { data, error } = await query;
-
-    if (!error) rows = data || [];
+    if (error) throw error;
+    onlineRows = (data || []).map(normalizeDocument).filter((row) => !isDocumentDeleted(row.id));
+  } catch (error) {
+    console.warn('Data Supabase belum terbaca. Aplikasi memakai data lokal:', error);
   }
 
-  cachedDocuments = rows;
-  return cachedDocuments;
-}
+  let rows = mergeDocumentRows(onlineRows, localRows);
 
-
-  let rows = if (filter.jenis) rows = rows.filter((row) => row.jenis === filter.jenis);
+  if (filter.jenis) rows = rows.filter((row) => row.jenis === filter.jenis);
   if (filter.status) rows = rows.filter((row) => row.status === filter.status);
   if (filter.keyword) {
     const keyword = filter.keyword.toLowerCase();
@@ -565,7 +593,9 @@ async function saveDocumentToStorage(row) {
   } catch (error) {
     console.warn('Simpan ke Supabase gagal. Data tetap disimpan lokal:', error);
     return { ...localMirror, sync_error: errorText(error, 'Supabase belum menerima data.') };
+  }
 }
+
 async function deleteDocumentFromStorage(row) {
   const id = String(row?.id || '');
   if (!id) throw new Error('ID dokumen tidak valid.');
@@ -585,8 +615,10 @@ async function deleteDocumentFromStorage(row) {
       if (error) storageError = error;
     } catch (error) {
       storageError = error;
-}
-const { error } = await supabaseClient.from(TABLE_SURAT).delete().eq('id', row.id);
+    }
+  }
+
+  const { error } = await supabaseClient.from(TABLE_SURAT).delete().eq('id', row.id);
   if (error) {
     return {
       onlineDeleted: false,
@@ -620,8 +652,8 @@ async function deleteAllDocumentsFromStorage(rows = []) {
     if (pdfPaths.length) {
       const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).remove(pdfPaths);
       if (error) storageWarning = errorText(error, 'Sebagian file PDF di Storage belum terhapus.');
-}
-catch (error) {
+    }
+  } catch (error) {
     storageWarning = errorText(error, 'Sebagian file PDF di Storage belum terhapus.');
   }
 
@@ -1175,7 +1207,9 @@ async function saveProfile(event) {
   } catch (error) {
     showToast('Pengaturan tersimpan lokal. Jalankan SQL Supabase agar tersimpan online.', 'warning');
     console.warn(error);
+  }
 }
+
 function letterhead(profile) {
   return `
     <div class="letterhead">
@@ -1381,77 +1415,81 @@ function printPreview() {
 }
 
 async function downloadPreviewPdf() {
-  const element = document.getElementById('previewContent');
-
+  const element = document.getElementById('previewContent'); // Pastikan ID ini sesuai kontainer preview Anda
+  
   if (!element || element.innerHTML.trim() === "") {
     alert("Gagal mengunduh: Konten preview tidak ditemukan atau kosong!");
     return;
   }
 
+  // Opsi konfigurasi html2pdf
   const opt = {
-    margin: 0,
-    filename: `surat-${new Date().getTime()}.pdf`,
-    image: { type: 'jpeg', quality: 1 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      windowHeight: 1123
+    margin:       [10, 10, 10, 10], // margin mm
+    filename:     `surat-${new Date().getTime()}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { 
+      scale: 1.15, 
+      useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
+      logging: false 
     },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait'
-}
-;
+    jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+  };
 
   try {
+    // Jalankan perintah html2pdf secara berurutan
     await html2pdf().set(opt).from(element).save();
   } catch (error) {
-    console.error(error);
-    alert("Terjadi kesalahan saat membuat PDF.");
+    console.error("PDF Error: ", error);
+    alert("Terjadi kesalahan saat memproses pembuatan file PDF.");
+  }
 }
-const A4_HEIGHT_PX = 1123; // penting
 
 async function createPdfFromDocument(documentRow, options = {}) {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = buildDocumentHTML(documentRow);
-
   const page = wrapper.querySelector('.pdf-page');
-  if (!page) return;
-
+  if (!page) {
+    showToast('Template dokumen tidak ditemukan.', 'error');
+    return;
+  }
   document.body.appendChild(wrapper);
   wrapper.style.position = 'fixed';
-  wrapper.style.left = '-99999px';
-  wrapper.style.width = '794px'; // FIX A4 width in px
+  wrapper.style.left = '-10000px';
+  wrapper.style.top = '0';
+  wrapper.style.width = '210mm';
   wrapper.style.background = '#fff';
 
-  // 🔥 INI KUNCI FIX
-  const scaleFix = A4_HEIGHT_PX / page.scrollHeight;
+  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
+  const opt = {
+    margin: 0,
+    filename: fileName,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 1.15, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+  };
 
-  if (scaleFix < 1) {
-    page.style.transform = `scale(${scaleFix})`;
-    page.style.transformOrigin = 'top left';
+  try {
+    if (window.html2pdf) {
+      const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
+      if (options.download) downloadBlob(pdfBlob, fileName);
+      if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
+      if (options.download && !options.upload) showToast('PDF berhasil diunduh.');
+      return;
+    }
+
+    const htmlName = fileName.replace(/\.pdf$/i, '.html');
+    const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+    if (options.download) downloadBlob(htmlBlob, htmlName);
+    showToast('Library PDF belum terbaca. File HTML sudah diunduh. Buka file itu lalu pilih Print > Save as PDF.', 'warning');
+  } catch (error) {
+    console.warn('Gagal membuat PDF:', error);
+    const fallbackName = fileName.replace(/\.pdf$/i, '.html');
+    const fallbackBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+    if (options.download) downloadBlob(fallbackBlob, fallbackName);
+    showToast(`PDF gagal dibuat otomatis. File HTML cadangan sudah diunduh: ${errorText(error)}`, 'warning');
+  } finally {
+    wrapper.remove();
   }
-
-  const fileName = `${documentRow.jenis}-${Date.now()}.pdf`;
-
-  const canvas = await html2canvas(page, {
-    scale: 2,
-    useCORS: true,
-    windowWidth: 794,
-    windowHeight: A4_HEIGHT_PX
-  });
-
-  const imgData = canvas.toDataURL('image/jpeg', 1.0);
-
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF('p', 'mm', 'a4');
-
-  pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-  pdf.save(fileName);
-
-  wrapper.remove();
 }
 
 async function uploadPdf(documentRow, pdfBlob, fileName) {
@@ -1469,7 +1507,9 @@ async function uploadPdf(documentRow, pdfBlob, fileName) {
   } catch (error) {
     console.warn('Upload PDF gagal:', error);
     showToast('PDF berhasil dibuat, tetapi belum terunggah ke Storage.', 'warning');
+  }
 }
+
 async function exportCsv(scope = '') {
   if (!getPerm('export')) return showToast('Role ini tidak dapat export data.', 'error');
   const rows = await fetchDocuments(scope === 'arsip' ? { status: 'diarsipkan' } : {});
@@ -1522,46 +1562,4 @@ window.saveSettings = saveProfile;
 window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
-document.addEventListener('DOMContentLoaded', () => { checkAppVersion(); checkSession(); });
-
-
-function subscribeRealtime() {
-  if (!supabaseClient) return;
-
-  supabaseClient
-    .channel('surat-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'surat' }, handleRealtimeUpdate)
-    .subscribe();
-}
-
-function handleRealtimeUpdate(payload) {
-  const newRow = payload.new;
-  const oldRow = payload.old;
-
-  if (payload.eventType === 'INSERT') cachedDocuments.unshift(newRow);
-  if (payload.eventType === 'UPDATE') cachedDocuments = cachedDocuments.map(d => d.id === newRow.id ? newRow : d);
-  if (payload.eventType === 'DELETE') cachedDocuments = cachedDocuments.filter(d => d.id !== oldRow.id);
-
-  refreshCurrentPage();
-}
-
-
-async function loadProfileFromSupabase() {
-  const { data, error } = await supabaseClient
-    .from(TABLE_PROFIL)
-    .select('*')
-    .eq('id', 'default')
-    .single();
-
-  if (!error) cachedProfile = data;
-}
-
-
-function mergeDocumentRows(onlineRows = [], localRows = []) {
-  const merged = new Map();
-  [...(onlineRows || []), ...(localRows || [])].forEach((item) => {
-    if (!item?.id) return;
-    merged.set(item.id, { ...merged.get(item.id), ...item });
-  });
-  return Array.from(merged.values());
-}
+document.addEventListener('DOMContentLoaded', checkSession);
