@@ -1449,7 +1449,6 @@ async function downloadPreviewPdf() {
     console.error("PDF Error: ", error);
     alert("Terjadi kesalahan saat memproses pembuatan file PDF.");
   }
-}
 
 async function createPdfFromDocument(documentRow, options = {}) {
   const container = document.createElement('div');
