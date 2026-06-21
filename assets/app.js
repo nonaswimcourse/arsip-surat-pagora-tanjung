@@ -16,7 +16,7 @@ const supabaseClient = hasSupabaseSdk
   : null;
 
 let currentRoute = 'dashboard';
-let cachedDocuments = [];
+let cachedDocuments = null;
 let cachedProfile = null;
 let currentUser = null;
 let lastPreviewDocument = null;
@@ -535,7 +535,7 @@ function stripLocalOnly(row) {
   return copy;
 }
 
-async function fetchDocuments(filter = {}) {
+async function fetchDocuments(filter = {}, forceRefresh = false) {
   const localRows = getLocalDocuments().map(normalizeDocument).filter((row) => !isDocumentDeleted(row.id));
   let onlineRows = [];
 
