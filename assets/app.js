@@ -94,8 +94,9 @@ const documentTypes = {
 };
 
 const defaultProfile = {
-  nama_instansi: 'SISTEM INFORMASI ADMINISTRASI PAGORA TANJUNG',
-  nama_aplikasi: 'SIAP TANJUNG',
+  id: 'default',
+  nama_instansi: 'KKG PJOK SD Kecamatan Tanjung',
+  nama_aplikasi: 'SIPAS Kantor',
   alamat: 'Kecamatan Tanjung',
   telepon: '-',
   email: '-',
@@ -364,7 +365,7 @@ function showLoginError(message) {
 function applyRoleUI() {
   const email = currentUser?.email || '-';
   const role = currentUser?.role || 'staf';
-  const profileName = cachedProfile?.nama_instansi || defaultProfile.nama_instansi;
+  const profileName = cachedProfile?.nama_aplikasi || defaultProfile.nama_aplikasi;
   if (el('currentUserEmail')) el('currentUserEmail').textContent = email;
   if (el('currentUserRole')) el('currentUserRole').textContent = `Role: ${titleCase(role)}`;
   if (el('sidebarProfileName')) el('sidebarProfileName').textContent = profileName;
