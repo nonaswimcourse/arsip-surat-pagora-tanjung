@@ -1,8 +1,3 @@
-Berikut adalah seluruh isi file **`app.js`** yang sudah diperbaiki secara utuh. Kesalahan sintaksis (kurung kurawal yang hilang dan sisa kode menggantung) di bagian fungsi cetak PDF sudah dibersihkan, sehingga file JavaScript ini siap digunakan kembali dan tidak akan membuat browser *crash* saat memproses menu login.
-
-Silakan salin seluruh kode di bawah ini dan timpa (*replace*) isi file `app.js` Anda yang lama:
-
-```javascript
 const SUPABASE_URL = 'https://bixyaowckwvjpgwffoci.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_phZErDKE6oDEDN5whvlk3Q_8LpXylcG';
 const TABLE_SURAT = 'surat';
@@ -127,6 +122,7 @@ function safe(value) {
   }[char]));
 }
 
+// DIPERBAIKI: Mengamankan argumen string agar aman masuk ke dalam atribut onclick HTML
 function jsAttr(value) {
   return String(value ?? '').replace(/'/g, "\\'");
 }
@@ -251,6 +247,7 @@ function validateForm(form) {
   return true;
 }
 
+// DIPERBAIKI: Cek eksistensi element sebelum manipulasi DOM agar mencegah crash
 function setPageHeader(title, subtitle) {
   const pageTitle = el('pageTitle');
   const pageSubtitle = el('pageSubtitle');
@@ -701,6 +698,7 @@ function getFormData(form, typeKey, existing = {}) {
   });
 }
 
+// DIPERBAIKI: Mengganti penggunaan ${js(x)} dengan ${jsAttr(x)} dan tanda kutip tunggal ('') agar parameter fungsi onclick HTML valid
 function documentFormHTML(typeKey, row = {}, mode = 'create') {
   const type = documentTypes[typeKey];
   const data = normalizeDocument({ jenis: typeKey, status: type.defaultStatus, ...row });
@@ -849,6 +847,7 @@ async function previewForm(typeKey, formId = 'documentForm') {
   openPreview(row);
 }
 
+// DIPERBAIKI: Menggunakan jsAttr() untuk navigasi menu dashboard agar menu dapat diklik
 async function renderDashboard() {
   setPageHeader('Dashboard', 'Ringkasan administrasi surat, persetujuan, dan arsip dokumen.');
   const rows = await fetchDocuments();
@@ -1005,6 +1004,7 @@ function renderTable(rows, options = {}) {
     </div>`;
 }
 
+// DIPERBAIKI: Mengubah ${js(row.id)} ke '${jsAttr(row.id)}' pada semua aksi tombol agar aksi data bekerja lancar
 function actionButtons(row) {
   const buttons = [];
   buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
@@ -1415,34 +1415,29 @@ function printPreview() {
 }
 
 async function downloadPreviewPdf() {
-  const element = document.querySelector('#previewContent .pdf-page') || document.getElementById('previewContent');
-  if (!element) {
-    alert("Gagal mengunduh: Konten preview tidak ditemukan!");
+  const element = document.getElementById('previewContent'); // Pastikan ID ini sesuai kontainer preview Anda
+  
+  if (!element || element.innerHTML.trim() === "") {
+    alert("Gagal mengunduh: Konten preview tidak ditemukan atau kosong!");
     return;
   }
-  
+
+  // Opsi konfigurasi html2pdf
   const opt = {
-    margin:       0,
+    margin:       [10, 10, 10, 10], // margin mm
     filename:     `surat-${new Date().getTime()}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
-      scale: 2, 
-      useCORS: true,
-      logging: false,
-      letterRendering: true,
-      scrollX: 0,
-      scrollY: 0
+      scale: 1.15, 
+      useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
+      logging: false 
     },
-    jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' },
-    pagebreak:    { mode: 'avoid-all' }
+    jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' }
   };
 
   try {
-    if (window.html2pdf) {
-      await html2pdf().set(opt).from(element).save();
-    } else {
-      alert("Library html2pdf belum siap.");
-    }
+    // Jalankan perintah html2pdf secara berurutan
+    await html2pdf().set(opt).from(element).save();
   } catch (error) {
     console.error("PDF Error: ", error);
     alert("Terjadi kesalahan saat memproses pembuatan file PDF.");
@@ -1450,31 +1445,27 @@ async function downloadPreviewPdf() {
 }
 
 async function createPdfFromDocument(documentRow, options = {}) {
-  const container = document.createElement('div');
-  container.innerHTML = printableHTML(buildDocumentHTML(documentRow));
-  const page = container.querySelector('.pdf-page');
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = buildDocumentHTML(documentRow);
+  const page = wrapper.querySelector('.pdf-page');
   if (!page) {
     showToast('Template dokumen tidak ditemukan.', 'error');
     return;
   }
-  
-  container.style.position = 'absolute';
-  container.style.top = '0';
-  container.style.left = '0';
-  container.style.width = '210mm';
-  container.style.zIndex = '-9999';
-  container.style.opacity = '1';
-  container.style.overflow = 'hidden';
-  document.body.appendChild(container);
+  document.body.appendChild(wrapper);
+  wrapper.style.position = 'fixed';
+  wrapper.style.left = '-10000px';
+  wrapper.style.top = '0';
+  wrapper.style.width = '210mm';
+  wrapper.style.background = '#fff';
 
   const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
   const opt = {
     margin: 0,
     filename: fileName,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
-    jsPDF: { unit: 'mm', format: [210, 330], orientation: 'portrait' },
-    pagebreak: { mode: 'avoid-all' }
+    html2canvas: { scale: 1.15, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'mm', format: [210, 330], orientation: 'portrait' }
   };
 
   try {
@@ -1482,18 +1473,22 @@ async function createPdfFromDocument(documentRow, options = {}) {
       const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
       if (options.download) downloadBlob(pdfBlob, fileName);
       if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
-      showToast('PDF berhasil diproses.');
-    } else {
-      const htmlName = fileName.replace(/\.pdf$/i, '.html');
-      const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
-      if (options.download) downloadBlob(htmlBlob, htmlName);
-      showToast('Library PDF belum terbaca. File HTML diunduh sebagai cadangan.', 'warning');
+      if (options.download && !options.upload) showToast('PDF berhasil diunduh.');
+      return;
     }
+
+    const htmlName = fileName.replace(/\.pdf$/i, '.html');
+    const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+    if (options.download) downloadBlob(htmlBlob, htmlName);
+    showToast('Library PDF belum terbaca. File HTML sudah diunduh. Buka file itu lalu pilih Print > Save as PDF.', 'warning');
   } catch (error) {
     console.warn('Gagal membuat PDF:', error);
-    showToast(`PDF gagal dibuat: ${error.message}`, 'error');
+    const fallbackName = fileName.replace(/\.pdf$/i, '.html');
+    const fallbackBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+    if (options.download) downloadBlob(fallbackBlob, fallbackName);
+    showToast(`PDF gagal dibuat otomatis. File HTML cadangan sudah diunduh: ${errorText(error)}`, 'warning');
   } finally {
-    container.remove();
+    wrapper.remove();
   }
 }
 
@@ -1568,5 +1563,3 @@ window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
-
-```
