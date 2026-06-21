@@ -1414,29 +1414,36 @@ function printPreview() {
   setTimeout(() => printWindow.print(), 500);
 }
 
+// =========================================================
+// PERBAIKAN DOWNLOAD BLANK & KONFIGURASI PAS 1 HALAMAN F4
+// =========================================================
+
 async function downloadPreviewPdf() {
-  const element = document.getElementById('previewContent'); // Pastikan ID ini sesuai kontainer preview Anda
-  
-  if (!element || element.innerHTML.trim() === "") {
-    alert("Gagal mengunduh: Konten preview tidak ditemukan atau kosong!");
+  // Ambil element konten murni .pdf-page di dalam modal preview
+  const element = document.querySelector('#previewContent .pdf-page') || document.getElementById('previewContent');
+  if (!element) {
+    alert("Gagal mengunduh: Konten preview tidak ditemukan!");
     return;
   }
-
-  // Opsi konfigurasi html2pdf
+  
+  // Konfigurasi kertas F4 (210mm x 330mm) agar pas 1 halaman
   const opt = {
-    margin:       [10, 10, 10, 10], // margin mm
+    margin:       0,
     filename:     `surat-${new Date().getTime()}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
-      scale: 1.15, 
-      useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
-      logging: false 
+      scale: 2, 
+      useCORS: true,
+      logging: false,
+      letterRendering: true,
+      scrollX: 0,
+      scrollY: 0
     },
-    jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+    jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' },
+    pagebreak:    { mode: 'avoid-all' } // Hindari pecah halaman otomatis
   };
 
   try {
-    // Jalankan perintah html2pdf secara berurutan
     await html2pdf().set(opt).from(element).save();
   } catch (error) {
     console.error("PDF Error: ", error);
@@ -1445,37 +1452,50 @@ async function downloadPreviewPdf() {
 }
 
 async function createPdfFromDocument(documentRow, options = {}) {
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = buildDocumentHTML(documentRow);
-  const page = wrapper.querySelector('.pdf-page');
+  const container = document.createElement('div');
+  container.innerHTML = printableHTML(buildDocumentHTML(documentRow));
+  const page = container.querySelector('.pdf-page');
   if (!page) {
     showToast('Template dokumen tidak ditemukan.', 'error');
     return;
   }
-  document.body.appendChild(wrapper);
-  wrapper.style.position = 'fixed';
-  wrapper.style.left = '-10000px';
-  wrapper.style.top = '0';
-  wrapper.style.width = '210mm';
-  wrapper.style.background = '#fff';
+  
+  // SOLUSI BUG BLANK PAGE: Posisikan container secara absolut dengan visibilitas penuh (opacity 1)
+  // tetapi diletakkan menggunakan z-index negatif di balik layar utama agar html2canvas sukses menangkap layout-nya.
+  container.style.position = 'absolute';
+  container.style.top = '0';
+  container.style.left = '0';
+  container.style.width = '210mm';
+  container.style.zIndex = '-9999';
+  container.style.opacity = '1';
+  container.style.overflow = 'hidden';
+  document.body.appendChild(container);
 
   const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
   const opt = {
     margin: 0,
     filename: fileName,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 1.15, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-    jsPDF: { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
+    jsPDF: { unit: 'mm', format: [210, 330], orientation: 'portrait' },
+    pagebreak: { mode: 'avoid-all' }
   };
 
   try {
     if (window.html2pdf) {
       const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
       if (options.download) downloadBlob(pdfBlob, fileName);
-      if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
-      if (options.download && !options.upload) showToast('PDF berhasil diunduh.');
-      return;
+      showToast('PDF berhasil diunduh.');
+    } else {
+      showToast('Library html2pdf belum siap.', 'error');
     }
+  } catch (error) {
+    console.warn('Gagal membuat PDF:', error);
+    showToast(`PDF gagal dibuat: ${error.message}`, 'error');
+  } finally {
+    container.remove(); // Bersihkan kembali DOM setelah selesai unduh
+  }
+}
 
     const htmlName = fileName.replace(/\.pdf$/i, '.html');
     const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
