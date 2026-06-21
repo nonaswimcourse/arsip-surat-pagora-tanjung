@@ -28,9 +28,9 @@ textarea{resize:vertical;line-height:1.55}.hidden{display:none!important}
 .pdf-page {
   width: 210mm;
   height: 297mm;
-  padding: 12mm;
   overflow: hidden;
   box-sizing: border-box;
+  page-break-inside: avoid;
 }
 
 @page {
@@ -42,3 +42,4 @@ body.print-body {
   margin: 0;
   padding: 0;
 }
+  
