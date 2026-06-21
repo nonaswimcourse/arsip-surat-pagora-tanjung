@@ -294,70 +294,24 @@ function clearLocalSession() {
   localStorage.removeItem(LOCAL_SESSION_KEY);
 }
 
-function getLocalDocuments() {
-  return readJSON(LOCAL_DOC_KEY, []);
-}
 
-function setLocalDocuments(rows) {
-  writeJSON(LOCAL_DOC_KEY, rows);
-}
 
-function getDeletedDocumentIds() {
-  return readJSON(LOCAL_DELETED_KEY, []);
-}
 
-function setDeletedDocumentIds(ids) {
-  const uniqueIds = [...new Set((ids || []).map((id) => String(id)).filter(Boolean))];
-  writeJSON(LOCAL_DELETED_KEY, uniqueIds);
-}
 
-function markDocumentDeleted(id) {
-  if (!id) return;
-  setDeletedDocumentIds([...getDeletedDocumentIds(), String(id)]);
-}
 
-function unmarkDocumentDeleted(id) {
-  if (!id) return;
-  setDeletedDocumentIds(getDeletedDocumentIds().filter((item) => String(item) !== String(id)));
-}
 
-function isDocumentDeleted(id) {
-  return getDeletedDocumentIds().some((item) => String(item) === String(id));
-}
 
 function documentTimestamp(row) {
   const date = new Date(row?.updated_at || row?.created_at || 0);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
-function mergeDocumentRows(onlineRows = [], localRows = []) {
-  const deletedIds = new Set(getDeletedDocumentIds().map(String));
-  const merged = new Map();
-
-  onlineRows.forEach((row) => {
-    const id = String(row.id);
-    if (!deletedIds.has(id)) merged.set(id, row);
-  });
-
-  localRows.forEach((row) => {
-    const id = String(row.id);
-    if (deletedIds.has(id)) return;
-    const current = merged.get(id);
-    if (!current || row.local_only || documentTimestamp(row) >= documentTimestamp(current)) {
-      merged.set(id, row);
-    }
   });
 
   return Array.from(merged.values());
 }
 
-function getLocalProfile() {
-  return readJSON(LOCAL_PROFILE_KEY, null);
-}
 
-function setLocalProfile(profile) {
-  writeJSON(LOCAL_PROFILE_KEY, profile);
-}
 
 function showApplication() {
   if (el('loginPage')) el('loginPage').style.display = 'none';
@@ -452,9 +406,11 @@ async function checkSession() {
   }
 }
 
+
 async function bootstrapApp() {
-  await loadProfile();
+  await loadProfileFromSupabase();
   applyRoleUI();
+  subscribeRealtime();
   await navigate('dashboard');
 }
 
@@ -545,21 +501,26 @@ function stripLocalOnly(row) {
   return copy;
 }
 
-async function fetchDocuments(filter = {}) {
-  const localRows = getLocalDocuments().map(normalizeDocument).filter((row) => !isDocumentDeleted(row.id));
-  let onlineRows = [];
 
-  try {
-    if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
-    let query = supabaseClient.from(TABLE_SURAT).select('*').order('created_at', { ascending: false });
-    if (filter.jenis) query = query.eq('jenis', filter.jenis);
-    if (filter.status) query = query.eq('status', filter.status);
-    const { data, error } = await query;
-    if (error) throw error;
-    onlineRows = (data || []).map(normalizeDocument).filter((row) => !isDocumentDeleted(row.id));
-  } catch (error) {
-    console.warn('Data Supabase belum terbaca. Aplikasi memakai data lokal:', error);
+async function fetchDocuments(filter = {}) {
+  let query = supabaseClient
+    .from(TABLE_SURAT)
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (filter.jenis) query = query.eq('jenis', filter.jenis);
+  if (filter.status) query = query.eq('status', filter.status);
+  if (filter.keyword) query = query.ilike('perihal', `%${filter.keyword}%`);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error(error);
+    return [];
   }
+
+  cachedDocuments = data || [];
+  return cachedDocuments;
+}
 
   let rows = mergeDocumentRows(onlineRows, localRows);
 
@@ -1579,3 +1540,35 @@ window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
+
+
+function subscribeRealtime() {
+  if (!supabaseClient) return;
+
+  supabaseClient
+    .channel('surat-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'surat' }, handleRealtimeUpdate)
+    .subscribe();
+}
+
+function handleRealtimeUpdate(payload) {
+  const newRow = payload.new;
+  const oldRow = payload.old;
+
+  if (payload.eventType === 'INSERT') cachedDocuments.unshift(newRow);
+  if (payload.eventType === 'UPDATE') cachedDocuments = cachedDocuments.map(d => d.id === newRow.id ? newRow : d);
+  if (payload.eventType === 'DELETE') cachedDocuments = cachedDocuments.filter(d => d.id !== oldRow.id);
+
+  refreshCurrentPage();
+}
+
+
+async function loadProfileFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from(TABLE_PROFIL)
+    .select('*')
+    .eq('id', 'default')
+    .single();
+
+  if (!error) cachedProfile = data;
+}
