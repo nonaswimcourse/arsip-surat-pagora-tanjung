@@ -8,6 +8,13 @@ const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
+
+function forceClearAppCache() {
+  localStorage.removeItem(LOCAL_DOC_KEY);
+  localStorage.removeItem(LOCAL_PROFILE_KEY);
+  sessionStorage.clear();
+}
+
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
   && typeof window.supabase.createClient === 'function';
@@ -388,6 +395,7 @@ async function doLogin() {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (!error && data?.user) {
         clearLocalSession();
+        forceClearAppCache();
         currentUser = buildSupabaseUser(data.user);
         showApplication();
         await bootstrapApp();
@@ -452,6 +460,7 @@ async function bootstrapApp() {
 
 async function loadProfile() {
   const localProfile = getLocalProfile();
+  if (localProfile && String(localProfile.nama_instansi||'').includes('SIAP TANJUNG')) { setLocalProfile(null); }
   cachedProfile = { ...defaultProfile, ...(localProfile || {}) };
 
   try {
@@ -473,6 +482,7 @@ async function loadProfile() {
 }
 
 async function navigate(route) {
+  const pc = document.getElementById('pageContent'); if (pc) pc.innerHTML = '';
   if (route === 'pengaturan' && !currentUser) {
     showToast('Silakan login terlebih dahulu untuk membuka pengaturan.', 'error');
     return;
