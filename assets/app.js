@@ -1432,57 +1432,49 @@ async function downloadPreviewPdf() {
   }
 }
 
+const A4_HEIGHT_PX = 1123; // penting
+
 async function createPdfFromDocument(documentRow, options = {}) {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = buildDocumentHTML(documentRow);
 
   const page = wrapper.querySelector('.pdf-page');
-  if (!page) {
-    showToast('Template dokumen tidak ditemukan.', 'error');
-    return;
-  }
+  if (!page) return;
 
   document.body.appendChild(wrapper);
   wrapper.style.position = 'fixed';
-  wrapper.style.left = '-10000px';
-  wrapper.style.top = '0';
-  wrapper.style.width = '210mm';
+  wrapper.style.left = '-99999px';
+  wrapper.style.width = '794px'; // FIX A4 width in px
   wrapper.style.background = '#fff';
 
-  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
+  // 🔥 INI KUNCI FIX
+  const scaleFix = A4_HEIGHT_PX / page.scrollHeight;
 
-  const opt = {
-    margin: 0,
-    filename: fileName,
-    image: { type: 'jpeg', quality: 1 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      windowHeight: 1123
-    },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait'
-    }
-  };
+  if (scaleFix < 1) {
+    page.style.transform = `scale(${scaleFix})`;
+    page.style.transformOrigin = 'top left';
+  }
 
-  try {
-    if (window.html2pdf) {
-      const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
-      if (options.download) downloadBlob(pdfBlob, fileName);
-      if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
-      return;
-    }
-  } catch (error) {
-    console.warn(error);
-  } finally {
-    wrapper.remove();
+  const fileName = `${documentRow.jenis}-${Date.now()}.pdf`;
+
+  const canvas = await html2canvas(page, {
+    scale: 2,
+    useCORS: true,
+    windowWidth: 794,
+    windowHeight: A4_HEIGHT_PX
+  });
+
+  const imgData = canvas.toDataURL('image/jpeg', 1.0);
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
+
+  pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+  pdf.save(fileName);
+
+  wrapper.remove();
   }
 }
-
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
     if (!supabaseClient) throw new Error('Supabase belum aktif');
