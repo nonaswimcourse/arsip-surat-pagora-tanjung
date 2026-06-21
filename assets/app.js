@@ -1415,43 +1415,48 @@ function printPreview() {
 }
 
 async function downloadPreviewPdf() {
-  const element = document.getElementById('previewContent'); // Pastikan ID ini sesuai kontainer preview Anda
-  
+  const element = document.getElementById('previewContent');
+
   if (!element || element.innerHTML.trim() === "") {
     alert("Gagal mengunduh: Konten preview tidak ditemukan atau kosong!");
     return;
   }
 
-  // Opsi konfigurasi html2pdf
   const opt = {
-    margin:       [10, 10, 10, 10], // margin mm
-    filename:     `surat-${new Date().getTime()}.pdf`,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { 
-      scale: 1.15, 
-      useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
-      logging: false 
+    margin: 0,
+    filename: `surat-${new Date().getTime()}.pdf`,
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      windowHeight: 1123
     },
-    jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    }
   };
 
   try {
-    // Jalankan perintah html2pdf secara berurutan
     await html2pdf().set(opt).from(element).save();
   } catch (error) {
-    console.error("PDF Error: ", error);
-    alert("Terjadi kesalahan saat memproses pembuatan file PDF.");
+    console.error(error);
+    alert("Terjadi kesalahan saat membuat PDF.");
   }
 }
 
 async function createPdfFromDocument(documentRow, options = {}) {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = buildDocumentHTML(documentRow);
+
   const page = wrapper.querySelector('.pdf-page');
   if (!page) {
     showToast('Template dokumen tidak ditemukan.', 'error');
     return;
   }
+
   document.body.appendChild(wrapper);
   wrapper.style.position = 'fixed';
   wrapper.style.left = '-10000px';
@@ -1460,12 +1465,23 @@ async function createPdfFromDocument(documentRow, options = {}) {
   wrapper.style.background = '#fff';
 
   const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
+
   const opt = {
     margin: 0,
     filename: fileName,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 1.15, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-    jsPDF: { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowHeight: 1123
+    },
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    }
   };
 
   try {
@@ -1473,20 +1489,10 @@ async function createPdfFromDocument(documentRow, options = {}) {
       const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
       if (options.download) downloadBlob(pdfBlob, fileName);
       if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
-      if (options.download && !options.upload) showToast('PDF berhasil diunduh.');
       return;
     }
-
-    const htmlName = fileName.replace(/\.pdf$/i, '.html');
-    const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
-    if (options.download) downloadBlob(htmlBlob, htmlName);
-    showToast('Library PDF belum terbaca. File HTML sudah diunduh. Buka file itu lalu pilih Print > Save as PDF.', 'warning');
   } catch (error) {
-    console.warn('Gagal membuat PDF:', error);
-    const fallbackName = fileName.replace(/\.pdf$/i, '.html');
-    const fallbackBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
-    if (options.download) downloadBlob(fallbackBlob, fallbackName);
-    showToast(`PDF gagal dibuat otomatis. File HTML cadangan sudah diunduh: ${errorText(error)}`, 'warning');
+    console.warn(error);
   } finally {
     wrapper.remove();
   }
