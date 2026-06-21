@@ -531,9 +531,7 @@ async function fetchDocuments(filter = {}) {
   return cachedDocuments;
 }
 
-  let rows = mergeDocumentRows(onlineRows, localRows);
-
-  if (filter.jenis) rows = rows.filter((row) => row.jenis === filter.jenis);
+  let rows = if (filter.jenis) rows = rows.filter((row) => row.jenis === filter.jenis);
   if (filter.status) rows = rows.filter((row) => row.status === filter.status);
   if (filter.keyword) {
     const keyword = filter.keyword.toLowerCase();
