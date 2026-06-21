@@ -1415,78 +1415,152 @@ function printPreview() {
 }
 
 async function downloadPreviewPdf() {
-  const element = document.getElementById('previewContent'); // Pastikan ID ini sesuai kontainer preview Anda
-  
+  const element = document.getElementById('previewContent');
+
   if (!element || element.innerHTML.trim() === "") {
     alert("Gagal mengunduh: Konten preview tidak ditemukan atau kosong!");
     return;
   }
 
-  // Opsi konfigurasi html2pdf
+  // paksa ukuran render sesuai A4 agar stabil
+  const originalWidth = element.style.width;
+  element.style.width = "210mm";
+
   const opt = {
-    margin:       [10, 10, 10, 10], // margin mm
-    filename:     `surat-${new Date().getTime()}.pdf`,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { 
-      scale: 1.15, 
-      useCORS: true, // Izinkan cross-origin jika ada gambar/logo luar
-      logging: false 
+    margin: 0,
+    filename: `surat-${Date.now()}.pdf`,
+    image: { type: 'jpeg', quality: 1 },
+
+    html2canvas: {
+      scale: 2, // lebih tajam & stabil
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: element.scrollWidth
     },
-    jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    },
+
+    pagebreak: {
+      mode: ['avoid-all', 'css', 'legacy']
+    }
   };
 
   try {
-    // Jalankan perintah html2pdf secara berurutan
-    await html2pdf().set(opt).from(element).save();
+    await html2pdf()
+      .set(opt)
+      .from(element)
+      .save();
+
   } catch (error) {
-    console.error("PDF Error: ", error);
-    alert("Terjadi kesalahan saat memproses pembuatan file PDF.");
+    console.error("PDF Error:", error);
+    alert("Terjadi kesalahan saat membuat PDF.");
+  } finally {
+    element.style.width = originalWidth;
   }
 }
 
 async function createPdfFromDocument(documentRow, options = {}) {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = buildDocumentHTML(documentRow);
+
   const page = wrapper.querySelector('.pdf-page');
   if (!page) {
     showToast('Template dokumen tidak ditemukan.', 'error');
     return;
   }
+
   document.body.appendChild(wrapper);
+
   wrapper.style.position = 'fixed';
-  wrapper.style.left = '-10000px';
+  wrapper.style.left = '-99999px';
   wrapper.style.top = '0';
   wrapper.style.width = '210mm';
-  wrapper.style.background = '#fff';
+  wrapper.style.background = '#ffffff';
 
-  const fileName = `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
+  page.style.width = '210mm';
+  page.style.minHeight = '297mm';
+  page.style.boxSizing = 'border-box';
+  page.style.overflow = 'hidden';
+
+  const fileName =
+    `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
+
   const opt = {
     margin: 0,
+
     filename: fileName,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 1.15, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-    jsPDF: { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+
+    image: {
+      type: 'jpeg',
+      quality: 1
+    },
+
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: 794 // stabil A4 ratio (px equivalent)
+    },
+
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    },
+
+    pagebreak: {
+      mode: ['avoid-all', 'css', 'legacy']
+    }
   };
 
   try {
     if (window.html2pdf) {
-      const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
+      const pdfBlob = await html2pdf()
+        .set(opt)
+        .from(page)
+        .outputPdf('blob');
+
       if (options.download) downloadBlob(pdfBlob, fileName);
       if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
-      if (options.download && !options.upload) showToast('PDF berhasil diunduh.');
+
+      if (options.download && !options.upload) {
+        showToast('PDF berhasil diunduh.');
+      }
+
       return;
     }
 
     const htmlName = fileName.replace(/\.pdf$/i, '.html');
-    const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+    const htmlBlob = new Blob(
+      [printableHTML(page.outerHTML)],
+      { type: 'text/html;charset=utf-8' }
+    );
+
     if (options.download) downloadBlob(htmlBlob, htmlName);
-    showToast('Library PDF belum terbaca. File HTML sudah diunduh. Buka file itu lalu pilih Print > Save as PDF.', 'warning');
+
+    showToast(
+      'html2pdf tidak tersedia. File HTML cadangan diunduh.',
+      'warning'
+    );
+
   } catch (error) {
-    console.warn('Gagal membuat PDF:', error);
+    console.warn('PDF gagal:', error);
+
     const fallbackName = fileName.replace(/\.pdf$/i, '.html');
-    const fallbackBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+    const fallbackBlob = new Blob(
+      [printableHTML(page.outerHTML)],
+      { type: 'text/html;charset=utf-8' }
+    );
+
     if (options.download) downloadBlob(fallbackBlob, fallbackName);
-    showToast(`PDF gagal dibuat otomatis. File HTML cadangan sudah diunduh: ${errorText(error)}`, 'warning');
+
+    showToast('Fallback HTML digunakan.', 'warning');
   } finally {
     wrapper.remove();
   }
@@ -1495,18 +1569,36 @@ async function createPdfFromDocument(documentRow, options = {}) {
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
     if (!supabaseClient) throw new Error('Supabase belum aktif');
+
     const path = `${documentRow.jenis}/${Date.now()}-${fileName}`;
-    const { error: uploadError } = await supabaseClient.storage
+
+    const { error } = await supabaseClient.storage
       .from(STORAGE_BUCKET)
-      .upload(path, pdfBlob, { contentType: 'application/pdf', upsert: true });
-    if (uploadError) throw uploadError;
-    const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-    const updated = normalizeDocument({ ...documentRow, pdf_path: path, pdf_url: data?.publicUrl || '', updated_at: new Date().toISOString() });
+      .upload(path, pdfBlob, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    const { data } = supabaseClient.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(path);
+
+    const updated = normalizeDocument({
+      ...documentRow,
+      pdf_path: path,
+      pdf_url: data?.publicUrl || '',
+      updated_at: new Date().toISOString()
+    });
+
     await saveDocumentToStorage(updated);
-    showToast('PDF berhasil dibuat dan diunggah ke Supabase Storage.');
+
+    showToast('PDF berhasil diunggah.');
+
   } catch (error) {
-    console.warn('Upload PDF gagal:', error);
-    showToast('PDF berhasil dibuat, tetapi belum terunggah ke Storage.', 'warning');
+    console.warn('Upload gagal:', error);
+    showToast('PDF dibuat tapi gagal upload.', 'warning');
   }
 }
 
