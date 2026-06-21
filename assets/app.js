@@ -1418,47 +1418,34 @@ async function downloadPreviewPdf() {
   const element = document.getElementById('previewContent');
 
   if (!element || element.innerHTML.trim() === "") {
-    alert("Gagal mengunduh: Konten preview tidak ditemukan atau kosong!");
+    alert("Konten kosong");
     return;
   }
 
-  // paksa ukuran render sesuai A4 agar stabil
   const originalWidth = element.style.width;
   element.style.width = "210mm";
+
+  const scale = Math.min(2, 794 / element.scrollWidth);
 
   const opt = {
     margin: 0,
     filename: `surat-${Date.now()}.pdf`,
     image: { type: 'jpeg', quality: 1 },
-
     html2canvas: {
-      scale: 2, // lebih tajam & stabil
+      scale: scale,
       useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      windowWidth: element.scrollWidth
+      backgroundColor: '#fff',
+      windowWidth: 794,
+      windowHeight: 1123
     },
-
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait'
-    },
-
-    pagebreak: {
-      mode: ['avoid-all', 'css', 'legacy']
-    }
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
 
   try {
-    await html2pdf()
-      .set(opt)
-      .from(element)
-      .save();
-
-  } catch (error) {
-    console.error("PDF Error:", error);
-    alert("Terjadi kesalahan saat membuat PDF.");
+    await html2pdf().set(opt).from(element).save();
+  } catch (e) {
+    console.error(e);
   } finally {
     element.style.width = originalWidth;
   }
@@ -1469,98 +1456,44 @@ async function createPdfFromDocument(documentRow, options = {}) {
   wrapper.innerHTML = buildDocumentHTML(documentRow);
 
   const page = wrapper.querySelector('.pdf-page');
-  if (!page) {
-    showToast('Template dokumen tidak ditemukan.', 'error');
-    return;
-  }
+  if (!page) return;
 
   document.body.appendChild(wrapper);
 
   wrapper.style.position = 'fixed';
   wrapper.style.left = '-99999px';
-  wrapper.style.top = '0';
   wrapper.style.width = '210mm';
-  wrapper.style.background = '#ffffff';
+  wrapper.style.background = '#fff';
 
   page.style.width = '210mm';
-  page.style.minHeight = '297mm';
-  page.style.boxSizing = 'border-box';
+  page.style.height = '297mm';
   page.style.overflow = 'hidden';
 
-  const fileName =
-    `${slugify(documentRow.jenis)}-${slugify(documentRow.nomor_surat || Date.now())}.pdf`;
+  const fileName = `document-${Date.now()}.pdf`;
 
   const opt = {
     margin: 0,
-
     filename: fileName,
-
-    image: {
-      type: 'jpeg',
-      quality: 1
-    },
-
+    image: { type: 'jpeg', quality: 1 },
     html2canvas: {
       scale: 2,
       useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      windowWidth: 794 // stabil A4 ratio (px equivalent)
+      backgroundColor: '#fff',
+      windowWidth: 794,
+      windowHeight: 1123
     },
-
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait'
-    },
-
-    pagebreak: {
-      mode: ['avoid-all', 'css', 'legacy']
-    }
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
   try {
-    if (window.html2pdf) {
-      const pdfBlob = await html2pdf()
-        .set(opt)
-        .from(page)
-        .outputPdf('blob');
-
-      if (options.download) downloadBlob(pdfBlob, fileName);
-      if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
-
-      if (options.download && !options.upload) {
-        showToast('PDF berhasil diunduh.');
-      }
-
-      return;
+    const pdf = await html2pdf().set(opt).from(page).outputPdf('blob');
+    if (options.download) {
+      const url = URL.createObjectURL(pdf);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
     }
-
-    const htmlName = fileName.replace(/\.pdf$/i, '.html');
-    const htmlBlob = new Blob(
-      [printableHTML(page.outerHTML)],
-      { type: 'text/html;charset=utf-8' }
-    );
-
-    if (options.download) downloadBlob(htmlBlob, htmlName);
-
-    showToast(
-      'html2pdf tidak tersedia. File HTML cadangan diunduh.',
-      'warning'
-    );
-
-  } catch (error) {
-    console.warn('PDF gagal:', error);
-
-    const fallbackName = fileName.replace(/\.pdf$/i, '.html');
-    const fallbackBlob = new Blob(
-      [printableHTML(page.outerHTML)],
-      { type: 'text/html;charset=utf-8' }
-    );
-
-    if (options.download) downloadBlob(fallbackBlob, fallbackName);
-
-    showToast('Fallback HTML digunakan.', 'warning');
   } finally {
     wrapper.remove();
   }
