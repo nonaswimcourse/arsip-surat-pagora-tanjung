@@ -1414,91 +1414,112 @@ function printPreview() {
   setTimeout(() => printWindow.print(), 500);
 }
 
+
+function calculateScale(el) {
+  const A4_WIDTH = 794;
+  const A4_HEIGHT = 1123;
+
+  const widthScale = A4_WIDTH / el.scrollWidth;
+  const heightScale = A4_HEIGHT / el.scrollHeight;
+
+  return Math.min(widthScale, heightScale, 2);
+}
+
 async function downloadPreviewPdf() {
   const element = document.getElementById('previewContent');
 
   if (!element || element.innerHTML.trim() === "") {
-    alert("Konten kosong");
+    alert("Empty content");
     return;
   }
 
   const originalWidth = element.style.width;
   element.style.width = "210mm";
 
-  const scale = Math.min(2, 794 / element.scrollWidth);
+  const scale = calculateScale(element);
 
   const opt = {
     margin: 0,
     filename: `surat-${Date.now()}.pdf`,
     image: { type: 'jpeg', quality: 1 },
+
     html2canvas: {
       scale: scale,
       useCORS: true,
-      backgroundColor: '#fff',
+      backgroundColor: "#fff",
       windowWidth: 794,
       windowHeight: 1123
     },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+
+    jsPDF: {
+      unit: "mm",
+      format: "a4",
+      orientation: "portrait"
+    }
   };
 
   try {
     await html2pdf().set(opt).from(element).save();
-  } catch (e) {
-    console.error(e);
   } finally {
     element.style.width = originalWidth;
   }
 }
 
+
+// FORCE FIT DOCUMENT VERSION
 async function createPdfFromDocument(documentRow, options = {}) {
-  const wrapper = document.createElement('div');
+  const wrapper = document.createElement("div");
   wrapper.innerHTML = buildDocumentHTML(documentRow);
 
-  const page = wrapper.querySelector('.pdf-page');
+  const page = wrapper.querySelector(".pdf-page");
   if (!page) return;
 
   document.body.appendChild(wrapper);
 
-  wrapper.style.position = 'fixed';
-  wrapper.style.left = '-99999px';
-  wrapper.style.width = '210mm';
-  wrapper.style.background = '#fff';
+  wrapper.style.position = "fixed";
+  wrapper.style.left = "-99999px";
+  wrapper.style.width = "210mm";
 
-  page.style.width = '210mm';
-  page.style.height = '297mm';
-  page.style.overflow = 'hidden';
+  page.style.width = "210mm";
+  page.style.height = "297mm";
+  page.style.overflow = "hidden";
 
-  const fileName = `document-${Date.now()}.pdf`;
+  const scale = calculateScale(page);
+
+  const fileName = `doc-${Date.now()}.pdf`;
 
   const opt = {
     margin: 0,
     filename: fileName,
-    image: { type: 'jpeg', quality: 1 },
+    image: { type: "jpeg", quality: 1 },
+
     html2canvas: {
-      scale: 2,
+      scale: scale,
       useCORS: true,
-      backgroundColor: '#fff',
+      backgroundColor: "#fff",
       windowWidth: 794,
       windowHeight: 1123
     },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+
+    jsPDF: {
+      unit: "mm",
+      format: "a4",
+      orientation: "portrait"
+    }
   };
 
   try {
-    const pdf = await html2pdf().set(opt).from(page).outputPdf('blob');
-    if (options.download) {
-      const url = URL.createObjectURL(pdf);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      a.click();
-    }
+    const pdf = await html2pdf().set(opt).from(page).outputPdf("blob");
+
+    const url = URL.createObjectURL(pdf);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
   } finally {
     wrapper.remove();
   }
 }
-
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
     if (!supabaseClient) throw new Error('Supabase belum aktif');
