@@ -1,3 +1,8 @@
+Berikut adalah seluruh isi file **`app.js`** yang sudah diperbaiki secara utuh. Kesalahan sintaksis (kurung kurawal yang hilang dan sisa kode menggantung) di bagian fungsi cetak PDF sudah dibersihkan, sehingga file JavaScript ini siap digunakan kembali dan tidak akan membuat browser *crash* saat memproses menu login.
+
+Silakan salin seluruh kode di bawah ini dan timpa (*replace*) isi file `app.js` Anda yang lama:
+
+```javascript
 const SUPABASE_URL = 'https://bixyaowckwvjpgwffoci.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_phZErDKE6oDEDN5whvlk3Q_8LpXylcG';
 const TABLE_SURAT = 'surat';
@@ -122,7 +127,6 @@ function safe(value) {
   }[char]));
 }
 
-// DIPERBAIKI: Mengamankan argumen string agar aman masuk ke dalam atribut onclick HTML
 function jsAttr(value) {
   return String(value ?? '').replace(/'/g, "\\'");
 }
@@ -247,7 +251,6 @@ function validateForm(form) {
   return true;
 }
 
-// DIPERBAIKI: Cek eksistensi element sebelum manipulasi DOM agar mencegah crash
 function setPageHeader(title, subtitle) {
   const pageTitle = el('pageTitle');
   const pageSubtitle = el('pageSubtitle');
@@ -698,7 +701,6 @@ function getFormData(form, typeKey, existing = {}) {
   });
 }
 
-// DIPERBAIKI: Mengganti penggunaan ${js(x)} dengan ${jsAttr(x)} dan tanda kutip tunggal ('') agar parameter fungsi onclick HTML valid
 function documentFormHTML(typeKey, row = {}, mode = 'create') {
   const type = documentTypes[typeKey];
   const data = normalizeDocument({ jenis: typeKey, status: type.defaultStatus, ...row });
@@ -847,7 +849,6 @@ async function previewForm(typeKey, formId = 'documentForm') {
   openPreview(row);
 }
 
-// DIPERBAIKI: Menggunakan jsAttr() untuk navigasi menu dashboard agar menu dapat diklik
 async function renderDashboard() {
   setPageHeader('Dashboard', 'Ringkasan administrasi surat, persetujuan, dan arsip dokumen.');
   const rows = await fetchDocuments();
@@ -1004,7 +1005,6 @@ function renderTable(rows, options = {}) {
     </div>`;
 }
 
-// DIPERBAIKI: Mengubah ${js(row.id)} ke '${jsAttr(row.id)}' pada semua aksi tombol agar aksi data bekerja lancar
 function actionButtons(row) {
   const buttons = [];
   buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
@@ -1414,19 +1414,13 @@ function printPreview() {
   setTimeout(() => printWindow.print(), 500);
 }
 
-// =========================================================
-// PERBAIKAN DOWNLOAD BLANK & KONFIGURASI PAS 1 HALAMAN F4
-// =========================================================
-
 async function downloadPreviewPdf() {
-  // Ambil element konten murni .pdf-page di dalam modal preview
   const element = document.querySelector('#previewContent .pdf-page') || document.getElementById('previewContent');
   if (!element) {
     alert("Gagal mengunduh: Konten preview tidak ditemukan!");
     return;
   }
   
-  // Konfigurasi kertas F4 (210mm x 330mm) agar pas 1 halaman
   const opt = {
     margin:       0,
     filename:     `surat-${new Date().getTime()}.pdf`,
@@ -1440,15 +1434,20 @@ async function downloadPreviewPdf() {
       scrollY: 0
     },
     jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' },
-    pagebreak:    { mode: 'avoid-all' } // Hindari pecah halaman otomatis
+    pagebreak:    { mode: 'avoid-all' }
   };
 
   try {
-    await html2pdf().set(opt).from(element).save();
+    if (window.html2pdf) {
+      await html2pdf().set(opt).from(element).save();
+    } else {
+      alert("Library html2pdf belum siap.");
+    }
   } catch (error) {
     console.error("PDF Error: ", error);
     alert("Terjadi kesalahan saat memproses pembuatan file PDF.");
   }
+}
 
 async function createPdfFromDocument(documentRow, options = {}) {
   const container = document.createElement('div');
@@ -1459,8 +1458,6 @@ async function createPdfFromDocument(documentRow, options = {}) {
     return;
   }
   
-  // SOLUSI BUG BLANK PAGE: Posisikan container secara absolut dengan visibilitas penuh (opacity 1)
-  // tetapi diletakkan menggunakan z-index negatif di balik layar utama agar html2canvas sukses menangkap layout-nya.
   container.style.position = 'absolute';
   container.style.top = '0';
   container.style.left = '0';
@@ -1484,30 +1481,19 @@ async function createPdfFromDocument(documentRow, options = {}) {
     if (window.html2pdf) {
       const pdfBlob = await window.html2pdf().set(opt).from(page).outputPdf('blob');
       if (options.download) downloadBlob(pdfBlob, fileName);
-      showToast('PDF berhasil diunduh.');
+      if (options.upload) await uploadPdf(documentRow, pdfBlob, fileName);
+      showToast('PDF berhasil diproses.');
     } else {
-      showToast('Library html2pdf belum siap.', 'error');
+      const htmlName = fileName.replace(/\.pdf$/i, '.html');
+      const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
+      if (options.download) downloadBlob(htmlBlob, htmlName);
+      showToast('Library PDF belum terbaca. File HTML diunduh sebagai cadangan.', 'warning');
     }
   } catch (error) {
     console.warn('Gagal membuat PDF:', error);
     showToast(`PDF gagal dibuat: ${error.message}`, 'error');
   } finally {
-    container.remove(); // Bersihkan kembali DOM setelah selesai unduh
-  }
-}
-
-    const htmlName = fileName.replace(/\.pdf$/i, '.html');
-    const htmlBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
-    if (options.download) downloadBlob(htmlBlob, htmlName);
-    showToast('Library PDF belum terbaca. File HTML sudah diunduh. Buka file itu lalu pilih Print > Save as PDF.', 'warning');
-  } catch (error) {
-    console.warn('Gagal membuat PDF:', error);
-    const fallbackName = fileName.replace(/\.pdf$/i, '.html');
-    const fallbackBlob = new Blob([printableHTML(page.outerHTML)], { type: 'text/html;charset=utf-8' });
-    if (options.download) downloadBlob(fallbackBlob, fallbackName);
-    showToast(`PDF gagal dibuat otomatis. File HTML cadangan sudah diunduh: ${errorText(error)}`, 'warning');
-  } finally {
-    wrapper.remove();
+    container.remove();
   }
 }
 
@@ -1582,3 +1568,5 @@ window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
+
+```
