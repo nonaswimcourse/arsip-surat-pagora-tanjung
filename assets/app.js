@@ -512,8 +512,7 @@ function stripLocalOnly(row) {
 
 
 async function fetchDocuments(filter = {}) {
-  let query = supabaseClient
-    .from(TABLE_SURAT)
+  let query = supabaseClient?.from(TABLE_SURAT)
     .select('*')
     .order('created_at', { ascending: false });
 
@@ -531,21 +530,7 @@ async function fetchDocuments(filter = {}) {
   return cachedDocuments;
 }
 
-  let rows = if (filter.jenis) rows = rows.filter((row) => row.jenis === filter.jenis);
-  if (filter.status) rows = rows.filter((row) => row.status === filter.status);
-  if (filter.keyword) {
-    const keyword = filter.keyword.toLowerCase();
-    rows = rows.filter((row) => [row.nomor_surat, row.nomor_agenda, row.perihal, row.pengirim, row.penerima, row.status, row.acara, row.tempat]
-      .join(' ')
-      .toLowerCase()
-      .includes(keyword));
-  }
-  if (filter.startDate) rows = rows.filter((row) => row.tanggal_surat >= filter.startDate);
-  if (filter.endDate) rows = rows.filter((row) => row.tanggal_surat <= filter.endDate);
-
-  rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-  cachedDocuments = rows;
-  return rows;
+  
 }
 
 async function saveDocumentToStorage(row) {
@@ -1563,8 +1548,7 @@ function handleRealtimeUpdate(payload) {
 
 
 async function loadProfileFromSupabase() {
-  const { data, error } = await supabaseClient
-    .from(TABLE_PROFIL)
+  const { data, error } = await supabaseClient?.from(TABLE_PROFIL)
     .select('*')
     .eq('id', 'default')
     .single();
