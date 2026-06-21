@@ -9,11 +9,24 @@ const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
 
+const APP_VERSION = '3.0.0';
+
+function checkAppVersion() {
+  const last = localStorage.getItem('app_version');
+  if (last !== APP_VERSION) {
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem('app_version', APP_VERSION);
+  }
+}
+
+
+
 function forceClearAppCache() {
-  localStorage.removeItem(LOCAL_DOC_KEY);
-  localStorage.removeItem(LOCAL_PROFILE_KEY);
+  localStorage.clear();
   sessionStorage.clear();
 }
+
 
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
@@ -408,6 +421,7 @@ async function checkSession() {
 
 
 async function bootstrapApp() {
+  checkAppVersion();
   await loadProfileFromSupabase();
   applyRoleUI();
   subscribeRealtime();
@@ -1539,7 +1553,7 @@ window.saveSettings = saveProfile;
 window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
-document.addEventListener('DOMContentLoaded', checkSession);
+document.addEventListener('DOMContentLoaded', () => { checkAppVersion(); checkSession(); });
 
 
 function subscribeRealtime() {
