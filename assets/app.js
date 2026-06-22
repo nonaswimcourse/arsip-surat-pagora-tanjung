@@ -1503,9 +1503,25 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     doc.text(cachedProfile.kepala_nama, pageWidth - 40, footerY + 30, { align: 'center' });
 
     // Output
-    if (options.download) {
-        doc.save(`${slugify(data.nomor_surat || 'surat')}.pdf`);
+    const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
+    const pdfBlob = doc.output('blob');
+
+    if (options.upload && typeof uploadPdf === 'function') {
+        await uploadPdf(data, pdfBlob, fileName);
     }
+
+    if (options.download) {
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    return { fileName, pdfBlob };
 }
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
