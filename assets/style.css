@@ -909,10 +909,11 @@ textarea {
 }
 
 .letterhead p {
-  font-size: 7.5pt;
+  font-size: 10pt;          /* Sedikit dikecilkan dari 10.5pt agar muat di lebar kertas A4 */
   margin: 1px 0;
   font-style: italic;
-  white-space: nowrap; /* <--- Tambahkan ini agar dipaksa lurus ke samping (1 baris) */
+  display: block;           /* Memastikan alamat membuat baris baru di bawah nama instansi */
+  white-space: nowrap;      /* MEMAKSA teks tetap lurus ke samping (tidak tumpah ke bawah) */
 }
 
 .letter-line {
