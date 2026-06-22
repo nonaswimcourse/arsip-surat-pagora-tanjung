@@ -1467,58 +1467,45 @@ async function downloadPreviewPdf() {
 
 
 // FORCE FIT DOCUMENT VERSION
-async function createPdfFromDocument(documentRow, options = {}) {
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = buildDocumentHTML(documentRow);
+async function createPdfFromDocument(data, options = { download: true, upload: false }) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    
+    // Konfigurasi Margin
+    const margin = 20;
+    const pageWidth = 210;
+    const contentWidth = pageWidth - (margin * 2);
 
-  const page = wrapper.querySelector(".pdf-page");
-  if (!page) return;
+    // Helper untuk teks wrap
+    const write = (text, y, size = 12, bold = false, align = 'left') => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(size);
+        const splitText = doc.splitTextToSize(text, contentWidth);
+        doc.text(splitText, align === 'center' ? pageWidth/2 : margin, y, { align: align });
+        return y + (splitText.length * (size * 0.45)); 
+    };
 
-  document.body.appendChild(wrapper);
+    // Header Surat
+    let y = 20;
+    doc.setFontSize(16);
+    doc.text(cachedProfile.nama_instansi.toUpperCase(), pageWidth / 2, y, { align: 'center' });
+    doc.line(margin, y + 3, pageWidth - margin, y + 3);
+    
+    // Body Surat
+    y = write(`Nomor: ${data.nomor_surat}`, y + 15, 11);
+    y = write(`Perihal: ${data.perihal}`, y + 10, 11, true);
+    y = write(data.isi_surat, y + 15, 11);
 
-  wrapper.style.position = "fixed";
-  wrapper.style.left = "-99999px";
-  wrapper.style.width = "210mm";
+    // Bagian Tanda Tangan
+    const footerY = 240;
+    doc.text(`${cachedProfile.kota}, ${formatDateLong(data.tanggal_surat)}`, pageWidth - 40, footerY, { align: 'center' });
+    doc.text(cachedProfile.jabatan, pageWidth - 40, footerY + 10, { align: 'center' });
+    doc.text(cachedProfile.kepala_nama, pageWidth - 40, footerY + 30, { align: 'center' });
 
-  page.style.width = "210mm";
-  page.style.height = "297mm";
-  page.style.overflow = "hidden";
-
-  const scale = calculateScale(page);
-
-  const fileName = `doc-${Date.now()}.pdf`;
-
-  const opt = {
-    margin: 0,
-    filename: fileName,
-    image: { type: "jpeg", quality: 1 },
-
-    html2canvas: {
-      scale: scale,
-      useCORS: true,
-      backgroundColor: "#fff",
-      windowWidth: 794,
-      windowHeight: 1123
-    },
-
-    jsPDF: {
-      unit: "mm",
-      format: "a4",
-      orientation: "portrait"
+    // Output
+    if (options.download) {
+        doc.save(`${slugify(data.nomor_surat || 'surat')}.pdf`);
     }
-  };
-
-  try {
-    const pdf = await html2pdf().set(opt).from(page).outputPdf("blob");
-
-    const url = URL.createObjectURL(pdf);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-  } finally {
-    wrapper.remove();
-  }
 }
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
