@@ -1215,7 +1215,7 @@ function letterhead(profile) {
     <div class="letterhead">
       <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
       <div>
-        <h1>${safe(profile.nama_instansi)}</h1>
+        <h1 style="white-space: pre-line;">${safe(profile.nama_instansi)}</h1>
         <p>${safe(profile.alamat)}</p>
         <p>Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
       </div>
