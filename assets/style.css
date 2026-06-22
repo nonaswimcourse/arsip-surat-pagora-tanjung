@@ -921,11 +921,12 @@ textarea {
 }
 
 .letterhead p {
-  display: inline-block;    /* MEMAKSA tag <p> pertama dan kedua berjejer ke samping */
-  font-size: 7pt;         /* Dikecilkan sedikit agar muat lurus dalam kertas A4 */
-  margin: 1px 4px;          /* Memberi jarak horizontal antar elemen alamat dan telp */
+  font-size: 7pt !important;    /* Dipaksa ke 7pt dan mengabaikan setingan CSS lain */
+  margin: 1px 0;
   font-style: italic;
-  white-space: nowrap;      /* Mengunci teks agar tidak patah ke bawah */
+  display: block;               /* Tetap susun per baris dengan rapi */
+  white-space: nowrap;          /* Kunci teks agar lurus kesamping */
+  text-align: center;
 }
 
 .letter-line {
