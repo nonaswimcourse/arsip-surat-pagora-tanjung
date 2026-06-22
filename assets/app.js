@@ -1145,7 +1145,7 @@ async function renderSettingsPage() {
     <form class="panel form-panel" id="profileForm" onsubmit="saveProfile(event)">
       <div class="panel-header"><div><h2>Profil Instansi</h2><p>Data ini muncul otomatis pada kop surat dan tanda tangan.</p></div></div>
       <div class="form-grid">
-        <div class="field"><label>Nama Instansi</label><input name="nama_instansi" value="${safe(profile.nama_instansi)}" required></div>
+        <div class="field"><label>Nama Instansi</label><textarea name="nama_instansi" required>${safe(profile.nama_instansi)}</textarea></div>
         <div class="field"><label>Nama Aplikasi</label><input name="nama_aplikasi" value="${safe(profile.nama_aplikasi)}" required></div>
         <div class="field full"><label>Alamat</label><textarea name="alamat" rows="2">${safe(profile.alamat)}</textarea></div>
         <div class="field"><label>Telepon</label><input name="telepon" value="${safe(profile.telepon)}"></div>
