@@ -887,8 +887,8 @@ textarea {
 
 .letterhead {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;  /* <--- UBAH DARI 'center' MENJADI 'flex-start' agar teks naik sejajar atas logo */
+  gap: 16px;
   text-align: center;
 }
 
@@ -900,6 +900,7 @@ textarea {
 
 .letterhead div {
   flex: 1;
+  padding-top: 4px; /* <--- Tambahkan ini untuk nge-pas in posisi (bisa diganti 2px - 6px sesuai selera) */
 }
 
 .letterhead h1 {
