@@ -909,9 +909,10 @@ textarea {
 }
 
 .letterhead p {
-  font-size: 10.5pt;
+  font-size: 7.5pt;
   margin: 1px 0;
   font-style: italic;
+  white-space: nowrap; /* <--- Tambahkan ini agar dipaksa lurus ke samping (1 baris) */
 }
 
 .letter-line {
