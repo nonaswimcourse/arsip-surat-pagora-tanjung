@@ -1437,61 +1437,54 @@ async function downloadPreviewPdf() {
 // FORCE FIT DOCUMENT VERSION
 
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
+
+    const previewEl = document.getElementById('previewContent');
+
+    const canvas = await html2canvas(previewEl, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4');
-    
-    // Konfigurasi Margin
-    const margin = 20;
-    const pageWidth = 210;
-    const contentWidth = pageWidth - (margin * 2);
+    const pdf = new jsPDF('p', 'mm', 'a4');
 
-    // Helper untuk teks wrap
-    const write = (text, y, size = 12, bold = false, align = 'left') => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(size);
-        const splitText = doc.splitTextToSize(text, contentWidth);
-        doc.text(splitText, align === 'center' ? pageWidth/2 : margin, y, { align: align });
-        return y + (splitText.length * (size * 0.45)); 
-    };
+    const pdfWidth = 210;
+    const pdfHeight = 297;
 
-    // Header Surat
-    let y = 20;
-    doc.setFontSize(16);
-    doc.text(cachedProfile.nama_instansi.toUpperCase(), pageWidth / 2, y, { align: 'center' });
-    doc.line(margin, y + 3, pageWidth - margin, y + 3);
-    
-    // Body Surat
-    y = write(`Nomor: ${data.nomor_surat}`, y + 15, 11);
-    y = write(`Perihal: ${data.perihal}`, y + 10, 11, true);
-    y = write(data.isi_surat, y + 15, 11);
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    // Bagian Tanda Tangan
-    const footerY = 240;
-    doc.text(`${cachedProfile.kota}, ${formatDateLong(data.tanggal_surat)}`, pageWidth - 40, footerY, { align: 'center' });
-    doc.text(cachedProfile.jabatan, pageWidth - 40, footerY + 10, { align: 'center' });
-    doc.text(cachedProfile.kepala_nama, pageWidth - 40, footerY + 30, { align: 'center' });
+    let heightLeft = imgHeight;
+    let position = 0;
 
-    // Output
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pdfHeight;
+
+    while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+    }
+
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
-    const pdfBlob = doc.output('blob');
+
+    const pdfBlob = pdf.output('blob');
 
     if (options.upload) {
         await uploadPdf(data, pdfBlob, fileName);
     }
 
     if (options.download) {
-        const url = URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        pdf.save(fileName);
     }
 
     return { fileName, pdfBlob };
 }
+    
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
     if (!supabaseClient) throw new Error('Supabase belum aktif');
