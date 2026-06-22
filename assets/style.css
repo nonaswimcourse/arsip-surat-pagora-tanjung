@@ -903,9 +903,20 @@ textarea {
 }
 
 .letterhead h1 {
-  font-size: 17pt;
+  font-size: 13.5pt;          /* Ukuran font ideal agar pas di kertas */
   text-transform: uppercase;
   margin-bottom: 4px;
+  line-height: 1.4;
+  
+  /* TRIK FORCE 3 BARIS */
+  display: flex;
+  flex-direction: column;     /* Menyusun baris ke bawah */
+  align-items: center;        /* Membuat teks otomatis rata tengah */
+  white-space: normal;        /* Mematikan pre-line bawaan HTML agar enter dari Supabase diabaikan */
+  max-width: 540px;           /* MEMBATASI lebar agar patah otomatis di 3 kalimat utama */
+  margin-left: auto;
+  margin-right: auto;
+}
 }
 
 .letterhead p {
