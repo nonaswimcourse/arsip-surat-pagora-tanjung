@@ -1059,9 +1059,13 @@ textarea {
 .kop-instansi {
   white-space: pre-line;
   text-align: center;
-  font-family: 'Times New Roman', serif;
+  font-family: "Times New Roman", serif;
   font-weight: bold;
-  font-size: 12pt;
+  
+  /* Turunkan ke ukuran ini agar kata KESEHATAN tidak tumpah ke bawah */
+  font-size: 12pt; 
+  line-height: 1.3;
+  text-transform: uppercase;
 }
 
 /* ==========================================================================
