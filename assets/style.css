@@ -67,4 +67,11 @@ body.print-body {
   overflow-wrap: break-word;
   word-break: break-word;
 }
-
+.print-body {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm;
+    margin: 10mm auto;
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
