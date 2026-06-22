@@ -1436,24 +1436,37 @@ async function downloadPreviewPdf() {
 
 // FORCE FIT DOCUMENT VERSION
 
+// FORCE FIT DOCUMENT VERSION
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
+  // Pastikan data terisi ke preview element terlebih dahulu sebelum di-render ke canvas
+  let previewEl = document.getElementById('previewContent');
+  if (!previewEl || !previewEl.innerHTML.trim()) {
+    const hiddenDiv = document.createElement('div');
+    hiddenDiv.style.position = 'absolute';
+    hiddenDiv.style.left = '-9999px';
+    hiddenDiv.innerHTML = buildDocumentHTML(data);
+    document.body.appendChild(hiddenDiv);
+    previewEl = hiddenDiv;
+  }
 
-    const previewEl = document.getElementById('previewContent');
-
+  try {
     const canvas = await html2canvas(previewEl, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff'
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff'
     });
 
-    const imgData = canvas.toDataURL('image/png');
+    // Hapus temporary div jika dibuat tadi
+    if (previewEl.style.position === 'absolute') {
+      previewEl.remove();
+    }
 
+    const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
 
     const pdfWidth = 210;
     const pdfHeight = 297;
-
     const imgWidth = pdfWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
@@ -1464,25 +1477,28 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     heightLeft -= pdfHeight;
 
     while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
     }
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
-
     const pdfBlob = pdf.output('blob');
 
     if (options.upload) {
-        await uploadPdf(data, pdfBlob, fileName);
+      await uploadPdf(data, pdfBlob, fileName);
     }
 
     if (options.download) {
-        pdf.save(fileName);
+      pdf.save(fileName);
     }
 
     return { fileName, pdfBlob };
+  } catch (error) {
+    console.error('Gagal membuat PDF:', error);
+    showToast('Gagal memproses file PDF.', 'error');
+  }
 }
     
 async function uploadPdf(documentRow, pdfBlob, fileName) {
@@ -1512,9 +1528,7 @@ async function uploadPdf(documentRow, pdfBlob, fileName) {
     });
 
     await saveDocumentToStorage(updated);
-
     showToast('PDF berhasil diunggah.');
-
   } catch (error) {
     console.warn('Upload gagal:', error);
     showToast('PDF dibuat tapi gagal upload.', 'warning');
@@ -1574,3 +1588,4 @@ window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
+// KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
