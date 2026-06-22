@@ -1425,48 +1425,17 @@ function calculateScale(el) {
   return Math.min(widthScale, heightScale, 2);
 }
 
-async function downloadPreviewPdf() {
-  const element = document.getElementById('previewContent');
 
-  if (!element || element.innerHTML.trim() === "") {
-    alert("Empty content");
+async function downloadPreviewPdf() {
+  if (!lastPreviewDocument) {
+    showToast('Tidak ada dokumen untuk dicetak.', 'error');
     return;
   }
-
-  const originalWidth = element.style.width;
-  element.style.width = "210mm";
-
-  const scale = calculateScale(element);
-
-  const opt = {
-    margin: 0,
-    filename: `surat-${Date.now()}.pdf`,
-    image: { type: 'jpeg', quality: 1 },
-
-    html2canvas: {
-      scale: scale,
-      useCORS: true,
-      backgroundColor: "#fff",
-      windowWidth: 794,
-      windowHeight: 1123
-    },
-
-    jsPDF: {
-      unit: "mm",
-      format: "a4",
-      orientation: "portrait"
-    }
-  };
-
-  try {
-    await html2pdf().set(opt).from(element).save();
-  } finally {
-    element.style.width = originalWidth;
-  }
+  await createPdfFromDocument(lastPreviewDocument, {download:true, upload:false});
 }
 
-
 // FORCE FIT DOCUMENT VERSION
+
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
@@ -1506,7 +1475,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = doc.output('blob');
 
-    if (options.upload && typeof uploadPdf === 'function') {
+    if (options.upload) {
         await uploadPdf(data, pdfBlob, fileName);
     }
 
