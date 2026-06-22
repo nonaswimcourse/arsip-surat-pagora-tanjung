@@ -874,15 +874,19 @@ textarea {
    ========================================================================== */
 .pdf-page {
   width: 210mm;
-  min-height: 330mm;
+  /* JANGAN gunakan min-height: 330mm karena itu ukuran F4. Gunakan ukuran A4 standar */
+  min-height: 297mm; 
+  height: auto;                 /* Membiarkan konten mengalir alami jika kertas pas */
   background: #fff;
   margin: 0 auto;
-  padding: 18mm 18mm 16mm;
+  padding: 20mm 20mm 20mm;      /* Standar margin dokumen resmi (2cm) */
   color: #111;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
   font-family: 'Times New Roman', serif;
-  font-size: 12pt;
-  line-height: 1.45;
+  font-size: 11pt;              /* Gunakan 11pt standar surat agar teks tidak meluap ke lembar 2 */
+  line-height: 1.4;
+  position: relative;
+  box-sizing: border-box;
 }
 
 /* Container Utama Kop Surat */
@@ -1078,40 +1082,33 @@ textarea {
 }
 
 /* ==========================================================================
-   13. Responsive Design / Media Queries
+   13. Responsive Design / Media Queries (Bagian PRINT)
    ========================================================================== */
-
-/* --- Tablet Devices (max-width: 1180px) --- */
-@media (max-width: 1180px) {
-  .stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media print {
+  @page {
+    size: A4;
+    margin: 0;                  /* Menghilangkan margin bawaan browser printer */
   }
 
-  .section-grid,
-  .two-column,
-  .report-grid {
-    grid-template-columns: 1fr;
+  body {
+    background: #fff;
   }
 
-  .concept-card {
-    position: static;
+  /* Memaksa script renderer membaca ukuran tepat A4 tanpa merusak resolusi */
+  .pdf-page {
+    width: 210mm !important;
+    height: 297mm !important;   /* PAKSA tepat 1 halaman A4 penuh agar tidak tumpah ke lembar 2 */
+    margin: 0 !important;
+    padding: 15mm !important;   /* Perkecil sedikit padding saat print agar muat */
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    page-break-after: avoid;
+    overflow: hidden !important; /* Potong paksa ruang kosong berlebih di bawah */
   }
 
-  .topbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .toolbar {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .toolbar .btn {
-    width: 100%;
-  }
-
-  .table-search {
-    max-width: 100%;
+  /* Sembunyikan elemen shell aplikasi yang tidak penting saat download/cetak */
+  .sidebar, .topbar, .modal-header, .modal-footer, .toast {
+    display: none !important;
   }
 }
 
