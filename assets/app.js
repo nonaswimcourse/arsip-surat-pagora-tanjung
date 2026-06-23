@@ -1451,13 +1451,13 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   }
 
   try {
-    const canvas = await html2canvas(previewEl, {
-      scale: 3,
-      useCORS: true,
-allowTaint: true
-      backgroundColor: '#ffffff',
-      windowWidth: previewEl.scrollWidth
-    });
+   const canvas = await html2canvas(previewEl, {
+  scale: 2,
+  useCORS: true,
+  allowTaint: true,
+  backgroundColor: '#ffffff',
+  windowWidth: previewEl.scrollWidth
+});
 
     if (previewEl.style.position === 'absolute') {
       previewEl.remove();
