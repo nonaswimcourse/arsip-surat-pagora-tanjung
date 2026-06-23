@@ -1259,19 +1259,3 @@ textarea {
     display: none !important;
   }
 }
-
-
-/* Tembusan otomatis kiri bawah */
-.tembusan-bottom-left {
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  font-size: 12px;
-  color: #222;
-  background: rgba(255,255,255,0.85);
-  padding: 6px 10px;
-  border-radius: 6px;
-  z-index: 9999;
-  max-width: 260px;
-  line-height: 1.3;
-}
