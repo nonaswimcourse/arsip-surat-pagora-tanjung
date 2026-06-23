@@ -1290,7 +1290,6 @@ function buildOutgoingTemplate(row, profile) {
       ${buildActivityMeta(row)}
       <div class="body-text"><p>Dengan hormat,</p>${paragraphText(row.isi_surat)}</div>
       ${signature(profile, row)}
-      ${renderTembusan(profile)}
     </article>`;
 }
 
@@ -1314,7 +1313,6 @@ function buildIncomingTemplate(row, profile, type) {
       <div class="body-box"><h3>Ringkasan Isi Surat</h3>${paragraphText(row.isi_surat)}</div>
       <div class="disposition-box"><h3>Catatan Tindak Lanjut</h3>${paragraphText(row.catatan || '........................................................................................................')}</div>
       ${signature(profile, row)}
-      ${renderTembusan(profile)}
     </article>`;
 }
 
@@ -1337,7 +1335,6 @@ function buildAssignmentTemplate(row, profile, type) {
         <p>Surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.</p>
       </div>
       ${signature(profile, row)}
-      ${renderTembusan(profile)}
     </article>`;
 }
 
@@ -1366,7 +1363,6 @@ function buildInvitationTemplate(row, profile) {
         <p>Demikian undangan ini disampaikan. Atas perhatian dan kehadirannya, kami ucapkan terima kasih.</p>
       </div>
       ${signature(profile, row)}
-      ${renderTembusan(profile)}
     </article>`;
 }
 
@@ -1389,7 +1385,6 @@ function buildDecisionTemplate(row, profile, type) {
         ${paragraphText(row.isi_surat)}
       </div>
       ${signature(profile, row)}
-      ${renderTembusan(profile)}
     </article>`;
 }
 
@@ -1627,13 +1622,12 @@ window.backupJson = backupJson;
 document.addEventListener('DOMContentLoaded', checkSession);
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
 
-function renderTembusan(profile) {
+
+function renderTembusan(profile){
   const t = profile?.tembusan || '';
-  if (!t) return '';
-  return `
-    <div style="position:absolute;bottom:20mm;left:20mm;font-size:11px;font-family:'Times New Roman';">
-      <b>Tembusan:</b><br>
-      ${t.split('\n').map(v => '• ' + v).join('<br>')}
-    </div>
-  `;
+  if(!t) return '';
+  return `<div style="position:absolute;bottom:18mm;left:20mm;font-size:11px;font-family:'Times New Roman';">
+<b>Tembusan:</b><br>
+${t.split('\n').map(v=>'• '+v).join('<br>')}
+</div>`;
 }
