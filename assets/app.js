@@ -1236,6 +1236,19 @@ function signature(profile, row = {}) {
       <p>NIP. ${safe(profile.kepala_nip)}</p>
       ${row.disetujui_oleh ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>` : ''}
     </div>`;
+      ${profile.tembusan ? `
+      <div style="
+        margin-top:50px;
+        text-align:left;
+        font-size:12px;
+      ">
+        <strong>Tembusan:</strong><br>
+        <div style="white-space:pre-line;">
+          ${safe(profile.tembusan)}
+        </div>
+      </div>
+    ` : ''}
+  `;
 }
 
 function metaTable(rows) {
