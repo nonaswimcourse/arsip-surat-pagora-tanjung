@@ -1619,5 +1619,31 @@ window.saveSettings = saveProfile;
 window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
-document.addEventListener('DOMContentLoaded', checkSession);
+document.addEventListener('DOMContentLoaded', () => { checkSession(); loadTembusan(); });
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
+
+
+async function loadTembusan() {
+  try {
+    if (typeof supabase === 'undefined' && typeof supabaseClient === 'undefined') return;
+
+    const client = typeof supabaseClient !== 'undefined' ? supabaseClient : supabase;
+
+    const { data, error } = await client
+      .from(TABLE_PROFIL)
+      .select('*')
+      .limit(1)
+      .single();
+
+    if (error) throw error;
+
+    const ketua = data?.ketua || 'Ketua tidak ditemukan';
+
+    const el = document.getElementById('tembusanAuto');
+    if (el) {
+      el.innerHTML = `<b>Tembusan:</b><br>${ketua}`;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
