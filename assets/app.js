@@ -1155,9 +1155,9 @@ async function renderSettingsPage() {
         <div class="field"><label>Nama Penandatangan</label><input name="kepala_nama" value="${safe(profile.kepala_nama)}"></div>
         <div class="field"><label>NIP</label><input name="kepala_nip" value="${safe(profile.kepala_nip)}"></div>
         <div class="field"><label>Jabatan</label><input name="jabatan" value="${safe(profile.jabatan)}"></div>
-        <div class="field full><label>Tembusan Default</label><texterea name"tebusan" rows="4" placeholder="1. Korwil#10;2. K3S&#10 ${safe(profile.tembusan || '')}<textarea></div>
+        <div class="field full"><label>Tembusan Default</label><textarea name="tembusan" rows="4" placeholder="1. Ketua KKG&#10;2. Bendahara&#10;3. Arsip"> ${safe(profile.tembusan || '')}</textarea></div>
         <div class="field full"><label>URL Logo</label><input name="logo_url" value="${safe(profile.logo_url)}" placeholder="logo.png atau URL publik Supabase Storage"></div>
-      </div>
+        </div>
       <div class="form-actions"><button class="btn" type="submit">Simpan Pengaturan</button></div>
     </form>
     <div class="panel">
