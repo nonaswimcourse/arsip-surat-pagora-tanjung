@@ -1426,6 +1426,29 @@ function calculateScale(el) {
 }
 
 
+
+async function downloadPreviewPdf() {
+  if (!lastPreviewDocument) {
+    showToast('Tidak ada dokumen untuk dicetak.', 'error');
+    return;
+  }
+
+  await createPdfFromDocument(lastPreviewDocument, {
+    download: true,
+    upload: false
+  });
+}
+function calculateScale(el) {
+  const A4_WIDTH = 794;
+  const A4_HEIGHT = 1123;
+
+  const widthScale = A4_WIDTH / el.scrollWidth;
+  const heightScale = A4_HEIGHT / el.scrollHeight;
+
+  return Math.min(widthScale, heightScale, 2);
+}
+
+
 async function downloadPreviewPdf() {
   if (!lastPreviewDocument) {
     showToast('Tidak ada dokumen untuk dicetak.', 'error');
@@ -1437,9 +1460,10 @@ async function downloadPreviewPdf() {
 // FORCE FIT DOCUMENT VERSION
 
 // FORCE FIT DOCUMENT VERSION
+
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
-  // Pastikan data terisi ke preview element terlebih dahulu sebelum di-render ke canvas
   let previewEl = document.getElementById('previewContent');
+
   if (!previewEl || !previewEl.innerHTML.trim()) {
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.position = 'absolute';
@@ -1456,7 +1480,6 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
       backgroundColor: '#ffffff'
     });
 
-    // Hapus temporary div jika dibuat tadi
     if (previewEl.style.position === 'absolute') {
       previewEl.remove();
     }
@@ -1467,6 +1490,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
 
     const pdfWidth = 210;
     const pdfHeight = 297;
+
     const imgWidth = pdfWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
@@ -1500,7 +1524,6 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     showToast('Gagal memproses file PDF.', 'error');
   }
 }
-    
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
     if (!supabaseClient) throw new Error('Supabase belum aktif');
