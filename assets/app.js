@@ -1485,27 +1485,35 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     }
 
     const imgData = canvas.toDataURL('image/png');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
 
-    const pdfWidth = 210;
-    const pdfHeight = 297;
+const { jsPDF } = window.jspdf;
+const pdf = new jsPDF('p', 'mm', 'a4');
 
-    const imgWidth = pdfWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+const pageWidth = 210;
+const pageHeight = 297;
 
-    let heightLeft = imgHeight;
-    let position = 0;
+const imgWidth = pageWidth;
+const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pdfHeight;
+let heightLeft = imgHeight;
+let position = 0;
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-    }
+const pageCanvasHeight = pageHeight;
+
+// halaman pertama
+pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+
+heightLeft -= pageCanvasHeight;
+
+// halaman berikutnya harus pakai offset NEGATIF berbasis halaman
+while (heightLeft > 0) {
+  position -= pageCanvasHeight; // ⬅️ INI KUNCI FIX
+
+  pdf.addPage();
+  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+
+  heightLeft -= pageCanvasHeight;
+}
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
