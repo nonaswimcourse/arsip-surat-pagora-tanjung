@@ -1498,21 +1498,13 @@ const imgHeight = (canvas.height * imgWidth) / canvas.width;
 let heightLeft = imgHeight;
 let position = 0;
 
-const pageCanvasHeight = pageHeight;
-
-// halaman pertama
 pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
 
-heightLeft -= pageCanvasHeight;
-
-// halaman berikutnya harus pakai offset NEGATIF berbasis halaman
-while (heightLeft > 0) {
-  position -= pageCanvasHeight; // ⬅️ INI KUNCI FIX
-
+while (heightLeft > pageHeight) {
+  position -= pageHeight;
   pdf.addPage();
   pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-
-  heightLeft -= pageCanvasHeight;
+  heightLeft -= pageHeight;
 }
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
