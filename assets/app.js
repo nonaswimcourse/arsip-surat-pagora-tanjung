@@ -1191,7 +1191,8 @@ async function saveProfile(event) {
     kota: form.get('kota')?.trim(),
     kepala_nama: form.get('kepala_nama')?.trim(),
     kepala_nip: form.get('kepala_nip')?.trim(),
-    jabatan: form.get('jabatan')?.trim(),
+    jabatan: form.get('jabatan')?. trim(),
+    tembusan: form.get('tembusan')?.trim(),
     logo_url: form.get('logo_url')?.trim() || 'logo.png',
     updated_at: new Date().toISOString()
   };
