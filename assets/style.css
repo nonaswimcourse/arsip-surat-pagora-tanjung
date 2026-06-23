@@ -1232,10 +1232,12 @@ textarea {
     display: block !important;
   }
 
-  .pdf-page * {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
+  .pdf-page {
+  width: 210mm;
+  min-height: 297mm;
+  height: auto !important;
+  overflow: visible !important;
+}
 
   .body-text,
   .meta-table,
