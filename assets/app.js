@@ -464,7 +464,9 @@ async function loadProfile() {
     if (error) throw error;
     if (data) {
       cachedProfile = { ...defaultProfile, ...data };
+      window.profilInstansi = cachedProfile;
       setLocalProfile(cachedProfile);
+    window.profilInstansi = cachedProfile;
     }
   } catch (error) {
     console.warn('Profil memakai data lokal:', error);
@@ -1197,6 +1199,7 @@ async function saveProfile(event) {
 
   cachedProfile = { ...defaultProfile, ...payload };
   setLocalProfile(cachedProfile);
+    window.profilInstansi = cachedProfile;
   applyRoleUI();
 
   try {
@@ -1621,3 +1624,16 @@ window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
+
+
+function renderTembusan() {
+  const data = window.profilInstansi;
+  if (!data || !data.tembusan) return '';
+
+  return `
+    <div style="position:absolute;bottom:20mm;left:20mm;font-size:11px;font-family:'Times New Roman';">
+      <b>Tembusan:</b><br>
+      ${data.tembusan.split('\n').map(v => '• ' + v).join('<br>')}
+    </div>
+  `;
+}
