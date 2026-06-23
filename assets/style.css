@@ -1259,17 +1259,3 @@ textarea {
     display: none !important;
   }
 }
-
-
-/* ===== TEMBUSAN FIX ===== */
-.tembusan-box{
-  position:absolute;
-  bottom:20mm;
-  left:20mm;
-  font-size:11px;
-  font-family:'Times New Roman', serif;
-}
-.tembusan-title{
-  font-weight:bold;
-  margin-bottom:4px;
-}
