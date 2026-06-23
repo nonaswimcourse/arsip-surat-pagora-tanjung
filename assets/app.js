@@ -1438,12 +1438,13 @@ async function downloadPreviewPdf() {
 
 // FORCE FIT DOCUMENT VERSION
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
-  // Pastikan data terisi ke preview element terlebih dahulu sebelum di-render ke canvas
   let previewEl = document.getElementById('previewContent');
+
   if (!previewEl || !previewEl.innerHTML.trim()) {
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.position = 'absolute';
     hiddenDiv.style.left = '-9999px';
+    hiddenDiv.style.width = '794px'; // FIX A4 WIDTH
     hiddenDiv.innerHTML = buildDocumentHTML(data);
     document.body.appendChild(hiddenDiv);
     previewEl = hiddenDiv;
@@ -1451,22 +1452,25 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
 
   try {
     const canvas = await html2canvas(previewEl, {
-      scale: 2,
+      scale: 3,
       useCORS: true,
-      backgroundColor: '#ffffff'
+allowTaint: true
+      backgroundColor: '#ffffff',
+      windowWidth: previewEl.scrollWidth
     });
 
-    // Hapus temporary div jika dibuat tadi
     if (previewEl.style.position === 'absolute') {
       previewEl.remove();
     }
 
     const imgData = canvas.toDataURL('image/png');
+
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
 
     const pdfWidth = 210;
     const pdfHeight = 297;
+
     const imgWidth = pdfWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
@@ -1477,7 +1481,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     heightLeft -= pdfHeight;
 
     while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
+      position -= pdfHeight;
       pdf.addPage();
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= pdfHeight;
@@ -1495,9 +1499,10 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     }
 
     return { fileName, pdfBlob };
+
   } catch (error) {
-    console.error('Gagal membuat PDF:', error);
-    showToast('Gagal memproses file PDF.', 'error');
+    console.error('PDF error:', error);
+    showToast('Gagal membuat PDF dengan benar.', 'error');
   }
 }
     
