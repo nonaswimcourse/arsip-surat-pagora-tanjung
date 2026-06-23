@@ -1231,17 +1231,20 @@ function signature(profile, row = {}) {
     <div class="signature-block">
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
+
       <div class="signature-space"></div>
+
       <p><strong>${safe(profile.kepala_nama)}</strong></p>
       <p>NIP. ${safe(profile.kepala_nip)}</p>
-      ${row.disetujui_oleh ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>` : ''}
-    </div>`;
-      ${profile.tembusan ? `
-      <div style="
-        margin-top:50px;
-        text-align:left;
-        font-size:12px;
-      ">
+
+      ${row.disetujui_oleh
+        ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>`
+        : ''
+      }
+    </div>
+
+    ${profile.tembusan ? `
+      <div style="margin-top:80px;text-align:left;font-size:12px;">
         <strong>Tembusan:</strong><br>
         <div style="white-space:pre-line;">
           ${safe(profile.tembusan)}
