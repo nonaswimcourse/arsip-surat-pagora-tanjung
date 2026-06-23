@@ -1642,6 +1642,10 @@ document.addEventListener('DOMContentLoaded', checkSession);
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
 
 
+// ... kode window.backupJson = backupJson;
+document.addEventListener('DOMContentLoaded', checkSession);
+// KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
+
 function renderTembusan(profile){
   const t = profile?.tembusan || '';
   if(!t) return '';
@@ -1650,3 +1654,5 @@ function renderTembusan(profile){
 ${t.split('\n').map(v=>'• '+v).join('<br>')}
 </div>`;
 }
+
+} // <--- ERROR: Kurung kurawal ini tidak ada pasangannya! Browser akan memunculkan "Uncaught SyntaxError: Unexpected token '}'"
