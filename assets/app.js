@@ -105,6 +105,7 @@ const defaultProfile = {
   kepala_nama: 'Nama Ketua KKG',
   kepala_nip: '-',
   jabatan: 'Ketua KKG PJOK',
+  tembusan: '',
   logo_url: 'logo.png'
 };
 
