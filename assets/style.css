@@ -1,1006 +1,72 @@
 /* ==========================================================================
-   1. Reset & Global Styles
+   12. PDF TEMPLATE / DOCUMENT STYLES (FIX FINAL CANVAS + PRINT SAFE)
    ========================================================================== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Segoe UI', Arial, sans-serif;
-}
 
-:root {
-  --blue: #1559b7;
-  --blue-dark: #0d3f8f;
-  --gold: #f4b400;
-  --red: #d93025;
-  --green: #188038;
-  --bg: #f4f7fb;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --line: #e5e7eb;
-  --white: #fff;
-  --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #374151;
-}
-
-input,
-textarea,
-select {
-  width: 100%;
-  border: 1px solid #d8dee9;
-  border-radius: 12px;
-  padding: 12px 13px;
-  background: #fff;
-  color: var(--text);
-  outline: none;
-  transition: 0.2s;
-}
-
-input:focus,
-textarea:focus,
-select:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(21, 89, 183, 0.12);
-}
-
-textarea {
-  resize: vertical;
-  line-height: 1.55;
-}
-
-.hidden {
-  display: none !important;
-}
-
-/* ==========================================================================
-   2. Login Page
-   ========================================================================== */
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: linear-gradient(135deg, var(--blue), var(--blue-dark));
-}
-
-.login-card {
-  width: min(430px, 100%);
-  background: #fff;
-  padding: 36px;
-  border-radius: 24px;
-  text-align: left;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
-}
-
-.brand-logo-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 18px;
-}
-
-.login-logo {
-  width: 86px;
-  height: 86px;
-  max-width: 86px;
-  max-height: 86px;
-  object-fit: contain;
-}
-
-.logo-fallback {
-  width: 92px;
-  height: 92px;
-  border-radius: 22px;
-  background: var(--blue);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-weight: 900;
-  font-size: 48px;
-}
-
-.logo-fallback.small {
-  width: 54px;
-  height: 54px;
-  border-radius: 16px;
-  font-size: 26px;
-  flex: 0 0 auto;
-}
-
-.login-card h1 {
-  text-align: center;
-  font-size: 25px;
-  color: var(--blue-dark);
-  margin-bottom: 4px;
-}
-
-.login-card p {
-  text-align: center;
-  color: var(--muted);
-  margin-bottom: 18px;
-}
-
-.login-card label {
-  margin-top: 12px;
-}
-
-.btn-login {
-  width: 100%;
-  margin-top: 18px;
-  padding: 13px;
-  background: var(--gold);
-  border: none;
-  color: #fff;
-  border-radius: 12px;
-  font-weight: 800;
-  box-shadow: 0 8px 18px rgba(244, 180, 0, 0.25);
-}
-
-.error-message {
-  color: var(--red);
-  font-size: 13px;
-  margin-top: 12px;
-  text-align: center;
-  min-height: 18px;
-}
-
-.demo-box {
-  margin-top: 16px;
-  background: #f8fafc;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 12px;
-  color: #475569;
-  font-size: 12.5px;
-  display: grid;
-  gap: 5px;
-}
-
-.demo-box strong {
-  color: #0f172a;
-}
-
-/* ==========================================================================
-   3. App Shell & Sidebar
-   ========================================================================== */
-.app-shell {
-  min-height: 100vh;
-}
-
-.sidebar {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 282px;
-  height: 100vh;
-  background: linear-gradient(180deg, var(--blue), var(--blue-dark));
-  color: #fff;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  z-index: 20;
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.sidebar-logo {
-  width: 58px;
-  height: 58px;
-  object-fit: contain;
-  background: #fff;
-  border-radius: 16px;
-  padding: 6px;
-}
-
-.sidebar h2 {
-  font-size: 24px;
-  line-height: 1;
-}
-
-.sidebar p {
-  font-size: 12px;
-  line-height: 1.35;
-  color: rgba(255, 255, 255, 0.78);
-  margin-top: 4px;
-}
-
-.menu-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.menu-item,
-.logout-btn {
-  width: 100%;
-  border: none;
-  border-radius: 14px;
-  padding: 12px 13px;
-  text-align: left;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: 0.2s;
-}
-
-.menu-item {
-  background: rgba(255, 255, 255, 0.09);
-  color: #fff;
-}
-
-.menu-item:hover,
-.menu-item.active {
-  background: #fff;
-  color: var(--blue-dark);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
-}
-
-.menu-item span {
-  width: 24px;
-  text-align: center;
-}
-
-.logout-btn {
-  justify-content: center;
-  background: var(--red);
-  color: #fff;
-  text-align: center;
-}
-
-.user-panel {
-  margin-top: auto;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 16px;
-  padding: 12px;
-  display: grid;
-  gap: 4px;
-}
-
-.user-panel strong {
-  font-size: 13px;
-  word-break: break-word;
-}
-
-.user-panel span {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
-  text-transform: capitalize;
-}
-
-/* ==========================================================================
-   4. Content & Topbar
-   ========================================================================== */
-.content {
-  margin-left: 282px;
-  padding: 26px;
-  min-height: 100vh;
-}
-
-.topbar {
-  background: #fff;
-  padding: 22px 24px;
-  border-radius: 22px;
-  margin-bottom: 18px;
-  box-shadow: var(--shadow);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.topbar h1 {
-  font-size: 25px;
-  color: var(--blue-dark);
-  letter-spacing: 0.2px;
-}
-
-.topbar p {
-  color: var(--muted);
-  font-size: 14px;
-  margin-top: 5px;
-}
-
-.topbar-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ==========================================================================
-   5. Buttons & Badges
-   ========================================================================== */
-.btn {
-  border: none;
-  border-radius: 12px;
-  padding: 11px 16px;
-  background: var(--blue);
-  color: #fff;
-  font-weight: 800;
-  box-shadow: 0 8px 18px rgba(21, 89, 183, 0.18);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn:hover {
-  filter: brightness(0.96);
-}
-
-.btn.secondary {
-  background: #eef4ff;
-  color: var(--blue-dark);
-  box-shadow: none;
-}
-
-.btn.gold {
-  background: var(--gold);
-  color: #fff;
-}
-
-.btn.danger {
-  background: #fef2f2;
-  color: #b91c1c;
-  box-shadow: none;
-}
-
-.btn.green {
-  background: var(--green);
-  color: #fff;
-}
-
-.btn.small {
-  padding: 7px 10px;
-  border-radius: 9px;
-  font-size: 12px;
-}
-
-.toast {
-  margin: 0 0 18px;
-  background: #e8f5e9;
-  color: #14532d;
-  border: 1px solid #bbf7d0;
-  padding: 13px 15px;
-  border-radius: 14px;
-  font-weight: 700;
-}
-
-.toast.error {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
-}
-
-.toast.warning {
-  background: #fff8e1;
-  border-color: #fde68a;
-  color: #92400e;
-}
-
-/* ==========================================================================
-   6. Layout Components (Stats, Panels, Grids)
-   ========================================================================== */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-  margin-bottom: 18px;
-}
-
-.card,
-.panel {
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(229, 231, 235, 0.8);
-}
-
-.card {
-  padding: 22px;
-}
-
-.stat-card span {
-  display: block;
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.stat-card strong {
-  display: block;
-  color: var(--gold);
-  font-size: 34px;
-  line-height: 1.1;
-  margin: 8px 0;
-}
-
-.stat-card small {
-  color: var(--muted);
-}
-
-.section-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 18px;
-  margin-bottom: 18px;
-}
-
-.panel {
-  padding: 22px;
-  margin-bottom: 18px;
-}
-
-.panel-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.panel-header h2 {
-  font-size: 20px;
-  color: #111827;
-}
-
-.panel-header p {
-  font-size: 14px;
-  color: var(--muted);
-  margin-top: 5px;
-  line-height: 1.45;
-}
-
-.quick-menu {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
-}
-
-.quick-menu button {
-  border: 1px solid var(--line);
-  background: #f9fbff;
-  border-radius: 16px;
-  padding: 16px;
-  text-align: left;
-}
-
-.quick-menu strong {
-  display: block;
-  color: var(--blue-dark);
-  font-size: 15px;
-}
-
-.quick-menu span {
-  display: block;
-  color: var(--muted);
-  margin-top: 8px;
-}
-
-.workflow {
-  padding-left: 20px;
-  color: #374151;
-  line-height: 1.7;
-}
-
-.two-column {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.form-panel {
-  margin-bottom: 18px;
-}
-
-.form-panel input, 
-.form-panel select, 
-.form-panel textarea {
-  font-size: 14px;
-  padding: 10px 12px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 15px;
-}
-
-.field.full {
-  grid-column: 1 / -1;
-}
-
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 18px;
-}
-
-/* ==========================================================================
-   7. Concept Cards & Toolbars
-   ========================================================================== */
-.concept-card {
-  position: sticky;
-  top: 24px;
-}
-
-.concept-card h2 {
-  color: var(--blue-dark);
-  margin-bottom: 8px;
-}
-
-.concept-card > p {
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.concept-list {
-  margin-top: 18px;
-  display: grid;
-  gap: 12px;
-}
-
-.concept-list div {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 13px;
-  background: #fafafa;
-}
-
-.concept-list span {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--blue);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  flex: 0 0 auto;
-}
-
-.concept-list p {
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.toolbar {
-  display: grid;
-  grid-template-columns: 1.2fr 0.7fr 0.7fr auto;
-  gap: 10px;
-  align-items: end;
-  margin-bottom: 14px;
-}
-
-.toolbar .btn {
-  height: 44px;
-}
-
-.table-search {
-  max-width: 360px;
-}
-
-/* ==========================================================================
-   8. Data Tables & Status Badges
-   ========================================================================== */
-.table-wrap {
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  min-width: 980px;
-}
-
-.data-table th,
-.data-table td {
-  padding: 12px 13px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  font-size: 14px;
-  vertical-align: top;
-}
-
-.data-table th {
-  background: #f8fafc;
-  color: #374151;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.data-table tr:hover td {
-  background: #fafcff;
-}
-
-.badge,
-.status {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.badge {
-  background: #eef4ff;
-  color: var(--blue-dark);
-}
-
-.status {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.status.selesai,
-.status.diarsipkan,
-.status.disetujui {
-  background: #e8f5e9;
-  color: #166534;
-}
-
-.status.draft {
-  background: #fff8e1;
-  color: #92400e;
-}
-
-.status.diterima,
-.status.diproses,
-.status.diajukan {
-  background: #eef4ff;
-  color: #1d4ed8;
-}
-
-.actions {
-  white-space: nowrap;
-  min-width: 360px;
-}
-
-.actions button {
-  border: none;
-  background: #eef4ff;
-  color: var(--blue-dark);
-  border-radius: 9px;
-  padding: 7px 9px;
-  margin: 2px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.actions button.danger {
-  background: #fef2f2;
-  color: #b91c1c;
-}
-
-.actions button.green {
-  background: #e8f5e9;
-  color: #166534;
-}
-
-/* ==========================================================================
-   9. Miscellaneous & Utilities
-   ========================================================================== */
-.empty-state {
-  text-align: center;
-  background: #fff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 22px;
-  padding: 45px 20px;
-  color: var(--muted);
-}
-
-.empty-state h2,
-.empty-state h3 {
-  color: #374151;
-  margin-bottom: 8px;
-}
-
-.empty-state.small {
-  padding: 28px 16px;
-}
-
-.alert {
-  padding: 13px 14px;
-  border-radius: 14px;
-  border: 1px solid #fde68a;
-  background: #fff8e1;
-  color: #92400e;
-  margin-bottom: 14px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.danger-zone {
-  border-color: #fecaca;
-  background: #fffafa;
-}
-
-.danger-zone h2 {
-  color: #991b1b;
-}
-
-/* ==========================================================================
-   10. Reports
-   ========================================================================== */
-.report-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.report-list {
-  display: grid;
-  gap: 10px;
-}
-
-.report-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 13px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fafafa;
-}
-
-.report-row strong {
-  color: #111827;
-}
-
-.report-row span {
-  color: var(--blue-dark);
-  font-weight: 800;
-}
-
-/* ==========================================================================
-   11. Modals & Previews
-   ========================================================================== */
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.56);
-  z-index: 60;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-}
-
-.modal[hidden] {
-  display: none;
-}
-
-.modal-card {
-  width: min(980px, 100%);
-  max-height: 94vh;
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal-wide {
-  width: min(1120px, 100%);
-}
-
-.modal-form {
-  width: min(900px, 100%);
-}
-
-.modal-header,
-.modal-footer {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal-footer {
-  border-top: 1px solid var(--line);
-  border-bottom: none;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.modal-scroll {
-  overflow: auto;
-  padding: 20px;
-}
-
-.icon-btn {
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: 10px;
-  background: #f3f4f6;
-  font-size: 28px;
-  color: #374151;
-  line-height: 1;
-}
-
-.preview-content {
-  overflow: auto;
-  background: #e5e7eb;
-  padding: 22px;
-}
-
-/* ==========================================================================
-   12. PDF Template / Document Styles (KUNCI UTAMA 1 HALAMAN)
-   ========================================================================== */
+/* MODE SCREEN + CANVAS (html2canvas) */
 .pdf-page {
   width: 210mm;
-  height: 297mm !important;      /* Kunci mati tinggi kertas A4 standar */
-  max-height: 297mm !important;
+  min-height: 297mm;
   background: #fff;
   margin: 0 auto;
-  padding: 14mm 20mm 10mm !important; /* Optimasi padding agar space bawah lapang */
+  padding: 14mm 20mm 10mm;
   color: #111;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
   font-family: 'Times New Roman', serif;
   font-size: 11pt;
-  line-height: 1.35;             /* Merapatkan baris agar muat 1 halaman */
+  line-height: 1.35;
   position: relative;
   box-sizing: border-box;
-  overflow: hidden !important;   /* Potong elemen liar penyebab jebol halaman 2 */
+
+  /* ❗ FIX UTAMA: jangan paksa overflow hidden di canvas mode */
+  overflow: visible !important;
 }
 
-/* Container Utama Kop Surat */
+/* KHUSUS PREVIEW / CANVAS MODE */
+#previewContent .pdf-page {
+  height: auto !important;
+  min-height: 297mm;
+  overflow: visible !important;
+}
+
+/* ==========================================================================
+   LETTERHEAD
+   ========================================================================== */
+
 .letterhead {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding-top: 0px;
 }
 
-/* Mengatur Ukuran Logo Tetap Stabil */
 .letterhead img {
-  width: 85px !important;        /* Kunci resolusi logo agar tidak membesar/rusak */
+  width: 85px !important;
   height: 85px !important;
-  min-width: 85px !important;
-  min-height: 85px !important;
   object-fit: contain;
 }
 
-/* Mengatur Teks Nama Instansi (H1) */
 .letterhead h1 {
   font-size: 12.5pt !important;
   text-transform: uppercase;
   font-weight: bold;
-  line-height: 1.4;
   margin-bottom: 6px;
-  max-width: 520px;
   text-align: center;
 }
 
-/* Mengatur Teks Alamat & Kontak (P) */
 .letterhead p {
   font-size: 8.5pt !important;
-  font-style: italic;
-  font-weight: normal;
-  line-height: 1.3;
   margin: 1px 0;
-  white-space: nowrap;
   text-align: center;
   color: #333;
 }
 
-/* Garis Pembatas Kop Surat */
 .letter-line {
   border-bottom: 3.5px solid #000;
-  margin-top: 10px;
-  margin-bottom: 12px;           /* Dikurangi dari 20px agar hemat space */
+  margin: 10px 0 12px;
 }
 
-.template-title {
-  text-align: center;
-  text-decoration: underline;
-  font-size: 13pt;               /* Disesuaikan */
-  margin: 10px 0 2px;
-}
-
-.small-title {
-  font-size: 11.5pt;
-}
-
-.center-text {
-  text-align: center;
-}
-
-.letter-meta-grid {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 20px;
-  margin: 8px 0 16px;            /* Dipersempit agar isi surat naik */
-}
-
-.date-right {
-  text-align: right;
-}
-
-.meta-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 4px 0 10px;
-}
-
-.meta-table td {
-  padding: 2px 5px;              /* Merapatkan isi tabel details */
-  vertical-align: top;
-}
-
-.meta-table td:nth-child(1) {
-  width: 145px;
-  white-space: nowrap;
-}
-
-.meta-table td:nth-child(2) {
-  width: 12px;
-  text-align: center;
-}
-
-.meta-table td:nth-child(3) {
-  width: auto;
-}
-
-.recipient {
-  margin: 12px 0;
-}
-
-.recipient p {
-  margin: 2px 0;
-}
+/* ==========================================================================
+   CONTENT SPACING FIX (ANTI TURUN KE HALAMAN 2)
+   ========================================================================== */
 
 .body-text {
   text-align: justify;
@@ -1008,162 +74,41 @@ textarea {
 }
 
 .body-text p {
-  margin: 0 0 6px;               /* Memperpendek jarak antar paragraf */
-}
-
-.body-box,
-.disposition-box {
-  border: 1px solid #111;
-  padding: 10px;
-  margin-top: 12px;
-}
-
-.body-box h3,
-.disposition-box h3 {
-  font-size: 11pt;
-  margin-bottom: 6px;
-}
-
-.blank-lines {
-  height: 100px;
-  border-top: 1px dashed #aaa;
-  margin-top: 6px;
-}
-
-/* Blok Area Tanda Tangan */
-.signature-block {
-  width: 260px;
-  margin-left: auto;
-  margin-top: 20px;              /* Dikurangi dari 35px agar tidak melorot ke lembar 2 */
-  text-align: center;
+  margin: 0 0 5px;
   page-break-inside: avoid;
 }
 
-.signature-block p {
-  margin: 1px 0;
+/* TABLE FIX */
+.meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 10px;
 }
 
-.signature-space {
-  height: 50px;                  /* Ruang pas untuk TTD (menghemat 32px dari bawaan) */
-}
-
-.stamp-space {
-  height: 15px;
-}
-
-.print-body {
-  background: #fff;
-  width: 210mm;
-  min-height: 297mm;
-  padding: 20mm;
-  margin: 10mm auto;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-}
-
-.print-body .pdf-page {
-  box-shadow: none;
-  margin: 0;
-}
-
-.meta-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.meta-row .label {
-  width: 110px;
-  font-weight: 600;
-}
-
-.meta-row .colon {
-  width: 12px;
-  text-align: center;
-}
-
-.kop-instansi {
-  white-space: pre-line;
-  text-align: center;
-  font-family: "Times New Roman", serif;
-  font-weight: bold;
-  font-size: 9pt; 
-  line-height: 1.0;
-  text-transform: uppercase;
+.meta-table td {
+  padding: 2px 5px;
+  vertical-align: top;
+  word-break: break-word;
 }
 
 /* ==========================================================================
-   13. Responsive Design / Mobile Devices (max-width: 768px)
+   SIGNATURE FIX
    ========================================================================== */
-@media (max-width: 768px) {
-  .sidebar {
-    position: relative;
-    width: 100%;
-    height: auto;
-  }
 
-  .content {
-    margin-left: 0;
-    padding: 16px;
-  }
+.signature-block {
+  width: 260px;
+  margin-left: auto;
+  margin-top: 20px;
+  text-align: center;
 
-  .stats {
-    grid-template-columns: 1fr;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .pdf-page {
-    width: 100%;
-    min-height: auto;
-    padding: 28px;
-  }
-
-  .letter-meta-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .date-right {
-    text-align: left;
-  }
-
-  .form-actions {
-    justify-content: stretch;
-  }
-
-  .form-actions .btn {
-    width: 100%;
-  }
-
-  .modal {
-    padding: 8px;
-  }
-
-  .preview-content {
-    padding: 10px;
-  }
-
-  .toolbar {
-    grid-template-columns: 1fr;
-  }
-
-  .topbar-actions {
-    width: 100%;
-  }
-
-  .topbar-actions .btn {
-    flex: 1;
-  }
-
-  .field.full {
-    grid-column: auto;
-  }
+  /* FIX penting agar tidak lompat page */
+  page-break-inside: avoid;
 }
 
 /* ==========================================================================
-   14. SATU-SATUNYA MEDIA PRINT YANG AKTIF (Anti-Jebol 2 Lembar & Anti-Potong)
+   PRINT MODE (A4 FINAL LOCK)
    ========================================================================== */
+
 @media print {
   @page {
     size: A4;
@@ -1171,86 +116,29 @@ textarea {
   }
 
   html, body {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    background: #fff !important;
   }
 
-  .content {
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .preview-content,
-  #previewContent {
-    display: block !important;
-    visibility: visible !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-  }
-
-  .modal {
-    position: static !important;
-    background: #ffffff !important;
-    padding: 0 !important;
-  }
-
-  .modal-card {
-    box-shadow: none !important;
-    max-height: none !important;
-    width: 100% !important;
-    border-radius: 0 !important;
-  }
-
-  /* Konstruksi mutlak halaman A4 cetak */
   .pdf-page {
     width: 210mm !important;
-    height: 297mm !important;   /* Menjaga tinggi 1 halaman mutlak */
-    max-height: 297mm !important;
-    padding: 15mm 20mm 10mm !important; /* Dorongan pas atas-bawah agar kop utuh */
-    box-sizing: border-box !important;
-    overflow: hidden !important; /* Melarang luapan halaman ke lembar 2 */
-    background: #ffffff !important;
-    display: flex !important;
-    flex-direction: column !important;
+    height: 297mm !important;
+    padding: 15mm 20mm 10mm !important;
+
+    /* ❗ print tetap dikunci */
+    overflow: hidden !important;
+
     box-shadow: none !important;
-    margin: 0 auto !important;
-    page-break-inside: avoid !important;
     page-break-after: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  /* Mengunci kestabilan elemen gambar (Logo KKG) */
-  .letterhead img {
-    width: 85px !important;
-    height: 85px !important;
-    min-width: 85px !important;
-    min-height: 85px !important;
-    object-fit: contain !important;
-    display: block !important;
-  }
-
-  .pdf-page * {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .body-text,
-  .meta-table,
-  .recipient {
-    overflow-wrap: break-word;
-    word-break: break-word;
-  }
-
-  /* Hilangkan total komponen interface tombol/sidebar saat di-print */
   .sidebar,
   .topbar,
   .modal-header,
   .modal-footer,
   .toast,
-  .btn,
   button {
     display: none !important;
   }
