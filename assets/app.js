@@ -1426,29 +1426,6 @@ function calculateScale(el) {
 }
 
 
-
-async function downloadPreviewPdf() {
-  if (!lastPreviewDocument) {
-    showToast('Tidak ada dokumen untuk dicetak.', 'error');
-    return;
-  }
-
-  await createPdfFromDocument(lastPreviewDocument, {
-    download: true,
-    upload: false
-  });
-}
-function calculateScale(el) {
-  const A4_WIDTH = 794;
-  const A4_HEIGHT = 1123;
-
-  const widthScale = A4_WIDTH / el.scrollWidth;
-  const heightScale = A4_HEIGHT / el.scrollHeight;
-
-  return Math.min(widthScale, heightScale, 2);
-}
-
-
 async function downloadPreviewPdf() {
   if (!lastPreviewDocument) {
     showToast('Tidak ada dokumen untuk dicetak.', 'error');
@@ -1460,10 +1437,9 @@ async function downloadPreviewPdf() {
 // FORCE FIT DOCUMENT VERSION
 
 // FORCE FIT DOCUMENT VERSION
-
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
+  // Pastikan data terisi ke preview element terlebih dahulu sebelum di-render ke canvas
   let previewEl = document.getElementById('previewContent');
-
   if (!previewEl || !previewEl.innerHTML.trim()) {
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.position = 'absolute';
@@ -1480,32 +1456,32 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
       backgroundColor: '#ffffff'
     });
 
+    // Hapus temporary div jika dibuat tadi
     if (previewEl.style.position === 'absolute') {
       previewEl.remove();
     }
 
     const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
 
-const { jsPDF } = window.jspdf;
-const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = 210;
+    const pdfHeight = 297;
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-const pageWidth = 210;
-const pageHeight = 297;
+    let heightLeft = imgHeight;
+    let position = 0;
 
-const imgWidth = pageWidth;
-const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pdfHeight;
 
-let heightLeft = imgHeight;
-let position = 0;
-
-pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-
-while (heightLeft > pageHeight) {
-  position -= pageHeight;
-  pdf.addPage();
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
-}
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+    }
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
@@ -1524,6 +1500,7 @@ while (heightLeft > pageHeight) {
     showToast('Gagal memproses file PDF.', 'error');
   }
 }
+    
 async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
     if (!supabaseClient) throw new Error('Supabase belum aktif');
