@@ -1426,61 +1426,88 @@ function calculateScale(el) {
 }
 
 
+// PERBAIKAN: Fungsi trigger download dari preview modal agar tidak mengambil element yang sedang di-hidden
 async function downloadPreviewPdf() {
   if (!lastPreviewDocument) {
-    showToast('Tidak ada dokumen untuk dicetak.', 'error');
+    showToast('Tidak ada data dokumen yang aktif untuk diunduh.', 'error');
     return;
   }
-  await createPdfFromDocument(lastPreviewDocument, {download:true, upload:false});
+  
+  const btn = event?.target;
+  const originalText = btn ? btn.textContent : 'Download PDF';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Memproses PDF...';
+  }
+
+  try {
+    // Panggil fungsi createPdfFromDocument yang telah diperbaiki dengan isolasi DOM di atas
+    await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
+    showToast('PDF Berhasil diunduh!');
+  } catch (err) {
+    console.error(err);
+    showToast('Gagal mengunduh PDF.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
 }
 
-// PERBAIKAN: Optimalisasi rendering html2canvas + jsPDF agar presisi 1 halaman A4 tanpa glitch
+// PERBAIKAN SEMPURNA: Mengatasi PDF Blank/Putih, Duplikasi Halaman, dan Gambar Logo Hilang
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
-  // Membuat container temporer khusus rendering agar dimensinya presisi 210mm (A4)
+  // 1. Buat container terisolasi yang DIJAMIN terlihat oleh html2canvas (bukan display: none)
   const workerDiv = document.createElement('div');
   workerDiv.style.position = 'fixed';
   workerDiv.style.top = '0';
   workerDiv.style.left = '0';
-  workerDiv.style.width = '210mm';
+  workerDiv.style.width = '210mm'; // Standar lebar A4
   workerDiv.style.zIndex = '-9999';
-  workerDiv.style.opacity = '0';
+  workerDiv.style.opacity = '0.01'; // Jangan 0 mutlak agar html2canvas tetap mendeteksinya
   workerDiv.style.background = '#ffffff';
   
-  // Memasukkan template HTML dokumen ke dalam worker
+  // Masukkan kerangka surat HTML berdasarkan data yang dipilih
   workerDiv.innerHTML = buildDocumentHTML(data);
   document.body.appendChild(workerDiv);
 
   try {
-    // Menunggu microtask/render selesai untuk memastikan gambar logo termuat sempurna
-    await new Promise((resolve) => window.setTimeout(resolve, 150));
+    // 2. Beri jeda microtask agar semua gambar/logo eksternal (Supabase) selesai di-render total
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
 
+    // 3. Ambil snapshot menggunakan html2canvas dengan opsi CORS & Resolusi Tinggi
     const canvas = await html2canvas(workerDiv, {
-      scale: 2.5, // Menaikkan skala resolusi agar teks tajam saat dicetak/zoom
-      useCORS: true, // Mengaktifkan CORS agar logo berbasis URL eksternal tidak blur/hilang
+      scale: 2.5,          // Menaikkan ketajaman teks saat di-zoom/cetak fisik
+      useCORS: true,       // WAJIB aktif agar gambar dari Supabase Storage tidak blank
+      allowTaint: true,
       logging: false,
       backgroundColor: '#ffffff',
       windowWidth: workerDiv.scrollWidth,
       windowHeight: workerDiv.scrollHeight
     });
 
-    // Hapus temporary div setelah proses snapshot selesai
+    // Segera hapus div temporer dari DOM setelah berhasil direkam
     workerDiv.remove();
 
-    // Menggunakan JPEG dengan kualitas tinggi (0.95) agar ukuran file PDF jauh lebih ringan dibanding PNG
+    // 4. Ubah ke format JPEG (jauh lebih ringan & mencegah korup dibanding PNG mentah)
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const { jsPDF } = window.jspdf;
+    
+    // Set kertas A4 (p: portrait, mm: milimeter, a4: ukuran kertas)
     const pdf = new jsPDF('p', 'mm', 'a4');
 
-    // Menghilangkan margin dan memaksa gambar masuk tepat dalam ukuran standar A4 (210mm x 297mm)
+    // 5. Kunci rasio pas masuk 1 halaman penuh A4 (210mm x 297mm) tanpa glitch halaman kedua kosong
     pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
 
+    // Integrasi otomatis ke Supabase Storage (bila diaktifkan)
     if (options.upload) {
       await uploadPdf(data, pdfBlob, fileName);
     }
 
+    // Proses download langsung ke komputer/HP user
     if (options.download) {
       pdf.save(fileName);
     }
