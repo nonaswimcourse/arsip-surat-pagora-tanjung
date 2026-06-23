@@ -1621,3 +1621,40 @@ window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
+
+
+
+// ================= TEMBUSAN MODULE =================
+async function getTembusan(suratId, suratType){
+  if(!supabaseClient) return [];
+  const {data} = await supabaseClient
+    .from('surat_tembusan')
+    .select('tembusan:tembusan_id(nama,jabatan,instansi)')
+    .eq('surat_id', suratId)
+    .eq('surat_type', suratType);
+
+  return (data||[]).map(d => d.tembusan);
+}
+
+async function injectTembusanToPdf(){
+  try{
+    if(!lastPreviewDocument) return;
+    const list = document.getElementById('tembusanList');
+    if(!list) return;
+
+    const tembusan = await getTembusan(lastPreviewDocument.id, lastPreviewDocument.jenis);
+
+    list.innerHTML = tembusan.map(t =>
+      `<li>${t.jabatan||''} ${t.nama} ${t.instansi?'- '+t.instansi:''}</li>`
+    ).join('');
+  }catch(e){console.warn(e);}
+}
+
+// hook PDF download
+if(typeof downloadPreviewPdf !== 'undefined'){
+  const _old = downloadPreviewPdf;
+  downloadPreviewPdf = async function(){
+    await injectTembusanToPdf();
+    return _old.apply(this, arguments);
+  }
+}
