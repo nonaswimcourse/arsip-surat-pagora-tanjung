@@ -1232,11 +1232,13 @@ textarea {
     display: block !important;
   }
 
-  .pdf-page {
-  width: 210mm;
-  min-height: 297mm;
-  height: auto !important;
-  overflow: visible !important;
+  /* Menjamin background pembentuk PDF tidak menjadi transparan/putih samar saat dicapture */
+.pdf-page {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
   .body-text,
