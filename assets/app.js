@@ -1434,54 +1434,45 @@ async function downloadPreviewPdf() {
   await createPdfFromDocument(lastPreviewDocument, {download:true, upload:false});
 }
 
-// FORCE FIT DOCUMENT VERSION
-
-// FORCE FIT DOCUMENT VERSION
+// PERBAIKAN: Optimalisasi rendering html2canvas + jsPDF agar presisi 1 halaman A4 tanpa glitch
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
-  // Pastikan data terisi ke preview element terlebih dahulu sebelum di-render ke canvas
-  let previewEl = document.getElementById('previewContent');
-  if (!previewEl || !previewEl.innerHTML.trim()) {
-    const hiddenDiv = document.createElement('div');
-    hiddenDiv.style.position = 'absolute';
-    hiddenDiv.style.left = '-9999px';
-    hiddenDiv.innerHTML = buildDocumentHTML(data);
-    document.body.appendChild(hiddenDiv);
-    previewEl = hiddenDiv;
-  }
+  // Membuat container temporer khusus rendering agar dimensinya presisi 210mm (A4)
+  const workerDiv = document.createElement('div');
+  workerDiv.style.position = 'fixed';
+  workerDiv.style.top = '0';
+  workerDiv.style.left = '0';
+  workerDiv.style.width = '210mm';
+  workerDiv.style.zIndex = '-9999';
+  workerDiv.style.opacity = '0';
+  workerDiv.style.background = '#ffffff';
+  
+  // Memasukkan template HTML dokumen ke dalam worker
+  workerDiv.innerHTML = buildDocumentHTML(data);
+  document.body.appendChild(workerDiv);
 
   try {
-    const canvas = await html2canvas(previewEl, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff'
+    // Menunggu microtask/render selesai untuk memastikan gambar logo termuat sempurna
+    await new Promise((resolve) => window.setTimeout(resolve, 150));
+
+    const canvas = await html2canvas(workerDiv, {
+      scale: 2.5, // Menaikkan skala resolusi agar teks tajam saat dicetak/zoom
+      useCORS: true, // Mengaktifkan CORS agar logo berbasis URL eksternal tidak blur/hilang
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: workerDiv.scrollWidth,
+      windowHeight: workerDiv.scrollHeight
     });
 
-    // Hapus temporary div jika dibuat tadi
-    if (previewEl.style.position === 'absolute') {
-      previewEl.remove();
-    }
+    // Hapus temporary div setelah proses snapshot selesai
+    workerDiv.remove();
 
-    const imgData = canvas.toDataURL('image/png');
+    // Menggunakan JPEG dengan kualitas tinggi (0.95) agar ukuran file PDF jauh lebih ringan dibanding PNG
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
 
-    const pdfWidth = 210;
-    const pdfHeight = 297;
-    const imgWidth = pdfWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pdfHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-    }
+    // Menghilangkan margin dan memaksa gambar masuk tepat dalam ukuran standar A4 (210mm x 297mm)
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
@@ -1498,6 +1489,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   } catch (error) {
     console.error('Gagal membuat PDF:', error);
     showToast('Gagal memproses file PDF.', 'error');
+    if (workerDiv.parentNode) workerDiv.remove();
   }
 }
     
