@@ -1090,7 +1090,12 @@ textarea {
   line-height: 1.0;
   text-transform: uppercase;
 }
-
+.tembusan {
+  position: absolute;
+  bottom: 20mm;
+  left: 20mm;
+  font-size: 11px;
+}
 /* ==========================================================================
    13. Responsive Design / Mobile Devices (max-width: 768px)
    ========================================================================== */
