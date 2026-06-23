@@ -8,6 +8,21 @@ const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
+
+// ===== HARDENING CORE GUARD =====
+window.__APP_STATE__ = { ready: false, user: null, bootstrapped: false };
+
+window.addEventListener('error', (e) => console.error('GLOBAL ERROR:', e.error));
+window.addEventListener('unhandledrejection', (e) => console.error('PROMISE ERROR:', e.reason));
+
+// SAFE ELEMENT ACCESS
+function el(id) {
+  const node = document.getElementById(id);
+  if (!node) console.warn('Missing element:', id);
+  return node;
+}
+
+
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
   && typeof window.supabase.createClient === 'function';
@@ -373,15 +388,50 @@ function applyRoleUI() {
   document.querySelectorAll('.admin-only').forEach((item) => item.classList.toggle('hidden', !getPerm('settings')));
 }
 
+
 async function doLogin() {
-  const email = el('email').value.trim().toLowerCase();
-  const password = el('password').value;
-  showLoginError('');
+  const emailEl = el('email');
+  const passEl = el('password');
+
+  if (!emailEl || !passEl) {
+    showLoginError('Form login tidak ditemukan.');
+    return;
+  }
+
+  const email = emailEl.value?.trim()?.toLowerCase() || '';
+  const password = passEl.value || '';
 
   if (!email || !password) {
     showLoginError('Email dan password wajib diisi.');
     return;
   }
+
+  try {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (data?.user && !error) {
+        currentUser = buildSupabaseUser(data.user);
+        await safeBoot();
+        return;
+      }
+    }
+
+    const demo = demoAccounts[email];
+
+    if (!demo || demo.password !== password) {
+      showLoginError('Login gagal.');
+      return;
+    }
+
+    currentUser = { id: email, email, role: demo.role, name: demo.name };
+    await safeBoot();
+
+  } catch (e) {
+    console.error(e);
+    showLoginError('System error login.');
+  }
+}
+
 
   if (supabaseClient) {
     try {
@@ -472,11 +522,27 @@ async function loadProfile() {
   return cachedProfile;
 }
 
+
 async function navigate(route) {
-  if (route === 'pengaturan' && !currentUser) {
-    showToast('Silakan login terlebih dahulu untuk membuka pengaturan.', 'error');
-    return;
+  try {
+    currentRoute = route;
+
+    document.querySelectorAll('.menu-item')?.forEach(m => {
+      if (m?.dataset) m.classList.toggle('active', m.dataset.route === route);
+    });
+
+    if (route === 'dashboard') return renderDashboard();
+    if (route === 'arsip') return renderArchivePage();
+    if (route === 'pengaturan') return renderSettingsPage();
+    if (documentTypes[route]) return renderDocumentPage(route);
+
+    renderEmptyState('Menu tidak ditemukan','');
+  } catch (e) {
+    console.error('NAV ERROR', e);
+    showToast('Navigasi error','error');
   }
+}
+
   currentRoute = route;
   setActiveMenu(route);
 
@@ -1437,18 +1503,62 @@ async function downloadPreviewPdf() {
 // FORCE FIT DOCUMENT VERSION
 
 // FORCE FIT DOCUMENT VERSION
-async function createPdfFromDocument(data, options = { download: true, upload: false }) {
-  let previewEl = document.getElementById('previewContent');
 
-  if (!previewEl || !previewEl.innerHTML.trim()) {
-    const hiddenDiv = document.createElement('div');
-    hiddenDiv.style.position = 'absolute';
-    hiddenDiv.style.left = '-9999px';
-    hiddenDiv.style.width = '794px'; // FIX A4 WIDTH
-    hiddenDiv.innerHTML = buildDocumentHTML(data);
-    document.body.appendChild(hiddenDiv);
-    previewEl = hiddenDiv;
+async function createPdfFromDocument(data, options = { download: true, upload: false }) {
+  try {
+    let previewEl = document.getElementById('previewContent');
+
+    if (!previewEl || !previewEl.innerHTML.trim()) {
+      const div = document.createElement('div');
+      div.style.width = '794px';
+      div.style.position = 'absolute';
+      div.style.left = '-9999px';
+      div.innerHTML = buildDocumentHTML(data);
+      document.body.appendChild(div);
+      previewEl = div;
+    }
+
+    const canvas = await html2canvas(previewEl, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#fff',
+      windowWidth: previewEl.scrollWidth || 794
+    });
+
+    if (previewEl.style.position === 'absolute') previewEl.remove();
+
+    const img = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+
+    const w = 210;
+    const h = (canvas.height * w) / canvas.width;
+
+    let left = h;
+    let pos = 0;
+
+    pdf.addImage(img,'PNG',0,pos,w,h);
+    left -= 297;
+
+    while(left > 0){
+      pos -= 297;
+      pdf.addPage();
+      pdf.addImage(img,'PNG',0,pos,w,h);
+      left -= 297;
+    }
+
+    const name = `${slugify(data.nomor_surat||'surat')}.pdf`;
+    if(options.download) pdf.save(name);
+
+    return true;
+  } catch(e){
+    console.error(e);
+    showToast('PDF error','error');
+    return false;
   }
+}
+
 
   try {
    const canvas = await html2canvas(previewEl, {
