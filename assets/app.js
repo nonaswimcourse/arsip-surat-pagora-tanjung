@@ -1841,7 +1841,7 @@ function signature(profile, row = {}) {
 
       <div class="signature-image-wrap">
         ${ttd
-          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" style="display:block;max-width:190px;max-height:78px;width:auto;height:auto;object-fit:contain;visibility:visible;opacity:1;position:relative;z-index:999;">`
+          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" style="display:block;width:300px;max-width:300px;max-height:135px;height:auto;object-fit:contain;visibility:visible;opacity:1;position:relative;z-index:999;transform:translate(-60px, -8px);margin-bottom:-32px;">`
           : `<div class="signature-space"></div>`
         }
       </div>
