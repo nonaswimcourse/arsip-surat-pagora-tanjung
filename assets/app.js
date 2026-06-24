@@ -1826,25 +1826,25 @@ function signature(profile, row = {}) {
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
 
-      <div class="signature-image-wrap">
+      <div class="signature-image-wrap" style="position: relative; z-index: 999;">
         ${ttd
           ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" 
               style="
                 display: block;
-                width: 340px; 
-                max-width: 340px; 
-                max-height: 180px; 
+                width: 460px; 
+                max-width: 460px; 
+                max-height: 260px; 
                 height: auto; 
                 object-fit: contain; 
                 visibility: visible; 
                 opacity: 1; 
                 position: relative; 
                 z-index: 999; 
-                /* Geser ke kiri (-85px) dan ke atas (-110px) */
-                transform: translate(-85px, -110px); 
-                /* Menarik teks nama di bawah agar masuk area stempel */
-                margin-bottom: -150px;
-                /* PENTING: Membuat background hitam pada gambar stempel Anda menjadi transparan */
+                /* Geser ke kiri (-125px) dan ke atas (-160px) karena ukuran gambar makin besar */
+                transform: translate(-125px, -160px); 
+                /* Menarik nama & NIP di bawah agar naik ke tengah stempel besar */
+                margin-bottom: -210px;
+                /* Menghilangkan background hitam pada file mentahan gambar Anda */
                 mix-blend-mode: screen;
               ">`
           : `<div class="signature-space" style="height: 100px;"></div>`
@@ -1853,6 +1853,7 @@ function signature(profile, row = {}) {
 
       <p class="signature-name"><strong>${safe(profile.kepala_nama)}</strong></p>
       <p class="signature-nip">NIP. ${safe(profile.kepala_nip)}</p>
+
 
       ${row.disetujui_oleh
         ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>`
