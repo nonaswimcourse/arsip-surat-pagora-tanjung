@@ -905,29 +905,18 @@ textarea {
 }
 
 /* Mengatur Ukuran Logo Tetap Stabil */
-.letterhead-logo-box {
-  width: 85px !important;
-  height: 95px !important;
-  flex: 0 0 85px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  overflow: hidden !important;
-}
-
 .letterhead img,
 .letterhead-logo {
-  width: auto !important;
-  height: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
+  width: 85px !important;
+  height: 85px !important;
+  min-width: 85px !important;
+  min-height: 85px !important;
   max-width: 85px !important;
-  max-height: 95px !important;
+  max-height: 85px !important;
   object-fit: contain !important;
   object-position: center !important;
   display: block !important;
-  flex: 0 1 auto !important;
-  margin: 0 auto !important;
+  flex: 0 0 85px !important;
 }
 
 /* Mengatur Teks Nama Instansi (H1) */
@@ -1240,29 +1229,18 @@ textarea {
   }
 
   /* Mengunci kestabilan elemen gambar (Logo KKG) */
-  .letterhead-logo-box {
-    width: 85px !important;
-    height: 95px !important;
-    flex: 0 0 85px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    overflow: hidden !important;
-  }
-
   .letterhead img,
   .letterhead-logo {
-    width: auto !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
+    width: 85px !important;
+    height: 85px !important;
+    min-width: 85px !important;
+    min-height: 85px !important;
     max-width: 85px !important;
-    max-height: 95px !important;
+    max-height: 85px !important;
     object-fit: contain !important;
     object-position: center !important;
     display: block !important;
-    flex: 0 1 auto !important;
-    margin: 0 auto !important;
+    flex: 0 0 85px !important;
   }
 
   /* Menjamin background pembentuk PDF tidak menjadi transparan/putih samar saat dicapture */
@@ -1290,5 +1268,96 @@ textarea {
   .btn,
   button {
     display: none !important;
+  }
+}
+
+/* ==========================================================================
+   FIX FINAL KOP SURAT: Logo proporsional tanpa menggeser teks instansi
+   ========================================================================== */
+.pdf-page .letterhead {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 95px !important;
+  display: block !important;
+  padding-top: 0 !important;
+  gap: 0 !important;
+}
+
+.pdf-page .letterhead img,
+.pdf-page .letterhead-logo {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 85px !important;
+  max-height: 95px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  display: block !important;
+  flex: none !important;
+}
+
+.pdf-page .letterhead > div {
+  width: 100% !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.pdf-page .letterhead h1 {
+  margin: 0 auto 6px !important;
+  text-align: center !important;
+}
+
+.pdf-page .letterhead p {
+  text-align: center !important;
+}
+
+@media print {
+  .pdf-page .letterhead {
+    position: relative !important;
+    width: 100% !important;
+    min-height: 95px !important;
+    display: block !important;
+    padding-top: 0 !important;
+    gap: 0 !important;
+  }
+
+  .pdf-page .letterhead img,
+  .pdf-page .letterhead-logo {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 85px !important;
+    max-height: 95px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    display: block !important;
+    flex: none !important;
+  }
+
+  .pdf-page .letterhead > div {
+    width: 100% !important;
+    text-align: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .pdf-page .letterhead h1 {
+    margin: 0 auto 6px !important;
+    text-align: center !important;
+  }
+
+  .pdf-page .letterhead p {
+    text-align: center !important;
   }
 }
