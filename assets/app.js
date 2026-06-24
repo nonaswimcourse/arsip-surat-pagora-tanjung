@@ -3,6 +3,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_phZErDKE6oDEDN5whvlk3Q_8LpXylcG';
 const TABLE_SURAT = 'surat';
 const TABLE_PROFIL = 'profil_instansi';
 const STORAGE_BUCKET = 'dokumen-surat';
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB per file
 const LOCAL_SESSION_KEY = 'sipas_kantor_session';
 const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
@@ -557,6 +558,12 @@ function normalizeDocument(row) {
     disetujui_oleh: row.disetujui_oleh || '',
     pdf_url: row.pdf_url || '',
     pdf_path: row.pdf_path || '',
+    surat_asli_url: row.surat_asli_url || '',
+    surat_asli_path: row.surat_asli_path || '',
+    surat_asli_name: row.surat_asli_name || '',
+    ttd_url: row.ttd_url || '',
+    ttd_path: row.ttd_path || '',
+    ttd_name: row.ttd_name || '',
     local_only: Boolean(row.local_only),
     created_at: row.created_at || new Date().toISOString(),
     updated_at: row.updated_at || new Date().toISOString()
@@ -643,9 +650,10 @@ async function deleteDocumentFromStorage(row) {
   }
 
   let storageError = null;
-  if (row.pdf_path) {
+  const storagePaths = [row.pdf_path, row.surat_asli_path, row.ttd_path].filter(Boolean);
+  if (storagePaths.length) {
     try {
-      const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).remove([row.pdf_path]);
+      const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).remove(storagePaths);
       if (error) storageError = error;
     } catch (error) {
       storageError = error;
@@ -670,7 +678,7 @@ async function deleteDocumentFromStorage(row) {
 
 async function deleteAllDocumentsFromStorage(rows = []) {
   const ids = rows.map((row) => String(row.id)).filter(Boolean);
-  const pdfPaths = rows.map((row) => row.pdf_path).filter(Boolean);
+  const pdfPaths = rows.flatMap((row) => [row.pdf_path, row.surat_asli_path, row.ttd_path]).filter(Boolean);
   const oldDeletedIds = getDeletedDocumentIds();
 
   setLocalDocuments([]);
@@ -731,6 +739,96 @@ function getFormData(form, typeKey, existing = {}) {
     dibuat_oleh: existing.dibuat_oleh || currentUser?.email || '-',
     updated_at: new Date().toISOString()
   });
+
+}
+
+function getSelectedFile(form, name) {
+  const input = form?.querySelector?.(`[name="${name}"]`);
+  return input?.files?.[0] || null;
+}
+
+function fileExtension(file) {
+  const name = String(file?.name || 'file');
+  const match = name.match(/\.([a-z0-9]+)$/i);
+  return match ? `.${match[1].toLowerCase()}` : '';
+}
+
+function validateUploadFile(file, options = {}) {
+  if (!file) return true;
+  if (file.size > MAX_UPLOAD_SIZE) {
+    showToast(`File ${file.name} terlalu besar. Maksimal 5 MB.`, 'error');
+    return false;
+  }
+  if (options.imageOnly && !String(file.type || '').startsWith('image/')) {
+    showToast(`File ${file.name} harus berupa gambar tanda tangan.`, 'error');
+    return false;
+  }
+  return true;
+}
+
+async function uploadAttachmentToSupabase(file, folder, ownerId) {
+  if (!file) return null;
+  if (!supabaseClient) throw new Error('Supabase belum aktif, file belum bisa diunggah.');
+
+  const baseName = slugify(String(file.name || 'file').replace(/\.[^/.]+$/, ''));
+  const path = `${folder}/${ownerId}/${Date.now()}-${baseName}${fileExtension(file)}`;
+
+  const { error } = await supabaseClient.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, {
+      contentType: file.type || 'application/octet-stream',
+      upsert: true
+    });
+
+  if (error) throw error;
+
+  const { data } = supabaseClient.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(path);
+
+  return {
+    path,
+    url: data?.publicUrl || '',
+    name: file.name || ''
+  };
+}
+
+async function attachUploadedFiles(form, row) {
+  const nextRow = normalizeDocument(row);
+  const originalFile = getSelectedFile(form, 'surat_asli_file');
+  const signatureFile = getSelectedFile(form, 'ttd_file');
+
+  if (originalFile && !validateUploadFile(originalFile)) return null;
+  if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return null;
+
+  if (!originalFile && !signatureFile) return nextRow;
+
+  if (!supabaseClient) {
+    showToast('File belum terunggah karena Supabase belum aktif. Data teks tetap bisa disimpan lokal.', 'warning');
+    return nextRow;
+  }
+
+  try {
+    if (nextRow.jenis === 'masuk' && originalFile) {
+      const uploaded = await uploadAttachmentToSupabase(originalFile, 'surat-asli', nextRow.id);
+      nextRow.surat_asli_path = uploaded.path;
+      nextRow.surat_asli_url = uploaded.url;
+      nextRow.surat_asli_name = uploaded.name;
+    }
+
+    if (signatureFile) {
+      const uploaded = await uploadAttachmentToSupabase(signatureFile, 'tanda-tangan', nextRow.id);
+      nextRow.ttd_path = uploaded.path;
+      nextRow.ttd_url = uploaded.url;
+      nextRow.ttd_name = uploaded.name;
+    }
+
+    return nextRow;
+  } catch (error) {
+    console.warn('Upload file gagal:', error);
+    showToast(errorText(error, 'Upload file ke Supabase gagal.'), 'error');
+    return null;
+  }
 }
 
 // DIPERBAIKI: Mengganti penggunaan ${js(x)} dengan ${jsAttr(x)} dan tanda kutip tunggal ('') agar parameter fungsi onclick HTML valid
@@ -745,7 +843,7 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
   const disabled = !getPerm(mode === 'edit' ? 'edit' : 'create') ? 'disabled' : '';
 
   return `
-    <form id="${formId}" onsubmit="${submitHandler}">
+    <form id="${formId}" onsubmit="${submitHandler}" enctype="multipart/form-data">
       <div class="form-grid">
         <div class="field">
           <label>Nomor Surat</label>
@@ -819,6 +917,19 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
           <label>Catatan Internal</label>
           <textarea name="catatan" rows="3" placeholder="Catatan internal, disposisi, atau tindak lanjut" ${disabled}>${safe(data.catatan)}</textarea>
         </div>
+        ${resolvedTypeKey === 'masuk' ? `
+          <div class="field full upload-card">
+            <label>Upload Surat Asli</label>
+            <input type="file" name="surat_asli_file" accept=".pdf,.jpg,.jpeg,.png,.webp" ${disabled}>
+            <small>Format: PDF/JPG/PNG/WebP. Maksimal 5 MB. File disimpan ke Supabase Storage.</small>
+            ${data.surat_asli_url ? `<small class="file-current">File tersimpan: <a href="${safe(data.surat_asli_url)}" target="_blank" rel="noopener">${safe(data.surat_asli_name || 'Lihat surat asli')}</a></small>` : ''}
+          </div>` : ''}
+        <div class="field full upload-card">
+          <label>Upload Tanda Tangan</label>
+          <input type="file" name="ttd_file" accept="image/png,image/jpeg,image/webp" ${disabled}>
+          <small>Format: PNG/JPG/WebP. Gunakan gambar tanda tangan transparan agar hasil PDF rapi.</small>
+          ${data.ttd_url ? `<small class="file-current">Tanda tangan tersimpan: <a href="${safe(data.ttd_url)}" target="_blank" rel="noopener">${safe(data.ttd_name || 'Lihat tanda tangan')}</a></small>` : ''}
+        </div>
       </div>
       <div class="form-actions">
         <button type="button" class="btn secondary" onclick="previewForm('${jsAttr(resolvedTypeKey)}', '${jsAttr(formId)}')">Preview Template</button>
@@ -840,7 +951,9 @@ async function saveDocument(event, typeKey) {
   const form = event.target;
   if (!validateForm(form)) return;
   const row = getFormData(form, typeKey);
-  const saved = await saveDocumentToStorage(row);
+  const rowWithFiles = await attachUploadedFiles(form, row);
+  if (!rowWithFiles) return;
+  const saved = await saveDocumentToStorage(rowWithFiles);
   form.reset();
   const dateInput = form.querySelector('[name="tanggal_surat"]');
   if (dateInput) dateInput.value = todayInput();
@@ -863,7 +976,9 @@ async function saveDocumentAndPdf(event, typeKey) {
     if (!validateForm(form)) return;
 
     const row = getFormData(form, typeKey);
-    const saved = await saveDocumentToStorage(row);
+    const rowWithFiles = await attachUploadedFiles(form, row);
+    if (!rowWithFiles) return;
+    const saved = await saveDocumentToStorage(rowWithFiles);
 
     // Download PDF dibuat lokal saja. Upload Storage dibuat opsional agar tidak memperlambat tombol download.
     const pdfResult = await createPdfFromDocument(saved, { download: true, upload: false });
@@ -894,7 +1009,9 @@ async function saveEditedDocument(event, id) {
   if (!existing) return showToast('Data tidak ditemukan.', 'error');
   if (!validateForm(event.target)) return;
   const row = getFormData(event.target, existing.jenis, existing);
-  const saved = await saveDocumentToStorage(row);
+  const rowWithFiles = await attachUploadedFiles(event.target, row);
+  if (!rowWithFiles) return;
+  const saved = await saveDocumentToStorage(rowWithFiles);
   closeEditModal();
   showToast(saved.local_only ? `Perubahan tersimpan lokal. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}` : 'Data berhasil diperbarui.');
   await refreshCurrentPage();
@@ -1057,6 +1174,7 @@ function renderTable(rows, options = {}) {
 function actionButtons(row) {
   const buttons = [];
   buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
+  if (row.surat_asli_url) buttons.push(`<a class="action-link" href="${safe(row.surat_asli_url)}" target="_blank" rel="noopener">Surat Asli</a>`);
   if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById(event, '${jsAttr(row.id)}')">PDF</button>`);
   if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById('${jsAttr(row.id)}')">Edit</button>`);
   if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById('${jsAttr(row.id)}')">Setujui</button>`);
@@ -1297,7 +1415,10 @@ function signature(profile, row = {}) {
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
 
-      <div class="signature-space"></div>
+      ${row.ttd_url
+        ? `<div class="signature-image-wrap"><img src="${safe(row.ttd_url)}" alt="Tanda tangan"></div>`
+        : '<div class="signature-space"></div>'
+      }
 
       <p><strong>${safe(profile.kepala_nama)}</strong></p>
       <p>NIP. ${safe(profile.kepala_nip)}</p>
@@ -1708,7 +1829,7 @@ async function uploadPdf(documentRow, pdfBlob, fileName) {
 async function exportCsv(scope = '') {
   if (!getPerm('export')) return showToast('Role ini tidak dapat export data.', 'error');
   const rows = await fetchDocuments(scope === 'arsip' ? { status: 'diarsipkan' } : {});
-  const headers = ['jenis','nomor_surat','nomor_agenda','tanggal_surat','perihal','pengirim','penerima','hari','tanggal_kegiatan','waktu','tempat','acara','status','dibuat_oleh','disetujui_oleh'];
+  const headers = ['jenis','nomor_surat','nomor_agenda','tanggal_surat','perihal','pengirim','penerima','hari','tanggal_kegiatan','waktu','tempat','acara','status','surat_asli_url','ttd_url','dibuat_oleh','disetujui_oleh'];
   const csv = [headers.join(',')].concat(rows.map((row) => headers.map((key) => `"${String(row[key] ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
   downloadText(csv, `sipas-${scope || 'data'}-${todayInput()}.csv`, 'text/csv;charset=utf-8;');
 }
