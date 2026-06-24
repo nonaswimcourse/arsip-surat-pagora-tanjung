@@ -125,7 +125,11 @@ function safe(value) {
 
 // DIPERBAIKI: Mengamankan argumen string agar aman masuk ke dalam atribut onclick HTML
 function jsAttr(value) {
-  return String(value ?? '').replace(/'/g, "\\'");
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '')
+    .replace(/\n/g, '\\n');
 }
 
 function todayInput() {
@@ -163,7 +167,9 @@ function slugify(value) {
 }
 
 function newId() {
-  if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  if (typeof window !== 'undefined' && window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return window.crypto.randomUUID();
+  }
   return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
@@ -264,14 +270,24 @@ function setActiveMenu(route) {
 
 function readJSON(key, fallback) {
   try {
-    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+    if (typeof localStorage === 'undefined') return fallback;
+    const storedValue = localStorage.getItem(key);
+    if (storedValue === null || storedValue === undefined || storedValue === '') return fallback;
+    return JSON.parse(storedValue);
   } catch (error) {
+    console.warn(`Gagal membaca data lokal: ${key}`, error);
     return fallback;
   }
 }
 
 function writeJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Gagal menyimpan data lokal: ${key}`, error);
+    showToast('Penyimpanan lokal browser tidak tersedia atau sudah penuh.', 'warning');
+  }
 }
 
 function getLocalSession() {
@@ -285,7 +301,11 @@ function setLocalSession(user) {
 }
 
 function clearLocalSession() {
-  localStorage.removeItem(LOCAL_SESSION_KEY);
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(LOCAL_SESSION_KEY);
+  } catch (error) {
+    console.warn('Gagal menghapus sesi lokal:', error);
+  }
 }
 
 function getLocalDocuments() {
@@ -375,8 +395,15 @@ function applyRoleUI() {
 }
 
 async function doLogin() {
-  const email = el('email').value.trim().toLowerCase();
-  const password = el('password').value;
+  const emailInput = el('email');
+  const passwordInput = el('password');
+  if (!emailInput || !passwordInput) {
+    showToast('Form login tidak lengkap. Periksa id input email dan password.', 'error');
+    return;
+  }
+
+  const email = emailInput.value.trim().toLowerCase();
+  const password = passwordInput.value;
   showLoginError('');
 
   if (!email || !password) {
@@ -603,7 +630,7 @@ async function deleteDocumentFromStorage(row) {
 
   markDocumentDeleted(id);
   setLocalDocuments(getLocalDocuments().filter((item) => String(item.id) !== id));
-  cachedDocuments = cachedDocuments.filter((item) => String(item.id) !== id);
+  cachedDocuments = (Array.isArray(cachedDocuments) ? cachedDocuments : []).filter((item) => String(item.id) !== id);
 
   if (!supabaseClient || row.local_only || id.startsWith('local-')) {
     return { onlineDeleted: false, localDeleted: true };
@@ -672,11 +699,12 @@ async function deleteAllDocumentsFromStorage(rows = []) {
 }
 
 function getFormData(form, typeKey, existing = {}) {
+  const typeConfig = documentTypes[typeKey] || documentTypes.keluar;
   const data = new FormData(form);
   return normalizeDocument({
     ...existing,
     id: existing.id || newId(),
-    jenis: typeKey,
+    jenis: typeKey in documentTypes ? typeKey : 'keluar',
     nomor_surat: data.get('nomor_surat')?.trim(),
     nomor_agenda: data.get('nomor_agenda')?.trim(),
     tanggal_surat: data.get('tanggal_surat') || todayInput(),
@@ -692,7 +720,7 @@ function getFormData(form, typeKey, existing = {}) {
     waktu: data.get('waktu')?.trim(),
     tempat: data.get('tempat')?.trim(),
     acara: data.get('acara')?.trim(),
-    status: data.get('status') || documentTypes[typeKey].defaultStatus,
+    status: data.get('status') || typeConfig.defaultStatus,
     catatan: data.get('catatan')?.trim(),
     dibuat_oleh: existing.dibuat_oleh || currentUser?.email || '-',
     updated_at: new Date().toISOString()
@@ -701,12 +729,13 @@ function getFormData(form, typeKey, existing = {}) {
 
 // DIPERBAIKI: Mengganti penggunaan ${js(x)} dengan ${jsAttr(x)} dan tanda kutip tunggal ('') agar parameter fungsi onclick HTML valid
 function documentFormHTML(typeKey, row = {}, mode = 'create') {
-  const type = documentTypes[typeKey];
-  const data = normalizeDocument({ jenis: typeKey, status: type.defaultStatus, ...row });
+  const type = documentTypes[typeKey] || documentTypes.keluar;
+  const resolvedTypeKey = typeKey in documentTypes ? typeKey : 'keluar';
+  const data = normalizeDocument({ jenis: resolvedTypeKey, status: type.defaultStatus, ...row });
   const formId = mode === 'edit' ? 'editDocumentForm' : 'documentForm';
   const submitHandler = mode === 'edit'
     ? `saveEditedDocument(event, '${jsAttr(data.id)}')`
-    : `saveDocument(event, '${jsAttr(typeKey)}')`;
+    : `saveDocument(event, '${jsAttr(resolvedTypeKey)}')`;
   const disabled = !getPerm(mode === 'edit' ? 'edit' : 'create') ? 'disabled' : '';
 
   return `
@@ -786,10 +815,10 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn secondary" onclick="previewForm('${jsAttr(typeKey)}', '${jsAttr(formId)}')">Preview Template</button>
+        <button type="button" class="btn secondary" onclick="previewForm('${jsAttr(resolvedTypeKey)}', '${jsAttr(formId)}')">Preview Template</button>
         ${mode === 'edit' ? `<button type="button" class="btn secondary" onclick="closeEditModal()">Batal</button>` : ''}
         <button type="submit" class="btn" ${disabled}>${mode === 'edit' ? 'Simpan Perubahan' : 'Simpan Data'}</button>
-        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${jsAttr(typeKey)}')" ${disabled}>Simpan & Download PDF</button>` : ''}
+        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${jsAttr(resolvedTypeKey)}')" ${disabled}>Simpan & Download PDF</button>` : ''}
       </div>
     </form>`;
 }
@@ -814,13 +843,18 @@ async function saveDocument(event, typeKey) {
 }
 
 async function saveDocumentAndPdf(event, typeKey) {
-  event.preventDefault();
+  event?.preventDefault?.();
   if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
   const form = getButtonForm(event, 'documentForm');
   if (!validateForm(form)) return;
   const row = getFormData(form, typeKey);
   const saved = await saveDocumentToStorage(row);
-  await createPdfFromDocument(saved, { download: true, upload: !saved.local_only });
+  const pdfResult = await createPdfFromDocument(saved, { download: true, upload: !saved.local_only });
+  if (!pdfResult) {
+    showToast('Data sudah tersimpan, tetapi PDF gagal dibuat. Periksa library html2canvas dan jsPDF.', 'warning');
+    await refreshCurrentPage();
+    return;
+  }
   form.reset();
   const dateInput = form.querySelector('[name="tanggal_surat"]');
   if (dateInput) dateInput.value = todayInput();
@@ -1019,7 +1053,8 @@ function actionButtons(row) {
 }
 
 function findDocumentById(id) {
-  return cachedDocuments.find((row) => String(row.id) === String(id))
+  const cachedRows = Array.isArray(cachedDocuments) ? cachedDocuments : [];
+  return cachedRows.find((row) => String(row.id) === String(id))
     || getLocalDocuments().map(normalizeDocument).find((row) => String(row.id) === String(id));
 }
 
@@ -1032,7 +1067,8 @@ async function previewById(id) {
 async function downloadById(id) {
   const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
-  await createPdfFromDocument(row, { download: true, upload: !row.local_only });
+  const pdfResult = await createPdfFromDocument(row, { download: true, upload: !row.local_only });
+  if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
 }
 
 async function editById(id) {
@@ -1178,9 +1214,11 @@ async function renderSettingsPage() {
 }
 
 async function saveProfile(event) {
-  event.preventDefault();
+  event?.preventDefault?.();
   if (!currentUser) return showToast('Sesi login tidak valid. Silakan login ulang.', 'error');
-  const form = new FormData(el('profileForm'));
+  const profileForm = el('profileForm');
+  if (!profileForm) return showToast('Form profil tidak ditemukan.', 'error');
+  const form = new FormData(profileForm);
   const payload = {
     id: 'default',
     nama_instansi: form.get('nama_instansi')?.trim(),
@@ -1192,7 +1230,7 @@ async function saveProfile(event) {
     kota: form.get('kota')?.trim(),
     kepala_nama: form.get('kepala_nama')?.trim(),
     kepala_nip: form.get('kepala_nip')?.trim(),
-    jabatan: form.get('jabatan')?. trim(),
+    jabatan: form.get('jabatan')?.trim(),
     tembusan: form.get('tembusan')?.trim(),
     logo_url: form.get('logo_url')?.trim() || 'logo.png',
     updated_at: new Date().toISOString()
@@ -1446,13 +1484,14 @@ function calculateScale(el) {
 
 
 // PERBAIKAN: Fungsi trigger download dari preview modal agar tidak mengambil element yang sedang di-hidden
-async function downloadPreviewPdf() {
+async function downloadPreviewPdf(evt = null) {
   if (!lastPreviewDocument) {
     showToast('Tidak ada data dokumen yang aktif untuk diunduh.', 'error');
     return;
   }
-  
-  const btn = event?.target;
+
+  const fallbackEvent = typeof event !== 'undefined' ? event : null;
+  const btn = evt?.target || fallbackEvent?.target || null;
   const originalText = btn ? btn.textContent : 'Download PDF';
   if (btn) {
     btn.disabled = true;
@@ -1460,9 +1499,12 @@ async function downloadPreviewPdf() {
   }
 
   try {
-    // Panggil fungsi createPdfFromDocument yang telah diperbaiki dengan isolasi DOM di atas
-    await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
-    showToast('PDF Berhasil diunduh!');
+    const pdfResult = await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
+    if (pdfResult) {
+      showToast('PDF berhasil diunduh.');
+    } else {
+      showToast('Gagal mengunduh PDF. Periksa library html2canvas dan jsPDF.', 'error');
+    }
   } catch (err) {
     console.error(err);
     showToast('Gagal mengunduh PDF.', 'error');
@@ -1474,8 +1516,32 @@ async function downloadPreviewPdf() {
   }
 }
 
+async function waitForImages(container) {
+  const images = Array.from(container.querySelectorAll('img'));
+  await Promise.all(images.map((image) => {
+    if (image.complete) return Promise.resolve();
+    return new Promise((resolve) => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    });
+  }));
+}
+
+function hasPdfLibraries() {
+  return typeof html2canvas === 'function'
+    && typeof window !== 'undefined'
+    && window.jspdf
+    && typeof window.jspdf.jsPDF === 'function';
+}
+
 // PERBAIKAN FINAL ANTI-BLANK: Menggunakan teknik Off-Screen Rendering posisi absolut
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
+  const pdfOptions = { download: true, upload: false, ...options };
+  if (!hasPdfLibraries()) {
+    showToast('Library PDF belum lengkap. Pastikan html2canvas dan jsPDF sudah dimuat di index.html.', 'error');
+    return null;
+  }
+
   // 1. Buat kontainer khusus rendering di luar layar (off-screen)
   const workerDiv = document.createElement('div');
   
@@ -1501,10 +1567,13 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
 
   try {
     // 2. Berikan jeda waktu agar browser menyelesaikan tugas render text & aset gambar
-    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    await waitForImages(workerDiv);
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+
+    const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
 
     // 3. Eksekusi html2canvas dengan pemaksaan dimensi dan bypass batasan CORS gambar
-    const canvas = await html2canvas(workerDiv, {
+    const canvas = await html2canvas(captureTarget, {
       scale: 2,                 // Resolusi tinggi agar teks tajam
       useCORS: true,            // Penting jika ada gambar eksternal/Supabase
       allowTaint: false,
@@ -1535,12 +1604,12 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     const pdfBlob = pdf.output('blob');
 
     // Simpan ke Supabase Storage apabila opsi upload aktif
-    if (options.upload) {
+    if (pdfOptions.upload) {
       await uploadPdf(data, pdfBlob, fileName);
     }
 
     // Unduh langsung ke device user
-    if (options.download) {
+    if (pdfOptions.download) {
       pdf.save(fileName);
     }
 
@@ -1549,6 +1618,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     console.error('Gagal membuat PDF:', error);
     showToast('Gagal memproses file PDF.', 'error');
     if (workerDiv.parentNode) workerDiv.remove();
+    return null;
   }
 }
     
@@ -1642,17 +1712,11 @@ document.addEventListener('DOMContentLoaded', checkSession);
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
 
 
-// ... kode window.backupJson = backupJson;
-document.addEventListener('DOMContentLoaded', checkSession);
-// KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
-
-function renderTembusan(profile){
+function renderTembusan(profile) {
   const t = profile?.tembusan || '';
-  if(!t) return '';
+  if (!t) return '';
   return `<div style="position:absolute;bottom:18mm;left:20mm;font-size:11px;font-family:'Times New Roman';">
 <b>Tembusan:</b><br>
-${t.split('\n').map(v=>'• '+v).join('<br>')}
+${t.split('\n').map((v) => `• ${safe(v)}`).join('<br>')}
 </div>`;
 }
-
-} // <--- ERROR: Kurung kurawal ini tidak ada pasangannya! Browser akan memunculkan "Uncaught SyntaxError: Unexpected token '}'"
