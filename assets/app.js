@@ -8,12 +8,6 @@ const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
-// Optimasi PDF: mode cepat agar download tidak terasa seperti reload lama.
-const PDF_RENDER_SCALE = 1.35;
-const PDF_IMAGE_QUALITY = 0.92;
-const PDF_RENDER_DELAY_MS = 80;
-const PDF_IMAGE_TIMEOUT_MS = 900;
-
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
   && typeof window.supabase.createClient === 'function';
@@ -850,41 +844,22 @@ async function saveDocument(event, typeKey) {
 
 async function saveDocumentAndPdf(event, typeKey) {
   event?.preventDefault?.();
-  const btn = event?.currentTarget || event?.target || null;
-  const originalText = setButtonBusy(btn, 'Menyimpan & membuat PDF...');
-
-  try {
-    if (!getPerm('create')) {
-      showToast('Role ini tidak dapat membuat dokumen.', 'error');
-      return;
-    }
-
-    const form = getButtonForm(event, 'documentForm');
-    if (!validateForm(form)) return;
-
-    const row = getFormData(form, typeKey);
-    const saved = await saveDocumentToStorage(row);
-
-    // Download PDF dibuat lokal saja. Upload Storage dibuat opsional agar tidak memperlambat tombol download.
-    const pdfResult = await createPdfFromDocument(saved, { download: true, upload: false });
-    if (!pdfResult) {
-      showToast('Data sudah tersimpan, tetapi PDF gagal dibuat. Periksa library html2canvas dan jsPDF.', 'warning');
-      return;
-    }
-
-    form.reset();
-    const dateInput = form.querySelector('[name="tanggal_surat"]');
-    if (dateInput) dateInput.value = todayInput();
-
-    showToast(saved.local_only
-      ? `Data lokal tersimpan dan PDF berhasil diunduh. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
-      : 'Data tersimpan dan PDF berhasil diunduh.');
-
-    // Refresh tabel tanpa menahan proses download dan tanpa membuat tombol terasa lama.
-    window.setTimeout(() => refreshCurrentPage().catch((error) => console.warn('Refresh setelah PDF gagal:', error)), 0);
-  } finally {
-    restoreButton(btn, originalText);
+  if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
+  const form = getButtonForm(event, 'documentForm');
+  if (!validateForm(form)) return;
+  const row = getFormData(form, typeKey);
+  const saved = await saveDocumentToStorage(row);
+  const pdfResult = await createPdfFromDocument(saved, { download: true, upload: !saved.local_only });
+  if (!pdfResult) {
+    showToast('Data sudah tersimpan, tetapi PDF gagal dibuat. Periksa library html2canvas dan jsPDF.', 'warning');
+    await refreshCurrentPage();
+    return;
   }
+  form.reset();
+  const dateInput = form.querySelector('[name="tanggal_surat"]');
+  if (dateInput) dateInput.value = todayInput();
+  showToast(saved.local_only ? `Data lokal tersimpan dan file dibuat. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}` : 'Data tersimpan dan PDF berhasil diproses.');
+  await refreshCurrentPage();
 }
 
 async function saveEditedDocument(event, id) {
@@ -1068,7 +1043,7 @@ function renderTable(rows, options = {}) {
 function actionButtons(row) {
   const buttons = [];
   buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
-  if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById(event, '${jsAttr(row.id)}')">PDF</button>`);
+  if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById('${jsAttr(row.id)}')">PDF</button>`);
   if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById('${jsAttr(row.id)}')">Edit</button>`);
   if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById('${jsAttr(row.id)}')">Setujui</button>`);
   if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button type="button" onclick="archiveById('${jsAttr(row.id)}')">Arsip</button>`);
@@ -1089,24 +1064,11 @@ async function previewById(id) {
   openPreview(row);
 }
 
-async function downloadById(eventOrId, maybeId) {
-  const id = maybeId === undefined ? eventOrId : maybeId;
-  const btn = maybeId === undefined ? null : (eventOrId?.currentTarget || eventOrId?.target || null);
-  const originalText = setButtonBusy(btn, 'PDF...');
-
-  try {
-    const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
-    if (!row) {
-      showToast('Data tidak ditemukan.', 'error');
-      return;
-    }
-
-    // Tombol PDF hanya download. Tidak upload ke Supabase agar proses jauh lebih cepat.
-    const pdfResult = await createPdfFromDocument(row, { download: true, upload: false });
-    if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
-  } finally {
-    restoreButton(btn, originalText);
-  }
+async function downloadById(id) {
+  const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
+  if (!row) return showToast('Data tidak ditemukan.', 'error');
+  const pdfResult = await createPdfFromDocument(row, { download: true, upload: !row.local_only });
+  if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
 }
 
 async function editById(id) {
@@ -1290,28 +1252,11 @@ async function saveProfile(event) {
 }
 
 function letterhead(profile) {
-  // Logo dipaksa proporsional agar tidak melebar atau bengkak saat dicapture html2canvas.
-  // Inline style dipakai karena render PDF kadang tidak membaca CSS eksternal secara konsisten.
-  const logoStyle = [
-    'width:72px !important',
-    'height:72px !important',
-    'min-width:72px !important',
-    'max-width:72px !important',
-    'min-height:72px !important',
-    'max-height:72px !important',
-    'object-fit:contain !important',
-    'object-position:center center !important',
-    'display:block !important',
-    'flex:0 0 72px !important',
-    'aspect-ratio:1 / 1',
-    'border:0'
-  ].join(';');
-
   return `
-    <div class="letterhead" style="display:flex;align-items:center;gap:16px;width:100%;overflow:hidden;">
-      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" style="${logoStyle}" width="72" height="72" onerror="this.style.display='none'">
-      <div style="flex:1;min-width:0;text-align:center;">
-        <h1 style="white-space: pre-line;margin:0;line-height:1.15;">${safe(profile.nama_instansi)}</h1>
+    <div class="letterhead">
+      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
+      <div>
+        <h1 style="white-space: pre-line;">${safe(profile.nama_instansi)}</h1>
         <p>${safe(profile.alamat)}</p>
         <p>Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
       </div>
@@ -1500,31 +1445,9 @@ function buildDecisionTemplate(row, profile, type) {
     </article>`;
 }
 
-function enforcePdfLogoSize(container) {
-  if (!container) return;
-
-  container.querySelectorAll('.letterhead img').forEach((img) => {
-    img.setAttribute('width', '72');
-    img.setAttribute('height', '72');
-    img.style.setProperty('width', '72px', 'important');
-    img.style.setProperty('height', '72px', 'important');
-    img.style.setProperty('min-width', '72px', 'important');
-    img.style.setProperty('max-width', '72px', 'important');
-    img.style.setProperty('min-height', '72px', 'important');
-    img.style.setProperty('max-height', '72px', 'important');
-    img.style.setProperty('object-fit', 'contain', 'important');
-    img.style.setProperty('object-position', 'center center', 'important');
-    img.style.setProperty('display', 'block', 'important');
-    img.style.setProperty('flex', '0 0 72px', 'important');
-  });
-}
-
 function openPreview(row) {
   lastPreviewDocument = normalizeDocument(row);
-  if (el('previewContent')) {
-    el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
-    enforcePdfLogoSize(el('previewContent'));
-  }
+  if (el('previewContent')) el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
   lastPreviewElement = el('previewContent') ? el('previewContent').querySelector('.pdf-page') : null;
   if (el('previewModal')) el('previewModal').hidden = false;
 }
@@ -1568,12 +1491,15 @@ async function downloadPreviewPdf(evt = null) {
   }
 
   const fallbackEvent = typeof event !== 'undefined' ? event : null;
-  const btn = evt?.currentTarget || evt?.target || fallbackEvent?.currentTarget || fallbackEvent?.target || null;
-  const originalText = setButtonBusy(btn, 'Memproses PDF...');
+  const btn = evt?.target || fallbackEvent?.target || null;
+  const originalText = btn ? btn.textContent : 'Download PDF';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Memproses PDF...';
+  }
 
   try {
-    // Preview download dibuat lokal saja. Upload Storage tidak dijalankan agar tombol tidak lambat.
-    const pdfResult = await createPdfFromDocument(lastPreviewDocument, { download: true, upload: false });
+    const pdfResult = await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
     if (pdfResult) {
       showToast('PDF berhasil diunduh.');
     } else {
@@ -1583,46 +1509,22 @@ async function downloadPreviewPdf(evt = null) {
     console.error(err);
     showToast('Gagal mengunduh PDF.', 'error');
   } finally {
-    restoreButton(btn, originalText);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   }
 }
 
-function wait(ms) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function nextFrame() {
-  return new Promise((resolve) => window.requestAnimationFrame ? window.requestAnimationFrame(resolve) : window.setTimeout(resolve, 16));
-}
-
-function setButtonBusy(button, busyText = 'Memproses...') {
-  if (!button) return null;
-  const originalText = button.textContent;
-  button.disabled = true;
-  button.textContent = busyText;
-  return originalText;
-}
-
-function restoreButton(button, originalText) {
-  if (!button) return;
-  button.disabled = false;
-  if (originalText !== null && originalText !== undefined) button.textContent = originalText;
-}
-
-async function waitForImages(container, timeoutMs = PDF_IMAGE_TIMEOUT_MS) {
+async function waitForImages(container) {
   const images = Array.from(container.querySelectorAll('img'));
-  if (!images.length) return;
-
-  const imageLoad = Promise.all(images.map((image) => {
+  await Promise.all(images.map((image) => {
     if (image.complete) return Promise.resolve();
     return new Promise((resolve) => {
       image.onload = resolve;
       image.onerror = resolve;
     });
   }));
-
-  // Jangan biarkan logo eksternal yang lambat menahan proses download PDF terlalu lama.
-  await Promise.race([imageLoad, wait(timeoutMs)]);
 }
 
 function hasPdfLibraries() {
@@ -1661,20 +1563,18 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   }
   
   workerDiv.innerHTML = htmlContent;
-  enforcePdfLogoSize(workerDiv);
   document.body.appendChild(workerDiv);
 
   try {
     // 2. Berikan jeda waktu agar browser menyelesaikan tugas render text & aset gambar
     await waitForImages(workerDiv);
-    await nextFrame();
-    await wait(PDF_RENDER_DELAY_MS);
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
 
     const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
 
     // 3. Eksekusi html2canvas dengan pemaksaan dimensi dan bypass batasan CORS gambar
     const canvas = await html2canvas(captureTarget, {
-      scale: PDF_RENDER_SCALE,  // Resolusi cukup tajam, lebih ringan untuk perangkat lambat
+      scale: 2,                 // Resolusi tinggi agar teks tajam
       useCORS: true,            // Penting jika ada gambar eksternal/Supabase
       allowTaint: false,
       backgroundColor: '#ffffff',
@@ -1689,7 +1589,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     workerDiv.remove();
 
     // 4. Konversi hasil tangkapan gambar menjadi PDF halaman tunggal
-    const imgData = canvas.toDataURL('image/jpeg', PDF_IMAGE_QUALITY);
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -1698,7 +1598,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     });
 
     // Gambar ditempel pas memenuhi batas kertas kertas A4 (210mm x 297mm)
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
