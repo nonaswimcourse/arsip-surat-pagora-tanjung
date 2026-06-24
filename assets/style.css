@@ -1361,3 +1361,25 @@ textarea {
     text-align: center !important;
   }
 }
+
+
+/* ==========================================================================
+   FIX HD LOGO PDF: menjaga logo tetap tajam saat preview dan download PDF
+   ========================================================================== */
+.pdf-page .letterhead img,
+.pdf-page .letterhead-logo {
+  image-rendering: auto !important;
+  transform: translateZ(0) !important;
+  backface-visibility: hidden !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+@media print {
+  .pdf-page .letterhead img,
+  .pdf-page .letterhead-logo {
+    image-rendering: auto !important;
+    transform: translateZ(0) !important;
+    backface-visibility: hidden !important;
+    -webkit-font-smoothing: antialiased !important;
+  }
+}

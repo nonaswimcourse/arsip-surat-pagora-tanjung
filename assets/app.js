@@ -9,8 +9,8 @@ const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
 // Optimasi PDF: mode cepat agar download tidak terasa seperti reload lama.
-const PDF_RENDER_SCALE = 1.35;
-const PDF_IMAGE_QUALITY = 0.92;
+const PDF_RENDER_SCALE = 3;
+const PDF_IMAGE_QUALITY = 1.0;
 const PDF_RENDER_DELAY_MS = 80;
 const PDF_IMAGE_TIMEOUT_MS = 900;
 
@@ -1649,7 +1649,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     workerDiv.remove();
 
     // 4. Konversi hasil tangkapan gambar menjadi PDF halaman tunggal
-    const imgData = canvas.toDataURL('image/jpeg', PDF_IMAGE_QUALITY);
+    const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -1658,7 +1658,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     });
 
     // Gambar ditempel pas memenuhi batas kertas kertas A4 (210mm x 297mm)
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'SLOW');
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
