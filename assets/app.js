@@ -384,24 +384,19 @@ function setLocalProfile(profile) {
   writeJSON(LOCAL_PROFILE_KEY, profile);
 }
 
-function syncProfileSignatureToLocalDocuments(profile = cachedProfile) {
-  const activeTtd = profile?.ttd_data_url || profile?.ttd_url || '';
-  if (!activeTtd) return;
+function getProfileSignatureSnapshot(profile = cachedProfile || getLocalProfile() || {}) {
+  return {
+    ttd_data_url: profile?.ttd_data_url || '',
+    ttd_url: profile?.ttd_url || profile?.ttd_data_url || '',
+    ttd_path: profile?.ttd_path || '',
+    ttd_name: profile?.ttd_name || ''
+  };
+}
 
-  const applySignature = (row) => normalizeDocument({
-    ...row,
-    ttd_data_url: profile.ttd_data_url || row.ttd_data_url || '',
-    ttd_url: profile.ttd_url || row.ttd_url || activeTtd,
-    ttd_path: profile.ttd_path || row.ttd_path || '',
-    ttd_name: profile.ttd_name || row.ttd_name || 'Tanda tangan'
-  });
-
-  const localRows = getLocalDocuments().map(applySignature);
-  if (localRows.length) setLocalDocuments(localRows);
-
-  if (Array.isArray(cachedDocuments)) {
-    cachedDocuments = cachedDocuments.map(applySignature);
-  }
+function syncProfileSignatureToLocalDocuments() {
+  // Sengaja dikosongkan.
+  // TTD profil hanya menjadi default untuk surat baru.
+  // Surat lama harus tetap memakai snapshot TTD yang tersimpan pada data suratnya sendiri.
 }
 
 function showApplication() {
@@ -592,12 +587,12 @@ function normalizeDocument(row) {
     surat_asli_url: row.surat_asli_url || '',
     surat_asli_path: row.surat_asli_path || '',
     surat_asli_name: row.surat_asli_name || '',
-    // FINAL: jangan biarkan TTD hilang setelah data disimpan / reload.
-    // ttd_data_url disimpan lokal sebagai cadangan jika URL Supabase belum bisa dirender.
-    ttd_data_url: row.ttd_data_url || cachedProfile?.ttd_data_url || getLocalProfile()?.ttd_data_url || '',
-    ttd_url: row.ttd_url || cachedProfile?.ttd_url || getLocalProfile()?.ttd_url || '',
-    ttd_path: row.ttd_path || cachedProfile?.ttd_path || getLocalProfile()?.ttd_path || '',
-    ttd_name: row.ttd_name || cachedProfile?.ttd_name || getLocalProfile()?.ttd_name || '',
+    // Snapshot TTD per surat.
+    // Jangan ambil fallback dari profil di sini, agar surat lama tidak berubah saat TTD profil diperbarui.
+    ttd_data_url: row.ttd_data_url || '',
+    ttd_url: row.ttd_url || '',
+    ttd_path: row.ttd_path || '',
+    ttd_name: row.ttd_name || '',
     local_only: Boolean(row.local_only),
     created_at: row.created_at || new Date().toISOString(),
     updated_at: row.updated_at || new Date().toISOString()
@@ -676,14 +671,14 @@ async function fetchDocuments(filter = {}, forceRefresh = false) {
 }
 
 async function saveDocumentToStorage(row) {
-  const activeProfile = cachedProfile || getLocalProfile() || {};
   const normalized = normalizeDocument({
     ...(row || {}),
-    // FINAL: data surat yang disimpan selalu membawa TTD aktif.
-    ttd_data_url: row?.ttd_data_url || activeProfile.ttd_data_url || '',
-    ttd_url: row?.ttd_url || activeProfile.ttd_url || row?.ttd_data_url || activeProfile.ttd_data_url || '',
-    ttd_path: row?.ttd_path || activeProfile.ttd_path || '',
-    ttd_name: row?.ttd_name || activeProfile.ttd_name || ''
+    // Simpan snapshot TTD milik surat ini saja.
+    // Jangan memakai fallback TTD profil di tahap simpan, agar arsip lama tidak ikut berubah.
+    ttd_data_url: row?.ttd_data_url || '',
+    ttd_url: row?.ttd_url || row?.ttd_data_url || '',
+    ttd_path: row?.ttd_path || '',
+    ttd_name: row?.ttd_name || ''
   });
   unmarkDocumentDeleted(normalized.id);
   const localRows = getLocalDocuments().filter((item) => String(item.id) !== String(normalized.id));
@@ -717,11 +712,11 @@ async function saveDocumentToStorage(row) {
     const onlineRow = normalizeDocument({
       ...normalized,
       ...resultData,
-      // FINAL: jika Supabase mengembalikan null/kosong, tetap pakai TTD yang sudah aktif.
-      ttd_data_url: normalized.ttd_data_url || activeProfile.ttd_data_url || '',
-      ttd_url: resultData.ttd_url || normalized.ttd_url || activeProfile.ttd_url || '',
-      ttd_path: resultData.ttd_path || normalized.ttd_path || activeProfile.ttd_path || '',
-      ttd_name: resultData.ttd_name || normalized.ttd_name || activeProfile.ttd_name || '',
+      // Jika Supabase mengembalikan null/kosong, tetap pakai snapshot TTD surat ini.
+      ttd_data_url: normalized.ttd_data_url || '',
+      ttd_url: resultData.ttd_url || normalized.ttd_url || normalized.ttd_data_url || '',
+      ttd_path: resultData.ttd_path || normalized.ttd_path || '',
+      ttd_name: resultData.ttd_name || normalized.ttd_name || '',
       local_only: false
     });
     setLocalDocuments([onlineRow, ...localRows]);
@@ -810,8 +805,11 @@ async function deleteAllDocumentsFromStorage(rows = []) {
 function getFormData(form, typeKey, existing = {}) {
   const typeConfig = documentTypes[typeKey] || documentTypes.keluar;
   const data = new FormData(form);
+  const isNewDocument = !existing?.id;
+  const defaultSignature = isNewDocument ? getProfileSignatureSnapshot() : {};
   return normalizeDocument({
     ...existing,
+    ...defaultSignature,
     id: existing.id || newId(),
     jenis: typeKey in documentTypes ? typeKey : 'keluar',
     nomor_surat: data.get('nomor_surat')?.trim(),
@@ -995,15 +993,8 @@ async function attachUploadedFiles(form, row) {
     nextRow.ttd_path = '';
     nextRow.ttd_name = signatureFile.name || 'Tanda tangan';
 
-    cachedProfile = {
-      ...defaultProfile,
-      ...(cachedProfile || {}),
-      ttd_data_url: localDataUrl,
-      ttd_url: localDataUrl,
-      ttd_path: '',
-      ttd_name: signatureFile.name || 'Tanda tangan'
-    };
-    setLocalProfile(cachedProfile);
+    // TTD dari form surat hanya menjadi snapshot untuk surat ini.
+    // Jangan update cachedProfile, agar upload TTD baru tidak mengubah surat lama atau default profil.
   }
 
   if (!supabaseClient) {
@@ -1026,15 +1017,8 @@ async function attachUploadedFiles(form, row) {
       nextRow.ttd_url = uploaded.url || nextRow.ttd_data_url;
       nextRow.ttd_name = uploaded.name || signatureFile.name || 'Tanda tangan';
 
-      cachedProfile = {
-        ...defaultProfile,
-        ...(cachedProfile || {}),
-        ttd_data_url: nextRow.ttd_data_url,
-        ttd_url: nextRow.ttd_url,
-        ttd_path: nextRow.ttd_path,
-        ttd_name: nextRow.ttd_name
-      };
-      setLocalProfile(cachedProfile);
+      // TTD berhasil diunggah ke Storage, tetapi tetap hanya melekat pada surat ini.
+      // Profil/global tidak ikut berubah.
     }
 
     return nextRow;
@@ -1175,10 +1159,12 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
         <div class="field full upload-card">
           <label>Upload Tanda Tangan</label>
           <input type="file" name="ttd_file" accept="image/png,image/jpeg,image/webp" onchange="previewSignatureInput(this)" ${disabled}>
-          <small>Format: PNG/JPG/WebP. Gunakan gambar tanda tangan transparan agar hasil PDF rapi.</small>
+          <small>Format: PNG/JPG/WebP. TTD pada form surat hanya tersimpan untuk surat ini dan tidak mengubah surat lama.</small>
           ${(() => {
-            const currentTtd = data.ttd_data_url || data.ttd_url || cachedProfile?.ttd_data_url || cachedProfile?.ttd_url || '';
-            const currentName = data.ttd_name || cachedProfile?.ttd_name || 'Tanda tangan tersimpan';
+            const defaultTtd = mode === 'create' ? (cachedProfile?.ttd_data_url || cachedProfile?.ttd_url || '') : '';
+            const defaultName = mode === 'create' ? (cachedProfile?.ttd_name || 'Tanda tangan tersimpan') : 'Tanda tangan tersimpan';
+            const currentTtd = data.ttd_data_url || data.ttd_url || defaultTtd;
+            const currentName = data.ttd_name || defaultName;
             return currentTtd ? `
               <div class="ttd-current-preview">
                 <img src="${safe(currentTtd)}" alt="Tanda tangan tersimpan" crossorigin="anonymous">
@@ -1696,7 +1682,7 @@ async function renderSettingsPage() {
         <div class="field full upload-card">
           <label>Upload Tanda Tangan Ketua</label>
           <input type="file" name="profile_ttd_file" accept="image/png,image/jpeg,image/webp">
-          <small>TTD ini akan otomatis tampil di semua review dan PDF, tepat di atas nama ketua.</small>
+          <small>TTD ini menjadi default untuk surat baru saja. Surat lama tetap memakai TTD yang tersimpan pada surat tersebut.</small>
           ${(() => {
             const activeTtd = profile.ttd_data_url || profile.ttd_url || '';
             return activeTtd ? `
@@ -1779,7 +1765,8 @@ async function saveProfile(event) {
 
     cachedProfile = { ...defaultProfile, ...(cachedProfile || {}), ...payload };
     setLocalProfile(cachedProfile);
-    syncProfileSignatureToLocalDocuments(cachedProfile);
+    // Jangan sinkronkan TTD profil ke dokumen lama.
+    // TTD profil hanya menjadi default untuk surat baru setelah pengaturan ini disimpan.
     applyRoleUI();
 
     try {
@@ -1828,11 +1815,11 @@ function letterhead(profile) {
 function signature(profile, row = {}) {
   const rowDataTtd = row?.ttd_data_url || '';
   const rowUrlTtd = row?.ttd_url || '';
-  const profileDataTtd = cachedProfile?.ttd_data_url || profile?.ttd_data_url || '';
-  const profileUrlTtd = cachedProfile?.ttd_url || profile?.ttd_url || '';
 
-  const ttd = rowDataTtd || rowUrlTtd || profileDataTtd || profileUrlTtd || '';
-  const ttdName = row?.ttd_name || cachedProfile?.ttd_name || profile?.ttd_name || 'Tanda tangan';
+  // Kunci TTD pada snapshot surat.
+  // Jangan mengambil TTD dari profil di sini, agar surat lama tidak berubah saat ada upload TTD baru.
+  const ttd = rowDataTtd || rowUrlTtd || '';
+  const ttdName = row?.ttd_name || 'Tanda tangan';
 
   return `
     <div class="signature-block">
@@ -1841,7 +1828,7 @@ function signature(profile, row = {}) {
 
       <div class="signature-image-wrap">
         ${ttd
-          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" style="display:block;width:4200px;max-width:420px;max-height:210px;height:auto;object-fit:contain;visibility:visible;opacity:1;position:relative;z-index:999;transform:translate(-42px, 22px);margin-bottom:-118px;">`
+          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" style="display:block;width:420px;max-width:420px;max-height:210px;height:auto;object-fit:contain;visibility:visible;opacity:1;position:relative;z-index:999;transform:translate(-145px,22px);margin-bottom:-118px;">`
           : `<div class="signature-space"></div>`
         }
       </div>
@@ -1863,7 +1850,6 @@ function signature(profile, row = {}) {
     ` : ''}
   `;
 }
-
 function metaTable(rows) {
   return `
     <table class="meta-table">
@@ -1891,28 +1877,21 @@ function buildActivityMeta(row) {
 function getFinalDocumentRow(documentRow) {
   const sourceRow = documentRow || {};
   const row = normalizeDocument(sourceRow);
-  const profile = cachedProfile || getLocalProfile() || defaultProfile;
 
   const rowDataTtd = sourceRow?.ttd_data_url || row.ttd_data_url || '';
   const rowUrlTtd = sourceRow?.ttd_url || row.ttd_url || '';
-  const rowIsNewPreview = String(rowUrlTtd).startsWith('data:image/') || String(rowDataTtd).startsWith('data:image/');
 
   return normalizeDocument({
     ...row,
 
-    // FINAL:
-    // 1. TTD dataURL dari preview/edit: pasti tampil di browser dan PDF.
-    // 2. TTD URL/path dari dokumen tersimpan.
-    // 3. TTD global dari Pengaturan.
-    ttd_data_url: rowDataTtd || profile?.ttd_data_url || '',
-    ttd_url: rowIsNewPreview
-      ? (rowDataTtd || rowUrlTtd)
-      : (rowUrlTtd || profile?.ttd_url || rowDataTtd || profile?.ttd_data_url || ''),
-    ttd_path: row.ttd_path || profile?.ttd_path || '',
-    ttd_name: row.ttd_name || profile?.ttd_name || 'Tanda tangan'
+    // Finalisasi snapshot TTD per surat.
+    // Tidak ada fallback ke TTD profil agar arsip lama tidak berubah setelah upload TTD baru.
+    ttd_data_url: rowDataTtd || '',
+    ttd_url: rowUrlTtd || rowDataTtd || '',
+    ttd_path: row.ttd_path || '',
+    ttd_name: row.ttd_name || 'Tanda tangan'
   });
 }
-
 function buildDocumentHTML(documentRow) {
   const profile = cachedProfile || defaultProfile;
   const row = getFinalDocumentRow(documentRow);
