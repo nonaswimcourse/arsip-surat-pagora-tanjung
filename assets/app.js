@@ -1221,7 +1221,14 @@ async function saveEditedDocument(event, id) {
 
     if (originalFile || signatureFile) {
       const rowWithFiles = await attachUploadedFiles(form, saved);
-      if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
+      if (rowWithFiles) {
+        saved = await saveDocumentToStorage(rowWithFiles);
+
+        // FINAL: paksa cache langsung memakai TTD baru hasil edit.
+        cachedDocuments = Array.isArray(cachedDocuments)
+          ? cachedDocuments.map((item) => String(item.id) === String(saved.id) ? normalizeDocument({ ...item, ...saved }) : item)
+          : cachedDocuments;
+      }
     }
 
     closeEditModal();
@@ -1238,7 +1245,12 @@ async function previewForm(typeKey, formId = 'documentForm') {
   const form = el(formId);
   if (!form) return showToast('Form tidak ditemukan.', 'error');
 
-  let row = getFormData(form, typeKey);
+  // Kalau preview dibuka dari modal edit, pertahankan data lama termasuk file/TTD yang sudah tersimpan.
+  const existing = formId === 'editDocumentForm' && editTargetId
+    ? (findDocumentById(editTargetId) || {})
+    : {};
+
+  let row = getFormData(form, typeKey, existing);
   const signatureFile = getSelectedFile(form, 'ttd_file');
 
   // Preview harus menampilkan TTD yang baru dipilih walaupun dokumen belum disimpan.
@@ -1246,11 +1258,12 @@ async function previewForm(typeKey, formId = 'documentForm') {
     if (!validateUploadFile(signatureFile, { imageOnly: true })) return;
     try {
       const dataUrl = await fileToDataUrl(signatureFile);
-      row = normalizeDocument({
+      row = {
         ...row,
         ttd_url: dataUrl,
+        ttd_path: '',
         ttd_name: signatureFile.name || 'Tanda tangan preview'
-      });
+      };
     } catch (error) {
       console.warn('Preview tanda tangan gagal:', error);
       showToast('Preview tanda tangan gagal dibaca.', 'warning');
@@ -1412,6 +1425,7 @@ function actionButtons(row) {
   buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
   if (row.surat_asli_url) buttons.push(`<a class="action-link" href="${safe(row.surat_asli_url)}" target="_blank" rel="noopener">Surat Asli</a>`);
   if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById(event, '${jsAttr(row.id)}')">PDF</button>`);
+  if (getPerm('edit')) buttons.push(`<button type="button" class="ttd-action" onclick="uploadTtdById('${jsAttr(row.id)}')">TTD</button>`);
   if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById('${jsAttr(row.id)}')">Edit</button>`);
   if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById('${jsAttr(row.id)}')">Setujui</button>`);
   if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button type="button" onclick="archiveById('${jsAttr(row.id)}')">Arsip</button>`);
@@ -1432,6 +1446,65 @@ async function previewById(id) {
   if (!row) return showToast('Data tidak ditemukan.', 'error');
   openPreview(row);
 }
+
+async function uploadTtdById(id) {
+  if (!getPerm('edit')) return showToast('Role ini tidak dapat mengubah tanda tangan.', 'error');
+
+  const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
+  if (!row) return showToast('Data tidak ditemukan.', 'error');
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png,image/jpeg,image/webp';
+
+  input.onchange = async () => {
+    const file = input.files?.[0] || null;
+    if (!file) return;
+    if (!validateUploadFile(file, { imageOnly: true })) return;
+
+    try {
+      showToast('Mengunggah tanda tangan...', 'warning');
+
+      let uploaded;
+      if (supabaseClient) {
+        uploaded = await uploadAttachmentToSupabase(file, 'tanda-tangan', row.id);
+      } else {
+        const dataUrl = await fileToDataUrl(file);
+        uploaded = {
+          path: '',
+          url: dataUrl,
+          name: file.name || 'Tanda tangan'
+        };
+      }
+
+      const updated = normalizeDocument({
+        ...row,
+        ttd_path: uploaded.path,
+        ttd_url: uploaded.url,
+        ttd_name: uploaded.name,
+        updated_at: new Date().toISOString()
+      });
+
+      const saved = await saveDocumentToStorage(updated);
+
+      cachedDocuments = Array.isArray(cachedDocuments)
+        ? cachedDocuments.map((item) => String(item.id) === String(saved.id) ? normalizeDocument({ ...item, ...saved }) : item)
+        : cachedDocuments;
+
+      showToast(saved.local_only
+        ? 'TTD tersimpan lokal. Supabase belum menerima data.'
+        : 'TTD berhasil disimpan dan akan tampil di Preview, PDF, Edit, dan Arsip.');
+
+      await refreshCurrentPage();
+    } catch (error) {
+      console.warn('Upload TTD dari aksi gagal:', error);
+      showToast(errorText(error, 'Upload TTD gagal.'), 'error');
+    }
+  };
+
+  input.click();
+}
+
 
 async function downloadById(eventOrId, maybeId) {
   const id = maybeId === undefined ? eventOrId : maybeId;
@@ -1703,10 +1776,21 @@ function letterhead(profile) {
 }
 
 function signature(profile, row = {}) {
-  // Prioritas utama: TTD global terbaru dari Pengaturan.
-  // Dengan ini, surat lama yang sudah tersimpan ikut memakai TTD terbaru.
-  const ttd = cachedProfile?.ttd_url || profile?.ttd_url || row?.ttd_url || '';
-  const ttdName = cachedProfile?.ttd_name || profile?.ttd_name || row?.ttd_name || 'Tanda tangan';
+  const rowTtd = row?.ttd_url || '';
+  const rowIsNewPreview = String(rowTtd).startsWith('data:image/');
+
+  // FINAL:
+  // - Jika user memilih file TTD baru di form edit/preview, pakai data:image dari row dulu.
+  // - Jika tidak ada file baru, pakai TTD global terbaru dari Pengaturan.
+  // - Jika profil kosong, fallback ke TTD yang tersimpan di dokumen.
+  // Prioritas akhir:
+  // 1) TTD yang baru dipilih di form preview/edit
+  // 2) TTD yang tersimpan pada dokumen/baris tersebut
+  // 3) TTD global dari Pengaturan
+  const ttd = rowIsNewPreview ? rowTtd : (rowTtd || cachedProfile?.ttd_url || profile?.ttd_url || '');
+  const ttdName = rowIsNewPreview
+    ? (row?.ttd_name || 'Tanda tangan preview')
+    : (row?.ttd_name || cachedProfile?.ttd_name || profile?.ttd_name || 'Tanda tangan');
 
   return `
     <div class="signature-block">
@@ -1763,15 +1847,21 @@ function buildActivityMeta(row) {
 
 
 function getFinalDocumentRow(documentRow) {
-  const row = normalizeDocument(documentRow || {});
+  const sourceRow = documentRow || {};
+  const row = normalizeDocument(sourceRow);
   const profile = cachedProfile || getLocalProfile() || defaultProfile;
+  const rowTtd = sourceRow?.ttd_url || row.ttd_url || '';
+  const rowIsNewPreview = String(rowTtd).startsWith('data:image/');
 
   return normalizeDocument({
     ...row,
-    // FINAL: preview/PDF selalu memakai TTD aktif terbaru.
-    ttd_url: profile?.ttd_url || row.ttd_url || '',
-    ttd_path: profile?.ttd_path || row.ttd_path || '',
-    ttd_name: profile?.ttd_name || row.ttd_name || ''
+
+    // FINAL:
+    // File TTD baru dari form edit dan TTD dokumen harus menang.
+    // Jika dokumen belum punya TTD, fallback ke TTD global dari Pengaturan.
+    ttd_url: rowIsNewPreview ? rowTtd : (row.ttd_url || profile?.ttd_url || ''),
+    ttd_path: rowIsNewPreview ? (row.ttd_path || '') : (row.ttd_path || profile?.ttd_path || ''),
+    ttd_name: rowIsNewPreview ? (row.ttd_name || 'Tanda tangan preview') : (row.ttd_name || profile?.ttd_name || '')
   });
 }
 
@@ -2202,6 +2292,7 @@ window.printPreview = printPreview;
 window.downloadPreviewPdf = downloadPreviewPdf;
 window.filterTable = filterTable;
 window.previewById = previewById;
+window.uploadTtdById = uploadTtdById;
 window.downloadById = downloadById;
 window.editById = editById;
 window.closeEditModal = closeEditModal;
