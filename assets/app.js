@@ -1254,7 +1254,7 @@ async function saveProfile(event) {
 function letterhead(profile) {
   return `
     <div class="letterhead">
-      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
+      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" style="height:80px;width:auto;max-width:75px;max-height:80px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'">
       <div>
         <h1 style="white-space: pre-line;">${safe(profile.nama_instansi)}</h1>
         <p>${safe(profile.alamat)}</p>
