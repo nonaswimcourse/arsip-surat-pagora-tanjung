@@ -1839,9 +1839,9 @@ function signature(profile, row = {}) {
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
 
-      <div class="signature-image-wrap">
+      <div class="signature-image-wrap" style="display:flex;justify-content:center;align-items:center;min-height:96px;margin:2px 0 -18px;overflow:visible;position:relative;z-index:20;">
         ${ttd
-          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" style="display:block;max-width:190px;max-height:78px;width:auto;height:auto;object-fit:contain;visibility:visible;opacity:1;position:relative;z-index:999;">`
+          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" style="display:block;width:260px;max-width:260px;max-height:120px;height:auto;object-fit:contain;visibility:visible;opacity:1;position:relative;z-index:999;transform:translate(-22px, -8px);margin-bottom:-22px;">`
           : `<div class="signature-space"></div>`
         }
       </div>
