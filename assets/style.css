@@ -905,12 +905,18 @@ textarea {
 }
 
 /* Mengatur Ukuran Logo Tetap Stabil */
-.letterhead img {
-  width: 85px !important;        /* Kunci resolusi logo agar tidak membesar/rusak */
+.letterhead img,
+.letterhead-logo {
+  width: 85px !important;
   height: 85px !important;
   min-width: 85px !important;
   min-height: 85px !important;
-  object-fit: contain;
+  max-width: 85px !important;
+  max-height: 85px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  display: block !important;
+  flex: 0 0 85px !important;
 }
 
 /* Mengatur Teks Nama Instansi (H1) */
@@ -1090,12 +1096,7 @@ textarea {
   line-height: 1.0;
   text-transform: uppercase;
 }
-.tembusan {
-  position: absolute;
-  bottom: 20mm;
-  left: 20mm;
-  font-size: 11px;
-}
+
 /* ==========================================================================
    13. Responsive Design / Mobile Devices (max-width: 768px)
    ========================================================================== */
@@ -1228,13 +1229,18 @@ textarea {
   }
 
   /* Mengunci kestabilan elemen gambar (Logo KKG) */
-  .letterhead img {
+  .letterhead img,
+  .letterhead-logo {
     width: 85px !important;
     height: 85px !important;
     min-width: 85px !important;
     min-height: 85px !important;
+    max-width: 85px !important;
+    max-height: 85px !important;
     object-fit: contain !important;
+    object-position: center !important;
     display: block !important;
+    flex: 0 0 85px !important;
   }
 
   /* Menjamin background pembentuk PDF tidak menjadi transparan/putih samar saat dicapture */

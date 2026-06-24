@@ -1213,7 +1213,13 @@ async function saveProfile(event) {
 function letterhead(profile) {
   return `
     <div class="letterhead">
-      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
+      <img
+        src="${safe(profile.logo_url || 'logo.png')}"
+        alt="Logo"
+        class="letterhead-logo"
+        style="width:85px;height:85px;min-width:85px;min-height:85px;max-width:85px;max-height:85px;object-fit:contain;object-position:center;display:block;flex:0 0 85px;"
+        onerror="this.style.display='none'"
+      >
       <div>
         <h1 style="white-space: pre-line;">${safe(profile.nama_instansi)}</h1>
         <p>${safe(profile.alamat)}</p>
@@ -1221,6 +1227,47 @@ function letterhead(profile) {
       </div>
     </div>
     <div class="letter-line"></div>`;
+}
+
+
+function lockPdfLogoSize(container) {
+  if (!container) return;
+  const logos = container.querySelectorAll('.letterhead img, .letterhead-logo');
+  logos.forEach((logo) => {
+    logo.style.width = '85px';
+    logo.style.height = '85px';
+    logo.style.minWidth = '85px';
+    logo.style.minHeight = '85px';
+    logo.style.maxWidth = '85px';
+    logo.style.maxHeight = '85px';
+    logo.style.objectFit = 'contain';
+    logo.style.objectPosition = 'center';
+    logo.style.display = 'block';
+    logo.style.flex = '0 0 85px';
+  });
+}
+
+function lockPdfPageForCanvas(container) {
+  if (!container) return;
+  const page = container.querySelector('.pdf-page') || container;
+  page.style.width = '794px';
+  page.style.height = '1123px';
+  page.style.maxHeight = '1123px';
+  page.style.boxSizing = 'border-box';
+  page.style.backgroundColor = '#ffffff';
+  page.style.overflow = 'hidden';
+  lockPdfLogoSize(container);
+}
+
+async function waitForImages(container) {
+  const images = Array.from(container.querySelectorAll('img'));
+  await Promise.all(images.map((image) => {
+    if (image.complete && image.naturalWidth !== 0) return Promise.resolve();
+    return new Promise((resolve) => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    });
+  }));
 }
 
 function signature(profile, row = {}) {
@@ -1390,8 +1437,12 @@ function buildDecisionTemplate(row, profile, type) {
 
 function openPreview(row) {
   lastPreviewDocument = normalizeDocument(row);
-  if (el('previewContent')) el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
-  lastPreviewElement = el('previewContent') ? el('previewContent').querySelector('.pdf-page') : null;
+  const preview = el('previewContent');
+  if (preview) {
+    preview.innerHTML = buildDocumentHTML(lastPreviewDocument);
+    lockPdfLogoSize(preview);
+  }
+  lastPreviewElement = preview ? preview.querySelector('.pdf-page') : null;
   if (el('previewModal')) el('previewModal').hidden = false;
 }
 
@@ -1457,50 +1508,53 @@ async function downloadPreviewPdf() {
 
 // PERBAIKAN FINAL ANTI-BLANK: Menggunakan teknik Off-Screen Rendering posisi absolut
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
-  // 1. Buat kontainer khusus rendering di luar layar (off-screen)
+  if (typeof html2canvas !== 'function' || !window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+    showToast('Library PDF belum lengkap. Pastikan html2canvas dan jsPDF sudah dimuat di index.html.', 'error');
+    return null;
+  }
+
   const workerDiv = document.createElement('div');
-  
-  // PENTING: Jangan gunakan opacity: 0 atau display: none agar html2canvas tidak blank!
-  // Kita lempar posisinya jauh ke kiri luar layar (-9999px) agar tidak mengganggu pandangan user.
   workerDiv.style.position = 'absolute';
   workerDiv.style.top = '-9999px';
   workerDiv.style.left = '-9999px';
-  workerDiv.style.width = '210mm'; // Paksa lebar A4 presisi
+  workerDiv.style.width = '794px';
+  workerDiv.style.minHeight = '1123px';
   workerDiv.style.background = '#ffffff';
   workerDiv.style.color = '#000000';
-  
-  // Ambil template HTML surat Anda
+  workerDiv.style.visibility = 'visible';
+
   let htmlContent = buildDocumentHTML(data);
-  
-  // Cek jika class .pdf-page tidak ikut terpasang, bungkus manual agar styling CSS Anda aktif
   if (!htmlContent.includes('class="pdf-page"')) {
     htmlContent = `<div class="pdf-page">${htmlContent}</div>`;
   }
-  
+
   workerDiv.innerHTML = htmlContent;
   document.body.appendChild(workerDiv);
+  lockPdfPageForCanvas(workerDiv);
 
   try {
-    // 2. Berikan jeda waktu agar browser menyelesaikan tugas render text & aset gambar
-    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    await waitForImages(workerDiv);
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
 
-    // 3. Eksekusi html2canvas dengan pemaksaan dimensi dan bypass batasan CORS gambar
-    const canvas = await html2canvas(workerDiv, {
-      scale: 2,                 // Resolusi tinggi agar teks tajam
-      useCORS: true,            // Penting jika ada gambar eksternal/Supabase
+    const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+    lockPdfPageForCanvas(workerDiv);
+
+    const canvas = await html2canvas(captureTarget, {
+      scale: 2,
+      useCORS: true,
       allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
-      width: 794,               // Lebar pixel standar untuk A4 pada 96 DPI
-      height: 1123,             // Tinggi pixel standar untuk A4 pada 96 DPI
+      width: 794,
+      height: 1123,
       windowWidth: 794,
-      windowHeight: 1123
+      windowHeight: 1123,
+      scrollX: 0,
+      scrollY: 0
     });
 
-    // Setelah canvas berhasil dicapture, langsung hapus elemen pembantu dari DOM
     workerDiv.remove();
 
-    // 4. Konversi hasil tangkapan gambar menjadi PDF halaman tunggal
     const imgData = canvas.toDataURL('image/jpeg', 0.98);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
@@ -1509,18 +1563,15 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
       format: 'a4'
     });
 
-    // Gambar ditempel pas memenuhi batas kertas kertas A4 (210mm x 297mm)
     pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
 
-    // Simpan ke Supabase Storage apabila opsi upload aktif
     if (options.upload) {
       await uploadPdf(data, pdfBlob, fileName);
     }
 
-    // Unduh langsung ke device user
     if (options.download) {
       pdf.save(fileName);
     }
@@ -1530,6 +1581,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     console.error('Gagal membuat PDF:', error);
     showToast('Gagal memproses file PDF.', 'error');
     if (workerDiv.parentNode) workerDiv.remove();
+    return null;
   }
 }
     
