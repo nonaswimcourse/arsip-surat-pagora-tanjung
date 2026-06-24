@@ -113,7 +113,10 @@ const defaultProfile = {
   kepala_nip: '-',
   jabatan: 'Ketua KKG PJOK',
   tembusan: '',
-  logo_url: 'logo.png'
+  logo_url: 'logo.png',
+  ttd_url: '',
+  ttd_path: '',
+  ttd_name: ''
 };
 
 function el(id) {
@@ -798,6 +801,17 @@ function validateUploadFile(file, options = {}) {
   return true;
 }
 
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve('');
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Gagal membaca file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 async function uploadAttachmentToSupabase(file, folder, ownerId) {
   if (!file) return null;
   if (!supabaseClient) throw new Error('Supabase belum aktif, file belum bisa diunggah.');
@@ -853,6 +867,10 @@ async function attachUploadedFiles(form, row) {
       nextRow.ttd_path = uploaded.path;
       nextRow.ttd_url = uploaded.url;
       nextRow.ttd_name = uploaded.name;
+
+      // Sinkronkan ke profile lokal agar preview/PDF selalu punya fallback TTD.
+      cachedProfile = { ...defaultProfile, ...(cachedProfile || {}), ttd_url: uploaded.url, ttd_path: uploaded.path, ttd_name: uploaded.name };
+      setLocalProfile(cachedProfile);
     }
 
     return nextRow;
@@ -1114,7 +1132,26 @@ async function saveEditedDocument(event, id) {
 async function previewForm(typeKey, formId = 'documentForm') {
   const form = el(formId);
   if (!form) return showToast('Form tidak ditemukan.', 'error');
-  const row = getFormData(form, typeKey);
+
+  let row = getFormData(form, typeKey);
+  const signatureFile = getSelectedFile(form, 'ttd_file');
+
+  // Preview harus menampilkan TTD yang baru dipilih walaupun dokumen belum disimpan.
+  if (signatureFile) {
+    if (!validateUploadFile(signatureFile, { imageOnly: true })) return;
+    try {
+      const dataUrl = await fileToDataUrl(signatureFile);
+      row = normalizeDocument({
+        ...row,
+        ttd_url: dataUrl,
+        ttd_name: signatureFile.name || 'Tanda tangan preview'
+      });
+    } catch (error) {
+      console.warn('Preview tanda tangan gagal:', error);
+      showToast('Preview tanda tangan gagal dibaca.', 'warning');
+    }
+  }
+
   openPreview(row);
 }
 
@@ -1303,7 +1340,7 @@ async function downloadById(eventOrId, maybeId) {
     }
 
     // Tombol PDF hanya download. Tidak upload ke Supabase agar proses jauh lebih cepat.
-    const pdfResult = await createPdfFromDocument(row, { download: true, upload: false });
+    const pdfResult = await createPdfFromDocument(row, { download: true, upload: true });
     if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
   } finally {
     restoreButton(btn, originalText);
@@ -1504,15 +1541,42 @@ function letterhead(profile) {
 }
 
 function signature(profile, row = {}) {
+  const ttd = row?.ttd_url || cachedProfile?.ttd_url || profile?.ttd_url || '';
+  const ttdName = row?.ttd_name || cachedProfile?.ttd_name || profile?.ttd_name || 'Tanda tangan';
+
   return `
-    <div class="signature-block">
+    <div class="signature-block" style="position:relative; z-index:5;">
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
 
-      ${row.ttd_url
-        ? `<div class="signature-image-wrap"><img src="${safe(row.ttd_url)}" alt="Tanda tangan"></div>`
-        : '<div class="signature-space"></div>'
-      }
+      <div class="signature-image-wrap" style="
+        height:86px;
+        min-height:86px;
+        margin:6px 0 2px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        position:relative;
+        z-index:20;
+        background:transparent;
+        overflow:visible;
+      ">
+        ${ttd
+          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" style="
+              display:block;
+              position:relative;
+              z-index:30;
+              max-width:190px;
+              max-height:82px;
+              width:auto;
+              height:auto;
+              object-fit:contain;
+              object-position:center;
+              background:transparent;
+            ">`
+          : `<div class="signature-space"></div>`
+        }
+      </div>
 
       <p><strong>${safe(profile.kepala_nama)}</strong></p>
       <p>NIP. ${safe(profile.kepala_nip)}</p>
@@ -1557,9 +1621,20 @@ function buildActivityMeta(row) {
   ]);
 }
 
+
+function getFinalDocumentRow(documentRow) {
+  const row = normalizeDocument(documentRow || {});
+  return normalizeDocument({
+    ...row,
+    ttd_url: row.ttd_url || cachedProfile?.ttd_url || '',
+    ttd_path: row.ttd_path || cachedProfile?.ttd_path || '',
+    ttd_name: row.ttd_name || cachedProfile?.ttd_name || ''
+  });
+}
+
 function buildDocumentHTML(documentRow) {
   const profile = cachedProfile || defaultProfile;
-  const row = normalizeDocument(documentRow);
+  const row = getFinalDocumentRow(documentRow);
   const type = documentTypes[row.jenis] || documentTypes.keluar;
   if (row.jenis === 'masuk') return buildIncomingTemplate(row, profile, type);
   if (row.jenis === 'tugas') return buildAssignmentTemplate(row, profile, type);
@@ -1688,9 +1763,22 @@ function buildDecisionTemplate(row, profile, type) {
 }
 
 function openPreview(row) {
-  lastPreviewDocument = normalizeDocument(row);
-  if (el('previewContent')) el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
-  lastPreviewElement = el('previewContent') ? el('previewContent').querySelector('.pdf-page') : null;
+  lastPreviewDocument = getFinalDocumentRow(row);
+
+  const preview = el('previewContent');
+  if (preview) {
+    preview.innerHTML = buildDocumentHTML(lastPreviewDocument);
+
+    // Paksa TTD tampil di lapisan depan pada modal preview.
+    preview.querySelectorAll('.signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
+      node.style.position = 'relative';
+      node.style.zIndex = '30';
+      node.style.visibility = 'visible';
+      node.style.opacity = '1';
+    });
+  }
+
+  lastPreviewElement = preview ? preview.querySelector('.pdf-page') : null;
   if (el('previewModal')) el('previewModal').hidden = false;
 }
 
@@ -1825,14 +1913,6 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     htmlContent = `<div class="pdf-page">${htmlContent}</div>`;
   }
   
-  // AUTO FIX SIGNATURE INJECTION
-  try {
-    const profile = (typeof cachedProfile !== 'undefined' && cachedProfile) ? cachedProfile : (typeof defaultProfile !== 'undefined' ? defaultProfile : {});
-    if (profile && typeof signatureBlock === 'function' && !htmlContent.includes('signature-area')) {
-      htmlContent += signatureBlock(profile);
-    }
-  } catch(e) {}
-
   workerDiv.innerHTML = htmlContent;
   document.body.appendChild(workerDiv);
 
@@ -1982,70 +2062,3 @@ window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
-
-
-function renderTembusan(profile) {
-  const t = profile?.tembusan || '';
-  if (!t) return '';
-  return `<div style="position:absolute;bottom:18mm;left:20mm;font-size:11px;font-family:'Times New Roman';">
-<b>Tembusan:</b><br>
-${t.split('\n').map((v) => `• ${safe(v)}`).join('<br>')}
-</div>`;
-}
-
-
-// === SIGNATURE BLOCK UPGRADE ===
-function signatureBlock(profile){
-  return `
-  <div class="signature-area">
-    <div class="signature-right">
-      <p>${profile.kota || ''}</p>
-      <p><b>${profile.jabatan || 'Ketua'}</b></p>
-
-      <div class="ttd-box">
-        ${profile.ttd_url ? `<img src="${profile.ttd_url}" class="ttd-img">` : `<div class="ttd-placeholder"></div>`}
-      </div>
-
-      <p><b>${profile.kepala_nama || '-'}</b></p>
-      <p>NIP. ${profile.kepala_nip || '-'}</p>
-    </div>
-  </div>`;
-}
-
-
-// ================= FIX FINAL SIGNATURE + PDF CONSISTENCY =================
-
-function signatureBlock(profile){
-  const ttd = profile?.ttd_url || profile?.signature_url || '';
-
-  return `
-  <div class="signature-area">
-    <div class="signature-right">
-      <p>${profile?.kota || ''}, ${new Date().toLocaleDateString('id-ID')}</p>
-      <p><b>${profile?.jabatan || 'Ketua KKG'}</b></p>
-
-      <div class="ttd-box">
-        ${ttd ? `<img src="${ttd}" class="ttd-img">` : `<div class="ttd-placeholder"></div>`}
-      </div>
-
-      <p class="signature-name"><b>${profile?.kepala_nama || '-'}</b></p>
-      <p class="signature-nip">NIP. ${profile?.kepala_nip || '-'}</p>
-    </div>
-  </div>`;
-}
-
-// override preview (safe)
-if (typeof window !== 'undefined') {
-  const _openPreview = window.openPreview;
-  window.openPreview = function(row){
-    const result = _openPreview ? _openPreview(row) : null;
-    setTimeout(()=>{
-      const el = document.querySelector('.pdf-page');
-      if(el && window.cachedProfile){
-        el.insertAdjacentHTML('beforeend', signatureBlock(window.cachedProfile));
-      }
-    }, 50);
-    return result;
-  }
-}
-
