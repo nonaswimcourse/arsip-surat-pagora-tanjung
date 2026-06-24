@@ -2082,3 +2082,97 @@ img {
   max-height: 80px !important;
   object-fit: contain !important;
 }
+
+/* === FINAL FIX TTD 20260624: posisi, ukuran, dan preview === */
+.signature-block {
+  width: 310px !important;
+  margin-left: auto !important;
+  margin-top: 18px !important;
+  text-align: center !important;
+  position: relative !important;
+  overflow: visible !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.signature-block p {
+  margin: 1px 0 !important;
+  line-height: 1.24 !important;
+}
+
+.signature-image-wrap {
+  height: 102px !important;
+  min-height: 102px !important;
+  margin: -2px auto -16px auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 999 !important;
+}
+
+.signature-image-wrap img,
+.ttd-img {
+  display: block !important;
+  width: 235px !important;
+  max-width: 235px !important;
+  height: 100px !important;
+  max-height: 100px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  margin: 0 auto !important;
+  transform: translateY(8px) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 999 !important;
+  background: transparent !important;
+}
+
+.signature-space {
+  height: 92px !important;
+  min-height: 92px !important;
+}
+
+.signature-name {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  position: relative !important;
+  z-index: 1000 !important;
+}
+
+.signature-nip {
+  margin-top: 0 !important;
+  position: relative !important;
+  z-index: 1000 !important;
+}
+
+.ttd-current-preview img,
+.ttd-profile-preview img {
+  width: 220px !important;
+  max-width: 220px !important;
+  max-height: 95px !important;
+  object-fit: contain !important;
+}
+
+@media print {
+  .signature-block {
+    margin-top: 18px !important;
+  }
+
+  .signature-image-wrap {
+    height: 102px !important;
+    min-height: 102px !important;
+    margin: -2px auto -16px auto !important;
+  }
+
+  .signature-image-wrap img,
+  .ttd-img {
+    width: 235px !important;
+    max-width: 235px !important;
+    height: 100px !important;
+    max-height: 100px !important;
+    transform: translateY(8px) !important;
+  }
+}
