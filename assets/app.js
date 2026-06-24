@@ -1049,7 +1049,7 @@ async function saveDocumentAndPdf(event, typeKey) {
     }
 
     // Download PDF dibuat lokal saja. Upload Storage dibuat opsional agar tidak memperlambat tombol download.
-    const pdfResult = await createPdfFromDocument(saved, { download: true, upload: false });
+    const pdfResult = await createPdfFromDocument(saved, { download: true, upload: true });
     if (!pdfResult) {
       showToast('Data sudah tersimpan, tetapi PDF gagal dibuat. Periksa library html2canvas dan jsPDF.', 'warning');
       return;
@@ -1558,7 +1558,7 @@ function buildActivityMeta(row) {
 }
 
 function buildDocumentHTML(documentRow) {
-  const profile = { ...defaultProfile, ...(cachedProfile || {}) };
+  const profile = cachedProfile || defaultProfile;
   const row = normalizeDocument(documentRow);
   const type = documentTypes[row.jenis] || documentTypes.keluar;
   if (row.jenis === 'masuk') return buildIncomingTemplate(row, profile, type);
