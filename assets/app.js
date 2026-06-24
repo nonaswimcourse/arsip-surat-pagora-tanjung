@@ -385,24 +385,22 @@ function setLocalProfile(profile) {
 }
 
 function syncProfileSignatureToLocalDocuments(profile = cachedProfile) {
-  if (!profile?.ttd_url) return;
+  const activeTtd = profile?.ttd_data_url || profile?.ttd_url || '';
+  if (!activeTtd) return;
 
-  const localRows = getLocalDocuments().map((row) => normalizeDocument({
+  const applySignature = (row) => normalizeDocument({
     ...row,
-    ttd_url: profile.ttd_url,
+    ttd_data_url: profile.ttd_data_url || row.ttd_data_url || '',
+    ttd_url: profile.ttd_url || row.ttd_url || activeTtd,
     ttd_path: profile.ttd_path || row.ttd_path || '',
-    ttd_name: profile.ttd_name || row.ttd_name || ''
-  }));
+    ttd_name: profile.ttd_name || row.ttd_name || 'Tanda tangan'
+  });
 
+  const localRows = getLocalDocuments().map(applySignature);
   if (localRows.length) setLocalDocuments(localRows);
 
   if (Array.isArray(cachedDocuments)) {
-    cachedDocuments = cachedDocuments.map((row) => normalizeDocument({
-      ...row,
-      ttd_url: profile.ttd_url,
-      ttd_path: profile.ttd_path || row.ttd_path || '',
-      ttd_name: profile.ttd_name || row.ttd_name || ''
-    }));
+    cachedDocuments = cachedDocuments.map(applySignature);
   }
 }
 
@@ -610,6 +608,13 @@ function stripLocalOnly(row) {
   const copy = { ...row };
   delete copy.local_only;
   delete copy.ttd_data_url;
+
+  // Jangan kirim base64 besar ke kolom URL Supabase. Base64 cukup disimpan lokal,
+  // sedangkan Supabase memakai ttd_path/ttd_url dari Storage jika upload berhasil.
+  if (String(copy.ttd_url || '').startsWith('data:image/')) {
+    copy.ttd_url = '';
+  }
+
   return copy;
 }
 
@@ -676,7 +681,7 @@ async function saveDocumentToStorage(row) {
     ...(row || {}),
     // FINAL: data surat yang disimpan selalu membawa TTD aktif.
     ttd_data_url: row?.ttd_data_url || activeProfile.ttd_data_url || '',
-    ttd_url: row?.ttd_url || activeProfile.ttd_url || '',
+    ttd_url: row?.ttd_url || activeProfile.ttd_url || row?.ttd_data_url || activeProfile.ttd_data_url || '',
     ttd_path: row?.ttd_path || activeProfile.ttd_path || '',
     ttd_name: row?.ttd_name || activeProfile.ttd_name || ''
   });
@@ -896,16 +901,32 @@ async function uploadAttachmentToSupabase(file, folder, ownerId) {
 async function uploadProfileSignatureFile(file) {
   if (!file) return null;
   if (!validateUploadFile(file, { imageOnly: true })) return null;
-  if (!supabaseClient) throw new Error('Supabase belum aktif, tanda tangan belum bisa diunggah.');
 
   const localDataUrl = await fileToDataUrl(file);
-  const uploaded = await uploadAttachmentToSupabase(file, 'profil-tanda-tangan', 'default');
+  let uploaded = {
+    path: '',
+    url: localDataUrl,
+    name: file.name || 'Tanda tangan'
+  };
+
+  if (supabaseClient) {
+    try {
+      uploaded = await uploadAttachmentToSupabase(file, 'profil-tanda-tangan', 'default');
+      uploaded.url = uploaded.url || localDataUrl;
+    } catch (error) {
+      console.warn('Upload TTD profil ke Supabase gagal. Base64 lokal tetap dipakai:', error);
+      showToast('TTD profil tersimpan lokal. Upload Supabase gagal, periksa Storage/RLS.', 'warning');
+    }
+  } else {
+    showToast('TTD profil tersimpan lokal karena Supabase belum aktif.', 'warning');
+  }
+
   cachedProfile = {
     ...defaultProfile,
     ...(cachedProfile || {}),
     ttd_data_url: localDataUrl,
     ttd_url: uploaded.url || localDataUrl,
-    ttd_path: uploaded.path,
+    ttd_path: uploaded.path || '',
     ttd_name: uploaded.name || file.name || 'Tanda tangan'
   };
   setLocalProfile(cachedProfile);
@@ -965,8 +986,28 @@ async function attachUploadedFiles(form, row) {
 
   if (!originalFile && !signatureFile) return nextRow;
 
+  // TTD wajib dibaca menjadi base64 lebih dulu. Ini membuat preview, arsip, edit, dan PDF
+  // tetap menampilkan tanda tangan walaupun upload Supabase gagal atau tabel belum punya kolom TTD.
+  if (signatureFile) {
+    const localDataUrl = await fileToDataUrl(signatureFile);
+    nextRow.ttd_data_url = localDataUrl;
+    nextRow.ttd_url = localDataUrl;
+    nextRow.ttd_path = '';
+    nextRow.ttd_name = signatureFile.name || 'Tanda tangan';
+
+    cachedProfile = {
+      ...defaultProfile,
+      ...(cachedProfile || {}),
+      ttd_data_url: localDataUrl,
+      ttd_url: localDataUrl,
+      ttd_path: '',
+      ttd_name: signatureFile.name || 'Tanda tangan'
+    };
+    setLocalProfile(cachedProfile);
+  }
+
   if (!supabaseClient) {
-    showToast('File belum terunggah karena Supabase belum aktif. Data teks tetap bisa disimpan lokal.', 'warning');
+    showToast('File tersimpan lokal. Supabase belum aktif, jadi upload Storage dilewati.', 'warning');
     return nextRow;
   }
 
@@ -979,31 +1020,28 @@ async function attachUploadedFiles(form, row) {
     }
 
     if (signatureFile) {
-      const localDataUrl = await fileToDataUrl(signatureFile);
       const uploaded = await uploadAttachmentToSupabase(signatureFile, 'tanda-tangan', nextRow.id);
 
-      nextRow.ttd_data_url = localDataUrl;
-      nextRow.ttd_path = uploaded.path;
-      nextRow.ttd_url = uploaded.url || localDataUrl;
+      nextRow.ttd_path = uploaded.path || '';
+      nextRow.ttd_url = uploaded.url || nextRow.ttd_data_url;
       nextRow.ttd_name = uploaded.name || signatureFile.name || 'Tanda tangan';
 
-      // Sinkronkan ke profile lokal agar preview/PDF selalu punya fallback TTD.
       cachedProfile = {
         ...defaultProfile,
         ...(cachedProfile || {}),
-        ttd_data_url: localDataUrl,
-        ttd_url: uploaded.url || localDataUrl,
-        ttd_path: uploaded.path,
-        ttd_name: uploaded.name || signatureFile.name || 'Tanda tangan'
+        ttd_data_url: nextRow.ttd_data_url,
+        ttd_url: nextRow.ttd_url,
+        ttd_path: nextRow.ttd_path,
+        ttd_name: nextRow.ttd_name
       };
       setLocalProfile(cachedProfile);
     }
 
     return nextRow;
   } catch (error) {
-    console.warn('Upload file gagal:', error);
-    showToast(errorText(error, 'Upload file ke Supabase gagal.'), 'error');
-    return null;
+    console.warn('Upload file ke Supabase gagal. Data lokal tetap dipertahankan:', error);
+    showToast('Upload Supabase gagal. TTD tetap tersimpan lokal untuk preview dan PDF.', 'warning');
+    return nextRow;
   }
 }
 
@@ -1139,7 +1177,7 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
           <input type="file" name="ttd_file" accept="image/png,image/jpeg,image/webp" onchange="previewSignatureInput(this)" ${disabled}>
           <small>Format: PNG/JPG/WebP. Gunakan gambar tanda tangan transparan agar hasil PDF rapi.</small>
           ${(() => {
-            const currentTtd = data.ttd_url || cachedProfile?.ttd_url || '';
+            const currentTtd = data.ttd_data_url || data.ttd_url || cachedProfile?.ttd_data_url || cachedProfile?.ttd_url || '';
             const currentName = data.ttd_name || cachedProfile?.ttd_name || 'Tanda tangan tersimpan';
             return currentTtd ? `
               <div class="ttd-current-preview">
@@ -1659,12 +1697,15 @@ async function renderSettingsPage() {
           <label>Upload Tanda Tangan Ketua</label>
           <input type="file" name="profile_ttd_file" accept="image/png,image/jpeg,image/webp">
           <small>TTD ini akan otomatis tampil di semua review dan PDF, tepat di atas nama ketua.</small>
-          ${profile.ttd_url ? `
-            <div class="ttd-profile-preview">
-              <img src="${safe(profile.ttd_url)}" alt="Tanda tangan tersimpan" crossorigin="anonymous">
-              <small>File tersimpan: <a href="${safe(profile.ttd_url)}" target="_blank" rel="noopener">${safe(profile.ttd_name || 'Lihat tanda tangan')}</a></small>
-            </div>
-          ` : ''}
+          ${(() => {
+            const activeTtd = profile.ttd_data_url || profile.ttd_url || '';
+            return activeTtd ? `
+              <div class="ttd-profile-preview">
+                <img src="${safe(activeTtd)}" alt="Tanda tangan tersimpan" crossorigin="anonymous">
+                <small>File aktif: <a href="${safe(activeTtd)}" target="_blank" rel="noopener">${safe(profile.ttd_name || 'Lihat tanda tangan')}</a></small>
+              </div>
+            ` : '';
+          })()}
         </div>
         </div>
       <div class="form-actions"><button class="btn" type="submit">Simpan Pengaturan</button></div>
@@ -1700,7 +1741,8 @@ async function saveProfile(event) {
     const ttdFile = getSelectedFile(profileForm, 'profile_ttd_file');
 
     let ttdPayload = {
-      ttd_url: cachedProfile?.ttd_url || '',
+      ttd_data_url: cachedProfile?.ttd_data_url || '',
+      ttd_url: cachedProfile?.ttd_url || cachedProfile?.ttd_data_url || '',
       ttd_path: cachedProfile?.ttd_path || '',
       ttd_name: cachedProfile?.ttd_name || ''
     };
@@ -1709,10 +1751,10 @@ async function saveProfile(event) {
       const uploaded = await uploadProfileSignatureFile(ttdFile);
       if (uploaded) {
         ttdPayload = {
-          ttd_data_url: cachedProfile?.ttd_data_url || '',
-          ttd_url: uploaded.url,
-          ttd_path: uploaded.path,
-          ttd_name: uploaded.name
+          ttd_data_url: cachedProfile?.ttd_data_url || uploaded.url || '',
+          ttd_url: uploaded.url || cachedProfile?.ttd_data_url || '',
+          ttd_path: uploaded.path || '',
+          ttd_name: uploaded.name || ttdFile.name || 'Tanda tangan'
         };
       }
     }
