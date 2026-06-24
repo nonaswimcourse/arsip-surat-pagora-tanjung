@@ -1253,17 +1253,80 @@ async function saveProfile(event) {
 
 function letterhead(profile) {
   return `
-    <div class="letterhead">
-      <div style="width:52px;height:64px;min-width:52px;max-width:52px;min-height:64px;max-height:64px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 52px;">
-        <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" style="width:100% !important;height:100% !important;max-width:100% !important;max-height:100% !important;object-fit:contain !important;display:block !important;" onerror="this.style.display='none'">
-      </div>
-      <div>
-        <h1 style="white-space: pre-line;">${safe(profile.nama_instansi)}</h1>
-        <p>${safe(profile.alamat)}</p>
-        <p>Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
-      </div>
+    <div class="letterhead" style="
+      width: 100%;
+      margin-bottom: 6px;
+    ">
+      <table style="
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      ">
+        <tr>
+          <td style="
+            width: 90px;
+            vertical-align: middle;
+            text-align: center;
+            padding: 0 10px 0 0;
+          ">
+            <img 
+              src="${safe(profile.logo_url || 'logo.png')}" 
+              alt="Logo"
+              style="
+                width: 75px;
+                height: 85px;
+                max-width: 75px;
+                max-height: 85px;
+                object-fit: contain;
+                object-position: center;
+                display: block;
+                margin: 0 auto;
+                transform: rotate(0deg);
+              "
+              onerror="this.style.display='none'"
+            >
+          </td>
+
+          <td style="
+            vertical-align: middle;
+            text-align: center;
+            padding: 0;
+          ">
+            <h1 style="
+              margin: 0;
+              padding: 0;
+              font-size: 18px;
+              font-weight: 700;
+              line-height: 1.25;
+              text-align: center;
+              white-space: normal;
+              word-break: normal;
+            ">${safe(profile.nama_instansi)}</h1>
+
+            <p style="
+              margin: 3px 0 0 0;
+              font-size: 12px;
+              line-height: 1.35;
+              text-align: center;
+            ">${safe(profile.alamat)}</p>
+
+            <p style="
+              margin: 2px 0 0 0;
+              font-size: 11px;
+              line-height: 1.35;
+              text-align: center;
+            ">Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
+          </td>
+        </tr>
+      </table>
     </div>
-    <div class="letter-line"></div>`;
+
+    <div class="letter-line" style="
+      border-bottom: 3px solid #000;
+      margin-top: 6px;
+      margin-bottom: 18px;
+      width: 100%;
+    "></div>`;
 }
 
 function signature(profile, row = {}) {
