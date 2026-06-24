@@ -1425,7 +1425,6 @@ function actionButtons(row) {
   buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
   if (row.surat_asli_url) buttons.push(`<a class="action-link" href="${safe(row.surat_asli_url)}" target="_blank" rel="noopener">Surat Asli</a>`);
   if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById(event, '${jsAttr(row.id)}')">PDF</button>`);
-  if (getPerm('edit')) buttons.push(`<button type="button" class="ttd-action" onclick="uploadTtdById('${jsAttr(row.id)}')">TTD</button>`);
   if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById('${jsAttr(row.id)}')">Edit</button>`);
   if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById('${jsAttr(row.id)}')">Setujui</button>`);
   if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button type="button" onclick="archiveById('${jsAttr(row.id)}')">Arsip</button>`);
@@ -1446,65 +1445,6 @@ async function previewById(id) {
   if (!row) return showToast('Data tidak ditemukan.', 'error');
   openPreview(row);
 }
-
-async function uploadTtdById(id) {
-  if (!getPerm('edit')) return showToast('Role ini tidak dapat mengubah tanda tangan.', 'error');
-
-  const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
-  if (!row) return showToast('Data tidak ditemukan.', 'error');
-
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/png,image/jpeg,image/webp';
-
-  input.onchange = async () => {
-    const file = input.files?.[0] || null;
-    if (!file) return;
-    if (!validateUploadFile(file, { imageOnly: true })) return;
-
-    try {
-      showToast('Mengunggah tanda tangan...', 'warning');
-
-      let uploaded;
-      if (supabaseClient) {
-        uploaded = await uploadAttachmentToSupabase(file, 'tanda-tangan', row.id);
-      } else {
-        const dataUrl = await fileToDataUrl(file);
-        uploaded = {
-          path: '',
-          url: dataUrl,
-          name: file.name || 'Tanda tangan'
-        };
-      }
-
-      const updated = normalizeDocument({
-        ...row,
-        ttd_path: uploaded.path,
-        ttd_url: uploaded.url,
-        ttd_name: uploaded.name,
-        updated_at: new Date().toISOString()
-      });
-
-      const saved = await saveDocumentToStorage(updated);
-
-      cachedDocuments = Array.isArray(cachedDocuments)
-        ? cachedDocuments.map((item) => String(item.id) === String(saved.id) ? normalizeDocument({ ...item, ...saved }) : item)
-        : cachedDocuments;
-
-      showToast(saved.local_only
-        ? 'TTD tersimpan lokal. Supabase belum menerima data.'
-        : 'TTD berhasil disimpan dan akan tampil di Preview, PDF, Edit, dan Arsip.');
-
-      await refreshCurrentPage();
-    } catch (error) {
-      console.warn('Upload TTD dari aksi gagal:', error);
-      showToast(errorText(error, 'Upload TTD gagal.'), 'error');
-    }
-  };
-
-  input.click();
-}
-
 
 async function downloadById(eventOrId, maybeId) {
   const id = maybeId === undefined ? eventOrId : maybeId;
@@ -1783,14 +1723,10 @@ function signature(profile, row = {}) {
   // - Jika user memilih file TTD baru di form edit/preview, pakai data:image dari row dulu.
   // - Jika tidak ada file baru, pakai TTD global terbaru dari Pengaturan.
   // - Jika profil kosong, fallback ke TTD yang tersimpan di dokumen.
-  // Prioritas akhir:
-  // 1) TTD yang baru dipilih di form preview/edit
-  // 2) TTD yang tersimpan pada dokumen/baris tersebut
-  // 3) TTD global dari Pengaturan
-  const ttd = rowIsNewPreview ? rowTtd : (rowTtd || cachedProfile?.ttd_url || profile?.ttd_url || '');
+  const ttd = rowIsNewPreview ? rowTtd : (cachedProfile?.ttd_url || profile?.ttd_url || rowTtd || '');
   const ttdName = rowIsNewPreview
     ? (row?.ttd_name || 'Tanda tangan preview')
-    : (row?.ttd_name || cachedProfile?.ttd_name || profile?.ttd_name || 'Tanda tangan');
+    : (cachedProfile?.ttd_name || profile?.ttd_name || row?.ttd_name || 'Tanda tangan');
 
   return `
     <div class="signature-block">
@@ -1799,7 +1735,7 @@ function signature(profile, row = {}) {
 
       <div class="signature-image-wrap">
         ${ttd
-          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer">`
+          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" style="display:block;max-width:190px;max-height:78px;width:auto;height:auto;object-fit:contain;visibility:visible;opacity:1;position:relative;z-index:999;">`
           : `<div class="signature-space"></div>`
         }
       </div>
@@ -1857,11 +1793,11 @@ function getFinalDocumentRow(documentRow) {
     ...row,
 
     // FINAL:
-    // File TTD baru dari form edit dan TTD dokumen harus menang.
-    // Jika dokumen belum punya TTD, fallback ke TTD global dari Pengaturan.
-    ttd_url: rowIsNewPreview ? rowTtd : (row.ttd_url || profile?.ttd_url || ''),
-    ttd_path: rowIsNewPreview ? (row.ttd_path || '') : (row.ttd_path || profile?.ttd_path || ''),
-    ttd_name: rowIsNewPreview ? (row.ttd_name || 'Tanda tangan preview') : (row.ttd_name || profile?.ttd_name || '')
+    // File TTD yang baru dipilih di form edit harus menang di preview.
+    // Untuk dokumen lama tanpa file baru, TTD global terbaru dari Pengaturan tetap dipakai.
+    ttd_url: rowIsNewPreview ? rowTtd : (profile?.ttd_url || row.ttd_url || ''),
+    ttd_path: rowIsNewPreview ? (row.ttd_path || '') : (profile?.ttd_path || row.ttd_path || ''),
+    ttd_name: rowIsNewPreview ? (row.ttd_name || 'Tanda tangan preview') : (profile?.ttd_name || row.ttd_name || '')
   });
 }
 
@@ -2110,15 +2046,64 @@ async function waitForImages(container, timeoutMs = PDF_IMAGE_TIMEOUT_MS) {
   if (!images.length) return;
 
   const imageLoad = Promise.all(images.map((image) => {
-    if (image.complete) return Promise.resolve();
+    if (image.complete && image.naturalWidth > 0) return Promise.resolve();
     return new Promise((resolve) => {
       image.onload = resolve;
       image.onerror = resolve;
     });
   }));
 
-  // Jangan biarkan logo eksternal yang lambat menahan proses download PDF terlalu lama.
   await Promise.race([imageLoad, wait(timeoutMs)]);
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Gagal membaca gambar.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function inlineImageForPdf(image) {
+  const rawSrc = image?.getAttribute?.('src') || '';
+  if (!rawSrc || rawSrc.startsWith('data:') || rawSrc.startsWith('blob:')) return;
+
+  try {
+    const absoluteUrl = new URL(rawSrc, window.location.href).href;
+    const response = await fetch(absoluteUrl, {
+      mode: 'cors',
+      cache: 'reload',
+      credentials: 'omit'
+    });
+
+    if (!response.ok) throw new Error(`Gambar gagal diambil: ${response.status}`);
+    const blob = await response.blob();
+    const dataUrl = await blobToDataUrl(blob);
+
+    image.setAttribute('src', dataUrl);
+    image.src = dataUrl;
+    image.crossOrigin = 'anonymous';
+    image.style.visibility = 'visible';
+    image.style.opacity = '1';
+    image.style.display = 'block';
+  } catch (error) {
+    console.warn('Gambar tidak bisa di-inline untuk PDF:', rawSrc, error);
+  }
+}
+
+async function inlineImagesForPdf(container) {
+  const images = Array.from(container.querySelectorAll('img'));
+
+  // TTD diproses lebih dulu karena ini yang wajib masuk render PDF.
+  images.sort((a, b) => {
+    const aTtd = a.classList.contains('ttd-img') || a.closest('.signature-image-wrap');
+    const bTtd = b.classList.contains('ttd-img') || b.closest('.signature-image-wrap');
+    return Number(bTtd) - Number(aTtd);
+  });
+
+  await Promise.all(images.map((image) => inlineImageForPdf(image)));
+  await waitForImages(container, PDF_IMAGE_TIMEOUT_MS);
 }
 
 function hasPdfLibraries() {
@@ -2161,24 +2146,34 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   document.body.appendChild(workerDiv);
 
   try {
-    // 2. Berikan jeda waktu agar browser menyelesaikan tugas render text & aset gambar
-    await waitForImages(workerDiv);
+    // 2. Paksa seluruh gambar eksternal/Supabase menjadi data URL lokal sebelum html2canvas.
+    // Ini memperbaiki kasus TTD tampil di preview, tetapi hilang saat render PDF.
+    const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+
+    await inlineImagesForPdf(captureTarget);
     await nextFrame();
     await wait(PDF_RENDER_DELAY_MS);
 
-    const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+    captureTarget.querySelectorAll('.signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
+      node.style.position = 'relative';
+      node.style.zIndex = '999';
+      node.style.visibility = 'visible';
+      node.style.opacity = '1';
+      node.style.display = node.tagName === 'IMG' ? 'block' : 'flex';
+    });
 
-    // 3. Eksekusi html2canvas dengan pemaksaan dimensi dan bypass batasan CORS gambar
+    // 3. Eksekusi html2canvas setelah TTD/logonya benar-benar termuat.
     const canvas = await html2canvas(captureTarget, {
-      scale: PDF_RENDER_SCALE,  // Resolusi cukup tajam, lebih ringan untuk perangkat lambat
-      useCORS: true,            // Penting jika ada gambar eksternal/Supabase
+      scale: PDF_RENDER_SCALE,
+      useCORS: true,
       allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
-      width: 794,               // Lebar pixel standar untuk A4 pada 96 DPI
-      height: 1123,             // Tinggi pixel standar untuk A4 pada 96 DPI
-      windowWidth: 794,
-      windowHeight: 1123
+      width: captureTarget.scrollWidth || 794,
+      height: captureTarget.scrollHeight || 1123,
+      windowWidth: captureTarget.scrollWidth || 794,
+      windowHeight: captureTarget.scrollHeight || 1123,
+      imageTimeout: PDF_IMAGE_TIMEOUT_MS
     });
 
     // Setelah canvas berhasil dicapture, langsung hapus elemen pembantu dari DOM
@@ -2292,7 +2287,6 @@ window.printPreview = printPreview;
 window.downloadPreviewPdf = downloadPreviewPdf;
 window.filterTable = filterTable;
 window.previewById = previewById;
-window.uploadTtdById = uploadTtdById;
 window.downloadById = downloadById;
 window.editById = editById;
 window.closeEditModal = closeEditModal;

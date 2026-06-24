@@ -2045,14 +2045,3 @@ img {
   object-fit: contain !important;
   background: transparent !important;
 }
-
-
-/* === FINAL: TOMBOL TTD DI AKSI === */
-.actions .ttd-action {
-  background: #eef2ff !important;
-  color: #3730a3 !important;
-  font-weight: 800 !important;
-}
-.actions .ttd-action:hover {
-  filter: brightness(.96);
-}
