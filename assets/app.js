@@ -1825,6 +1825,14 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     htmlContent = `<div class="pdf-page">${htmlContent}</div>`;
   }
   
+  // AUTO FIX SIGNATURE INJECTION
+  try {
+    const profile = (typeof cachedProfile !== 'undefined' && cachedProfile) ? cachedProfile : (typeof defaultProfile !== 'undefined' ? defaultProfile : {});
+    if (profile && typeof signatureBlock === 'function' && !htmlContent.includes('signature-area')) {
+      htmlContent += signatureBlock(profile);
+    }
+  } catch(e) {}
+
   workerDiv.innerHTML = htmlContent;
   document.body.appendChild(workerDiv);
 
