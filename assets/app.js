@@ -105,7 +105,6 @@ const defaultProfile = {
   kepala_nama: 'Nama Ketua KKG',
   kepala_nip: '-',
   jabatan: 'Ketua KKG PJOK',
-  tembusan: '',
   logo_url: 'logo.png'
 };
 
@@ -125,11 +124,7 @@ function safe(value) {
 
 // DIPERBAIKI: Mengamankan argumen string agar aman masuk ke dalam atribut onclick HTML
 function jsAttr(value) {
-  return String(value ?? '')
-    .replace(/\\/g, '\\\\')
-    .replace(/'/g, "\\'")
-    .replace(/\r/g, '')
-    .replace(/\n/g, '\\n');
+  return String(value ?? '').replace(/'/g, "\\'");
 }
 
 function todayInput() {
@@ -167,9 +162,7 @@ function slugify(value) {
 }
 
 function newId() {
-  if (typeof window !== 'undefined' && window.crypto && typeof window.crypto.randomUUID === 'function') {
-    return window.crypto.randomUUID();
-  }
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
   return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
@@ -270,24 +263,14 @@ function setActiveMenu(route) {
 
 function readJSON(key, fallback) {
   try {
-    if (typeof localStorage === 'undefined') return fallback;
-    const storedValue = localStorage.getItem(key);
-    if (storedValue === null || storedValue === undefined || storedValue === '') return fallback;
-    return JSON.parse(storedValue);
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
   } catch (error) {
-    console.warn(`Gagal membaca data lokal: ${key}`, error);
     return fallback;
   }
 }
 
 function writeJSON(key, value) {
-  try {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.warn(`Gagal menyimpan data lokal: ${key}`, error);
-    showToast('Penyimpanan lokal browser tidak tersedia atau sudah penuh.', 'warning');
-  }
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
 function getLocalSession() {
@@ -301,11 +284,7 @@ function setLocalSession(user) {
 }
 
 function clearLocalSession() {
-  try {
-    if (typeof localStorage !== 'undefined') localStorage.removeItem(LOCAL_SESSION_KEY);
-  } catch (error) {
-    console.warn('Gagal menghapus sesi lokal:', error);
-  }
+  localStorage.removeItem(LOCAL_SESSION_KEY);
 }
 
 function getLocalDocuments() {
@@ -395,15 +374,8 @@ function applyRoleUI() {
 }
 
 async function doLogin() {
-  const emailInput = el('email');
-  const passwordInput = el('password');
-  if (!emailInput || !passwordInput) {
-    showToast('Form login tidak lengkap. Periksa id input email dan password.', 'error');
-    return;
-  }
-
-  const email = emailInput.value.trim().toLowerCase();
-  const password = passwordInput.value;
+  const email = el('email').value.trim().toLowerCase();
+  const password = el('password').value;
   showLoginError('');
 
   if (!email || !password) {
@@ -630,7 +602,7 @@ async function deleteDocumentFromStorage(row) {
 
   markDocumentDeleted(id);
   setLocalDocuments(getLocalDocuments().filter((item) => String(item.id) !== id));
-  cachedDocuments = (Array.isArray(cachedDocuments) ? cachedDocuments : []).filter((item) => String(item.id) !== id);
+  cachedDocuments = cachedDocuments.filter((item) => String(item.id) !== id);
 
   if (!supabaseClient || row.local_only || id.startsWith('local-')) {
     return { onlineDeleted: false, localDeleted: true };
@@ -699,12 +671,11 @@ async function deleteAllDocumentsFromStorage(rows = []) {
 }
 
 function getFormData(form, typeKey, existing = {}) {
-  const typeConfig = documentTypes[typeKey] || documentTypes.keluar;
   const data = new FormData(form);
   return normalizeDocument({
     ...existing,
     id: existing.id || newId(),
-    jenis: typeKey in documentTypes ? typeKey : 'keluar',
+    jenis: typeKey,
     nomor_surat: data.get('nomor_surat')?.trim(),
     nomor_agenda: data.get('nomor_agenda')?.trim(),
     tanggal_surat: data.get('tanggal_surat') || todayInput(),
@@ -720,7 +691,7 @@ function getFormData(form, typeKey, existing = {}) {
     waktu: data.get('waktu')?.trim(),
     tempat: data.get('tempat')?.trim(),
     acara: data.get('acara')?.trim(),
-    status: data.get('status') || typeConfig.defaultStatus,
+    status: data.get('status') || documentTypes[typeKey].defaultStatus,
     catatan: data.get('catatan')?.trim(),
     dibuat_oleh: existing.dibuat_oleh || currentUser?.email || '-',
     updated_at: new Date().toISOString()
@@ -729,13 +700,12 @@ function getFormData(form, typeKey, existing = {}) {
 
 // DIPERBAIKI: Mengganti penggunaan ${js(x)} dengan ${jsAttr(x)} dan tanda kutip tunggal ('') agar parameter fungsi onclick HTML valid
 function documentFormHTML(typeKey, row = {}, mode = 'create') {
-  const type = documentTypes[typeKey] || documentTypes.keluar;
-  const resolvedTypeKey = typeKey in documentTypes ? typeKey : 'keluar';
-  const data = normalizeDocument({ jenis: resolvedTypeKey, status: type.defaultStatus, ...row });
+  const type = documentTypes[typeKey];
+  const data = normalizeDocument({ jenis: typeKey, status: type.defaultStatus, ...row });
   const formId = mode === 'edit' ? 'editDocumentForm' : 'documentForm';
   const submitHandler = mode === 'edit'
     ? `saveEditedDocument(event, '${jsAttr(data.id)}')`
-    : `saveDocument(event, '${jsAttr(resolvedTypeKey)}')`;
+    : `saveDocument(event, '${jsAttr(typeKey)}')`;
   const disabled = !getPerm(mode === 'edit' ? 'edit' : 'create') ? 'disabled' : '';
 
   return `
@@ -815,10 +785,10 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn secondary" onclick="previewForm('${jsAttr(resolvedTypeKey)}', '${jsAttr(formId)}')">Preview Template</button>
+        <button type="button" class="btn secondary" onclick="previewForm('${jsAttr(typeKey)}', '${jsAttr(formId)}')">Preview Template</button>
         ${mode === 'edit' ? `<button type="button" class="btn secondary" onclick="closeEditModal()">Batal</button>` : ''}
         <button type="submit" class="btn" ${disabled}>${mode === 'edit' ? 'Simpan Perubahan' : 'Simpan Data'}</button>
-        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${jsAttr(resolvedTypeKey)}')" ${disabled}>Simpan & Download PDF</button>` : ''}
+        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${jsAttr(typeKey)}')" ${disabled}>Simpan & Download PDF</button>` : ''}
       </div>
     </form>`;
 }
@@ -843,18 +813,13 @@ async function saveDocument(event, typeKey) {
 }
 
 async function saveDocumentAndPdf(event, typeKey) {
-  event?.preventDefault?.();
+  event.preventDefault();
   if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
   const form = getButtonForm(event, 'documentForm');
   if (!validateForm(form)) return;
   const row = getFormData(form, typeKey);
   const saved = await saveDocumentToStorage(row);
-  const pdfResult = await createPdfFromDocument(saved, { download: true, upload: !saved.local_only });
-  if (!pdfResult) {
-    showToast('Data sudah tersimpan, tetapi PDF gagal dibuat. Periksa library html2canvas dan jsPDF.', 'warning');
-    await refreshCurrentPage();
-    return;
-  }
+  await createPdfFromDocument(saved, { download: true, upload: !saved.local_only });
   form.reset();
   const dateInput = form.querySelector('[name="tanggal_surat"]');
   if (dateInput) dateInput.value = todayInput();
@@ -1053,8 +1018,7 @@ function actionButtons(row) {
 }
 
 function findDocumentById(id) {
-  const cachedRows = Array.isArray(cachedDocuments) ? cachedDocuments : [];
-  return cachedRows.find((row) => String(row.id) === String(id))
+  return cachedDocuments.find((row) => String(row.id) === String(id))
     || getLocalDocuments().map(normalizeDocument).find((row) => String(row.id) === String(id));
 }
 
@@ -1067,8 +1031,7 @@ async function previewById(id) {
 async function downloadById(id) {
   const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
-  const pdfResult = await createPdfFromDocument(row, { download: true, upload: !row.local_only });
-  if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
+  await createPdfFromDocument(row, { download: true, upload: !row.local_only });
 }
 
 async function editById(id) {
@@ -1192,9 +1155,8 @@ async function renderSettingsPage() {
         <div class="field"><label>Nama Penandatangan</label><input name="kepala_nama" value="${safe(profile.kepala_nama)}"></div>
         <div class="field"><label>NIP</label><input name="kepala_nip" value="${safe(profile.kepala_nip)}"></div>
         <div class="field"><label>Jabatan</label><input name="jabatan" value="${safe(profile.jabatan)}"></div>
-        <div class="field full"><label>Tembusan</label><textarea name="tembusan" rows="4" placeholder="Contoh: 1. Ketua KKG 2. Bendahara 3. Arsip">${safe(profile.tembusan || '')}</textarea></div>
         <div class="field full"><label>URL Logo</label><input name="logo_url" value="${safe(profile.logo_url)}" placeholder="logo.png atau URL publik Supabase Storage"></div>
-        </div>
+      </div>
       <div class="form-actions"><button class="btn" type="submit">Simpan Pengaturan</button></div>
     </form>
     <div class="panel">
@@ -1214,11 +1176,9 @@ async function renderSettingsPage() {
 }
 
 async function saveProfile(event) {
-  event?.preventDefault?.();
+  event.preventDefault();
   if (!currentUser) return showToast('Sesi login tidak valid. Silakan login ulang.', 'error');
-  const profileForm = el('profileForm');
-  if (!profileForm) return showToast('Form profil tidak ditemukan.', 'error');
-  const form = new FormData(profileForm);
+  const form = new FormData(el('profileForm'));
   const payload = {
     id: 'default',
     nama_instansi: form.get('nama_instansi')?.trim(),
@@ -1231,7 +1191,6 @@ async function saveProfile(event) {
     kepala_nama: form.get('kepala_nama')?.trim(),
     kepala_nip: form.get('kepala_nip')?.trim(),
     jabatan: form.get('jabatan')?.trim(),
-    tembusan: form.get('tembusan')?.trim(),
     logo_url: form.get('logo_url')?.trim() || 'logo.png',
     updated_at: new Date().toISOString()
   };
@@ -1253,128 +1212,15 @@ async function saveProfile(event) {
 
 function letterhead(profile) {
   return `
-    <div class="letterhead" style="
-      width: 100%;
-      margin-bottom: 6px;
-      font-family: Arial, Helvetica, sans-serif;
-    ">
-      <table style="
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-      ">
-        <tr>
-          <td style="
-            width: 120px;
-            vertical-align: middle;
-            text-align: center;
-            padding: 0 12px 0 0;
-          ">
-            <div style="
-              width: 90px;
-              height: 105px;
-              margin: 0 auto;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              overflow: hidden;
-            ">
-              <img 
-                src="${safe(profile.logo_url || 'logo.png')}" 
-                alt="Logo"
-                style="
-                  width: 90px;
-                  height: 105px;
-                  max-width: 90px;
-                  max-height: 105px;
-                  object-fit: contain;
-                  object-position: center;
-                  display: block;
-                  margin: 0 auto;
-                  transform: rotate(0deg);
-                "
-                onerror="this.style.display='none'"
-              >
-            </div>
-          </td>
-
-          <td style="
-            vertical-align: middle;
-            text-align: center;
-            padding: 0;
-          ">
-            <h1 style="
-              margin: 0;
-              padding: 0;
-              font-size: 20px;
-              font-weight: 800;
-              line-height: 1.25;
-              text-align: center;
-              text-transform: uppercase;
-              white-space: normal;
-              word-break: normal;
-            ">${safe(profile.nama_instansi)}</h1>
-
-            <p style="
-              margin: 8px 0 0 0;
-              font-size: 13px;
-              line-height: 1.35;
-              font-style: italic;
-              text-align: center;
-            ">${safe(profile.alamat)}</p>
-
-            <p style="
-              margin: 4px 0 0 0;
-              font-size: 12px;
-              line-height: 1.35;
-              font-style: italic;
-              text-align: center;
-            ">Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
-          </td>
-        </tr>
-      </table>
+    <div class="letterhead">
+      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
+      <div>
+        <h1 style="white-space: pre-line;">${safe(profile.nama_instansi)}</h1>
+        <p>${safe(profile.alamat)}</p>
+        <p>Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
+      </div>
     </div>
-
-    <div class="letter-line" style="
-      border-bottom: 3px solid #000;
-      margin-top: 8px;
-      margin-bottom: 34px;
-      width: 100%;
-    "></div>`;
-}
-
-function applyPdfPageFix(container) {
-  if (!container) return;
-
-  const page = container.querySelector('.pdf-page') || container;
-
-  page.style.width = '794px';
-  page.style.minHeight = '1123px';
-  page.style.boxSizing = 'border-box';
-  page.style.background = '#ffffff';
-  page.style.color = '#000000';
-  page.style.fontFamily = 'Arial, Helvetica, sans-serif';
-  page.style.margin = '0 auto';
-  page.style.padding = '42px 54px';
-
-  const letterheadEl = page.querySelector('.letterhead');
-  if (letterheadEl) {
-    letterheadEl.style.width = '100%';
-    letterheadEl.style.marginBottom = '6px';
-  }
-
-  const logo = page.querySelector('.letterhead img');
-  if (logo) {
-    logo.style.width = '90px';
-    logo.style.height = '105px';
-    logo.style.maxWidth = '90px';
-    logo.style.maxHeight = '105px';
-    logo.style.objectFit = 'contain';
-    logo.style.objectPosition = 'center';
-    logo.style.display = 'block';
-    logo.style.margin = '0 auto';
-    logo.style.transform = 'rotate(0deg)';
-  }
+    <div class="letter-line"></div>`;
 }
 
 function signature(profile, row = {}) {
@@ -1382,27 +1228,11 @@ function signature(profile, row = {}) {
     <div class="signature-block">
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
-
       <div class="signature-space"></div>
-
       <p><strong>${safe(profile.kepala_nama)}</strong></p>
       <p>NIP. ${safe(profile.kepala_nip)}</p>
-
-      ${row.disetujui_oleh
-        ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>`
-        : ''
-      }
-    </div>
-
-    ${profile.tembusan ? `
-      <div style="margin-top:80px;text-align:left;font-size:12px;">
-        <strong>Tembusan:</strong><br>
-        <div style="white-space:pre-line;">
-          ${safe(profile.tembusan)}
-        </div>
-      </div>
-    ` : ''}
-  `;
+      ${row.disetujui_oleh ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>` : ''}
+    </div>`;
 }
 
 function metaTable(rows) {
@@ -1560,14 +1390,8 @@ function buildDecisionTemplate(row, profile, type) {
 
 function openPreview(row) {
   lastPreviewDocument = normalizeDocument(row);
-
-  if (el('previewContent')) {
-    el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
-    applyPdfPageFix(el('previewContent'));
-  }
-
+  if (el('previewContent')) el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
   lastPreviewElement = el('previewContent') ? el('previewContent').querySelector('.pdf-page') : null;
-
   if (el('previewModal')) el('previewModal').hidden = false;
 }
 
@@ -1603,14 +1427,13 @@ function calculateScale(el) {
 
 
 // PERBAIKAN: Fungsi trigger download dari preview modal agar tidak mengambil element yang sedang di-hidden
-async function downloadPreviewPdf(evt = null) {
+async function downloadPreviewPdf() {
   if (!lastPreviewDocument) {
     showToast('Tidak ada data dokumen yang aktif untuk diunduh.', 'error');
     return;
   }
-
-  const fallbackEvent = typeof event !== 'undefined' ? event : null;
-  const btn = evt?.target || fallbackEvent?.target || null;
+  
+  const btn = event?.target;
   const originalText = btn ? btn.textContent : 'Download PDF';
   if (btn) {
     btn.disabled = true;
@@ -1618,12 +1441,9 @@ async function downloadPreviewPdf(evt = null) {
   }
 
   try {
-    const pdfResult = await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
-    if (pdfResult) {
-      showToast('PDF berhasil diunduh.');
-    } else {
-      showToast('Gagal mengunduh PDF. Periksa library html2canvas dan jsPDF.', 'error');
-    }
+    // Panggil fungsi createPdfFromDocument yang telah diperbaiki dengan isolasi DOM di atas
+    await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
+    showToast('PDF Berhasil diunduh!');
   } catch (err) {
     console.error(err);
     showToast('Gagal mengunduh PDF.', 'error');
@@ -1635,32 +1455,8 @@ async function downloadPreviewPdf(evt = null) {
   }
 }
 
-async function waitForImages(container) {
-  const images = Array.from(container.querySelectorAll('img'));
-  await Promise.all(images.map((image) => {
-    if (image.complete) return Promise.resolve();
-    return new Promise((resolve) => {
-      image.onload = resolve;
-      image.onerror = resolve;
-    });
-  }));
-}
-
-function hasPdfLibraries() {
-  return typeof html2canvas === 'function'
-    && typeof window !== 'undefined'
-    && window.jspdf
-    && typeof window.jspdf.jsPDF === 'function';
-}
-
 // PERBAIKAN FINAL ANTI-BLANK: Menggunakan teknik Off-Screen Rendering posisi absolut
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
-  const pdfOptions = { download: true, upload: false, ...options };
-  if (!hasPdfLibraries()) {
-    showToast('Library PDF belum lengkap. Pastikan html2canvas dan jsPDF sudah dimuat di index.html.', 'error');
-    return null;
-  }
-
   // 1. Buat kontainer khusus rendering di luar layar (off-screen)
   const workerDiv = document.createElement('div');
   
@@ -1669,8 +1465,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   workerDiv.style.position = 'absolute';
   workerDiv.style.top = '-9999px';
   workerDiv.style.left = '-9999px';
-  workerDiv.style.width = '794px'; // Paksa lebar A4 presisi sama seperti preview
-  workerDiv.style.minHeight = '1123px';
+  workerDiv.style.width = '210mm'; // Paksa lebar A4 presisi
   workerDiv.style.background = '#ffffff';
   workerDiv.style.color = '#000000';
   
@@ -1684,17 +1479,13 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   
   workerDiv.innerHTML = htmlContent;
   document.body.appendChild(workerDiv);
-  applyPdfPageFix(workerDiv);
 
   try {
     // 2. Berikan jeda waktu agar browser menyelesaikan tugas render text & aset gambar
-    await waitForImages(workerDiv);
-    await new Promise((resolve) => window.setTimeout(resolve, 250));
-
-    const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
 
     // 3. Eksekusi html2canvas dengan pemaksaan dimensi dan bypass batasan CORS gambar
-    const canvas = await html2canvas(captureTarget, {
+    const canvas = await html2canvas(workerDiv, {
       scale: 2,                 // Resolusi tinggi agar teks tajam
       useCORS: true,            // Penting jika ada gambar eksternal/Supabase
       allowTaint: false,
@@ -1703,9 +1494,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
       width: 794,               // Lebar pixel standar untuk A4 pada 96 DPI
       height: 1123,             // Tinggi pixel standar untuk A4 pada 96 DPI
       windowWidth: 794,
-      windowHeight: 1123,
-      scrollX: 0,
-      scrollY: 0
+      windowHeight: 1123
     });
 
     // Setelah canvas berhasil dicapture, langsung hapus elemen pembantu dari DOM
@@ -1727,12 +1516,12 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     const pdfBlob = pdf.output('blob');
 
     // Simpan ke Supabase Storage apabila opsi upload aktif
-    if (pdfOptions.upload) {
+    if (options.upload) {
       await uploadPdf(data, pdfBlob, fileName);
     }
 
     // Unduh langsung ke device user
-    if (pdfOptions.download) {
+    if (options.download) {
       pdf.save(fileName);
     }
 
@@ -1741,7 +1530,6 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     console.error('Gagal membuat PDF:', error);
     showToast('Gagal memproses file PDF.', 'error');
     if (workerDiv.parentNode) workerDiv.remove();
-    return null;
   }
 }
     
@@ -1833,13 +1621,3 @@ window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
-
-
-function renderTembusan(profile) {
-  const t = profile?.tembusan || '';
-  if (!t) return '';
-  return `<div style="position:absolute;bottom:18mm;left:20mm;font-size:11px;font-family:'Times New Roman';">
-<b>Tembusan:</b><br>
-${t.split('\n').map((v) => `• ${safe(v)}`).join('<br>')}
-</div>`;
-}
