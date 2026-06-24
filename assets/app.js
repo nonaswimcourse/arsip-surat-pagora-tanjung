@@ -2011,3 +2011,41 @@ function signatureBlock(profile){
     </div>
   </div>`;
 }
+
+
+// ================= FIX FINAL SIGNATURE + PDF CONSISTENCY =================
+
+function signatureBlock(profile){
+  const ttd = profile?.ttd_url || profile?.signature_url || '';
+
+  return `
+  <div class="signature-area">
+    <div class="signature-right">
+      <p>${profile?.kota || ''}, ${new Date().toLocaleDateString('id-ID')}</p>
+      <p><b>${profile?.jabatan || 'Ketua KKG'}</b></p>
+
+      <div class="ttd-box">
+        ${ttd ? `<img src="${ttd}" class="ttd-img">` : `<div class="ttd-placeholder"></div>`}
+      </div>
+
+      <p class="signature-name"><b>${profile?.kepala_nama || '-'}</b></p>
+      <p class="signature-nip">NIP. ${profile?.kepala_nip || '-'}</p>
+    </div>
+  </div>`;
+}
+
+// override preview (safe)
+if (typeof window !== 'undefined') {
+  const _openPreview = window.openPreview;
+  window.openPreview = function(row){
+    const result = _openPreview ? _openPreview(row) : null;
+    setTimeout(()=>{
+      const el = document.querySelector('.pdf-page');
+      if(el && window.cachedProfile){
+        el.insertAdjacentHTML('beforeend', signatureBlock(window.cachedProfile));
+      }
+    }, 50);
+    return result;
+  }
+}
+
