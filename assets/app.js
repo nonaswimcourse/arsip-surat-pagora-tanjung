@@ -984,20 +984,9 @@ async function renderDocumentPage(typeKey) {
 
   pageContent.innerHTML = `
     ${!canCreate ? '<div class="alert">Role Anda hanya dapat melihat, menyetujui, mencetak, atau mengarsipkan sesuai hak akses. Pembuatan dan edit dokumen dibatasi.</div>' : ''}
-    <div class="two-column">
-      <div class="panel form-panel">
-        <div class="panel-header"><div><h2>Form ${safe(type.title)}</h2><p>${safe(type.help)}</p></div></div>
-        ${documentFormHTML(typeKey, {}, 'create')}
-      </div>
-      <div class="panel concept-card">
-        <h2>Fitur Menu</h2>
-        <p>Menu ${safe(type.title)} sudah dibuat untuk kebutuhan kantor. Semua data dapat dicari, diedit, dicetak PDF, disetujui, dan diarsipkan.</p>
-        <div class="concept-list">
-          <div><span>1</span><p>Data disimpan ke Supabase. Jika Supabase belum siap, sistem menyimpan ke localStorage.</p></div>
-          <div><span>2</span><p>Format hari, tanggal, waktu, tempat, dan acara tampil sejajar pada PDF.</p></div>
-          <div><span>3</span><p>Dokumen arsip tetap bisa diedit oleh role yang berwenang.</p></div>
-        </div>
-      </div>
+    <div class="panel form-panel document-form-panel">
+      <div class="panel-header"><div><h2>Form ${safe(type.title)}</h2><p>${safe(type.help)}</p></div></div>
+      ${documentFormHTML(typeKey, {}, 'create')}
     </div>
     <div class="panel">
       <div class="panel-header"><div><h2>Data ${safe(type.title)}</h2><p>Gunakan filter untuk mencari dokumen dengan cepat.</p></div></div>
