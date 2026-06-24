@@ -1792,3 +1792,38 @@ img {
     object-fit: contain !important;
   }
 }
+
+
+/* === SIGNATURE PROFESSIONAL UPGRADE === */
+.signature-area{
+  width:100%;
+  margin-top:40px;
+  display:flex;
+  justify-content:flex-end;
+}
+
+.signature-right{
+  width:280px;
+  text-align:center;
+  font-size:11pt;
+}
+
+.ttd-box{
+  height:90px;
+  margin:10px 0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.ttd-img{
+  max-height:85px;
+  max-width:180px;
+  object-fit:contain;
+}
+
+.ttd-placeholder{
+  width:160px;
+  height:60px;
+  border-bottom:1px solid #000;
+}

@@ -576,6 +576,25 @@ function stripLocalOnly(row) {
   return copy;
 }
 
+function stripUploadColumns(row) {
+  const copy = stripLocalOnly(row);
+  delete copy.surat_asli_url;
+  delete copy.surat_asli_path;
+  delete copy.surat_asli_name;
+  delete copy.ttd_url;
+  delete copy.ttd_path;
+  delete copy.ttd_name;
+  return copy;
+}
+
+function isMissingUploadColumnError(error) {
+  const text = String(error?.message || error?.details || error?.hint || error?.code || '').toLowerCase();
+  return text.includes('surat_asli')
+    || text.includes('ttd_')
+    || text.includes('schema cache')
+    || text.includes('could not find');
+}
+
 async function fetchDocuments(filter = {}, forceRefresh = false) {
   const localRows = getLocalDocuments().map(normalizeDocument).filter((row) => !isDocumentDeleted(row.id));
   let onlineRows = [];
@@ -621,14 +640,27 @@ async function saveDocumentToStorage(row) {
 
   try {
     if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
-    const { data, error } = await supabaseClient
+
+    let payload = stripLocalOnly(normalized);
+    let result = await supabaseClient
       .from(TABLE_SURAT)
-      .upsert(stripLocalOnly(normalized), { onConflict: 'id' })
+      .upsert(payload, { onConflict: 'id' })
       .select()
       .single();
-    if (error) throw error;
 
-    const onlineRow = normalizeDocument({ ...normalized, ...(data || {}), local_only: false });
+    if (result.error && isMissingUploadColumnError(result.error)) {
+      console.warn('Kolom upload belum tersedia di Supabase. Mencoba simpan data utama tanpa kolom upload:', result.error);
+      payload = stripUploadColumns(normalized);
+      result = await supabaseClient
+        .from(TABLE_SURAT)
+        .upsert(payload, { onConflict: 'id' })
+        .select()
+        .single();
+    }
+
+    if (result.error) throw result.error;
+
+    const onlineRow = normalizeDocument({ ...normalized, ...(result.data || {}), local_only: false });
     setLocalDocuments([onlineRow, ...localRows]);
     return onlineRow;
   } catch (error) {
@@ -947,18 +979,44 @@ function statusOptions(selected) {
 
 async function saveDocument(event, typeKey) {
   event.preventDefault();
-  if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
   const form = event.target;
-  if (!validateForm(form)) return;
-  const row = getFormData(form, typeKey);
-  const rowWithFiles = await attachUploadedFiles(form, row);
-  if (!rowWithFiles) return;
-  const saved = await saveDocumentToStorage(rowWithFiles);
-  form.reset();
-  const dateInput = form.querySelector('[name="tanggal_surat"]');
-  if (dateInput) dateInput.value = todayInput();
-  showToast(saved.local_only ? `Data tersimpan di browser. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}` : 'Data berhasil disimpan ke tabel dan mirror lokal.');
-  await refreshCurrentPage();
+  const btn = event.submitter || form?.querySelector('button[type="submit"]') || null;
+  const originalText = setButtonBusy(btn, 'Menyimpan...');
+
+  try {
+    if (!getPerm('create')) {
+      showToast('Role ini tidak dapat membuat dokumen.', 'error');
+      return;
+    }
+    if (!validateForm(form)) return;
+
+    const originalFile = getSelectedFile(form, 'surat_asli_file');
+    const signatureFile = getSelectedFile(form, 'ttd_file');
+    if (originalFile && !validateUploadFile(originalFile)) return;
+    if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return;
+
+    const row = getFormData(form, typeKey);
+
+    // Simpan data utama lebih dulu agar tombol Simpan tetap bekerja walau upload file gagal.
+    let saved = await saveDocumentToStorage(row);
+
+    if (originalFile || signatureFile) {
+      const rowWithFiles = await attachUploadedFiles(form, saved);
+      if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
+    }
+
+    form.reset();
+    const dateInput = form.querySelector('[name="tanggal_surat"]');
+    if (dateInput) dateInput.value = todayInput();
+
+    showToast(saved.local_only
+      ? `Data tersimpan di browser. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
+      : 'Data berhasil disimpan.');
+
+    await refreshCurrentPage();
+  } finally {
+    restoreButton(btn, originalText);
+  }
 }
 
 async function saveDocumentAndPdf(event, typeKey) {
@@ -975,10 +1033,20 @@ async function saveDocumentAndPdf(event, typeKey) {
     const form = getButtonForm(event, 'documentForm');
     if (!validateForm(form)) return;
 
+    const originalFile = getSelectedFile(form, 'surat_asli_file');
+    const signatureFile = getSelectedFile(form, 'ttd_file');
+    if (originalFile && !validateUploadFile(originalFile)) return;
+    if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return;
+
     const row = getFormData(form, typeKey);
-    const rowWithFiles = await attachUploadedFiles(form, row);
-    if (!rowWithFiles) return;
-    const saved = await saveDocumentToStorage(rowWithFiles);
+
+    // Simpan data utama lebih dulu. Upload file dan PDF tidak lagi membuat tombol Simpan terasa mati.
+    let saved = await saveDocumentToStorage(row);
+
+    if (originalFile || signatureFile) {
+      const rowWithFiles = await attachUploadedFiles(form, saved);
+      if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
+    }
 
     // Download PDF dibuat lokal saja. Upload Storage dibuat opsional agar tidak memperlambat tombol download.
     const pdfResult = await createPdfFromDocument(saved, { download: true, upload: false });
@@ -1004,17 +1072,43 @@ async function saveDocumentAndPdf(event, typeKey) {
 
 async function saveEditedDocument(event, id) {
   event.preventDefault();
-  if (!getPerm('edit')) return showToast('Role ini tidak dapat mengedit dokumen.', 'error');
-  const existing = findDocumentById(id);
-  if (!existing) return showToast('Data tidak ditemukan.', 'error');
-  if (!validateForm(event.target)) return;
-  const row = getFormData(event.target, existing.jenis, existing);
-  const rowWithFiles = await attachUploadedFiles(event.target, row);
-  if (!rowWithFiles) return;
-  const saved = await saveDocumentToStorage(rowWithFiles);
-  closeEditModal();
-  showToast(saved.local_only ? `Perubahan tersimpan lokal. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}` : 'Data berhasil diperbarui.');
-  await refreshCurrentPage();
+  const form = event.target;
+  const btn = event.submitter || form?.querySelector('button[type="submit"]') || null;
+  const originalText = setButtonBusy(btn, 'Menyimpan...');
+
+  try {
+    if (!getPerm('edit')) {
+      showToast('Role ini tidak dapat mengedit dokumen.', 'error');
+      return;
+    }
+    const existing = findDocumentById(id);
+    if (!existing) {
+      showToast('Data tidak ditemukan.', 'error');
+      return;
+    }
+    if (!validateForm(form)) return;
+
+    const originalFile = getSelectedFile(form, 'surat_asli_file');
+    const signatureFile = getSelectedFile(form, 'ttd_file');
+    if (originalFile && !validateUploadFile(originalFile)) return;
+    if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return;
+
+    const row = getFormData(form, existing.jenis, existing);
+    let saved = await saveDocumentToStorage(row);
+
+    if (originalFile || signatureFile) {
+      const rowWithFiles = await attachUploadedFiles(form, saved);
+      if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
+    }
+
+    closeEditModal();
+    showToast(saved.local_only
+      ? `Perubahan tersimpan lokal. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
+      : 'Data berhasil diperbarui.');
+    await refreshCurrentPage();
+  } finally {
+    restoreButton(btn, originalText);
+  }
 }
 
 async function previewForm(typeKey, formId = 'documentForm') {
@@ -1889,4 +1983,23 @@ function renderTembusan(profile) {
 <b>Tembusan:</b><br>
 ${t.split('\n').map((v) => `• ${safe(v)}`).join('<br>')}
 </div>`;
+}
+
+
+// === SIGNATURE BLOCK UPGRADE ===
+function signatureBlock(profile){
+  return `
+  <div class="signature-area">
+    <div class="signature-right">
+      <p>${profile.kota || ''}</p>
+      <p><b>${profile.jabatan || 'Ketua'}</b></p>
+
+      <div class="ttd-box">
+        ${profile.ttd_url ? `<img src="${profile.ttd_url}" class="ttd-img">` : `<div class="ttd-placeholder"></div>`}
+      </div>
+
+      <p><b>${profile.kepala_nama || '-'}</b></p>
+      <p>NIP. ${profile.kepala_nip || '-'}</p>
+    </div>
+  </div>`;
 }
