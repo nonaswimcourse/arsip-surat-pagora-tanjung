@@ -2169,10 +2169,10 @@ img {
 
   .signature-image-wrap img,
   .ttd-img {
-    width: 260px !important;
-    max-width: 260px !important;
-   height: 115px !important;
-   max-height: 115px !important;
+    width: 235px !important;
+    max-width: 235px !important;
+    height: 100px !important;
+    max-height: 100px !important;
     transform: translateY(8px) !important;
   }
 }
