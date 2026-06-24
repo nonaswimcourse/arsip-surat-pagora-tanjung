@@ -1840,8 +1840,12 @@ function signature(profile, row = {}) {
                 opacity: 1; 
                 position: relative; 
                 z-index: 999; 
-                transform: translate(-85px, -45px); 
-                margin-bottom: -110px;
+                /* Geser ke kiri (-85px) dan ke atas (-110px) */
+                transform: translate(-85px, -110px); 
+                /* Menarik teks nama di bawah agar masuk area stempel */
+                margin-bottom: -150px;
+                /* PENTING: Membuat background hitam pada gambar stempel Anda menjadi transparan */
+                mix-blend-mode: screen;
               ">`
           : `<div class="signature-space" style="height: 100px;"></div>`
         }
