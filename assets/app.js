@@ -1822,14 +1822,28 @@ function signature(profile, row = {}) {
   const ttdName = row?.ttd_name || 'Tanda tangan';
 
   return `
-    <div class="signature-block">
+    <div class="signature-block" style="position: relative;">
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
 
       <div class="signature-image-wrap">
         ${ttd
-          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" style="display:block;width:300px;max-width:300px;max-height:135px;height:auto;object-fit:contain;visibility:visible;opacity:1;position:relative;z-index:999;transform:translate(-60px, -8px);margin-bottom:-32px;">`
-          : `<div class="signature-space"></div>`
+          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" 
+              style="
+                display: block;
+                width: 340px; 
+                max-width: 340px; 
+                max-height: 180px; 
+                height: auto; 
+                object-fit: contain; 
+                visibility: visible; 
+                opacity: 1; 
+                position: relative; 
+                z-index: 999; 
+                transform: translate(-85px, -45px); 
+                margin-bottom: -110px;
+              ">`
+          : `<div class="signature-space" style="height: 100px;"></div>`
         }
       </div>
 
