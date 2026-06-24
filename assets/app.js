@@ -1256,6 +1256,7 @@ function letterhead(profile) {
     <div class="letterhead" style="
       width: 100%;
       margin-bottom: 6px;
+      font-family: Arial, Helvetica, sans-serif;
     ">
       <table style="
         width: 100%;
@@ -1264,27 +1265,37 @@ function letterhead(profile) {
       ">
         <tr>
           <td style="
-            width: 90px;
+            width: 120px;
             vertical-align: middle;
             text-align: center;
-            padding: 0 10px 0 0;
+            padding: 0 12px 0 0;
           ">
-            <img 
-              src="${safe(profile.logo_url || 'logo.png')}" 
-              alt="Logo"
-              style="
-                width: 75px;
-                height: 85px;
-                max-width: 75px;
-                max-height: 85px;
-                object-fit: contain;
-                object-position: center;
-                display: block;
-                margin: 0 auto;
-                transform: rotate(0deg);
-              "
-              onerror="this.style.display='none'"
-            >
+            <div style="
+              width: 90px;
+              height: 105px;
+              margin: 0 auto;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+            ">
+              <img 
+                src="${safe(profile.logo_url || 'logo.png')}" 
+                alt="Logo"
+                style="
+                  width: 90px;
+                  height: 105px;
+                  max-width: 90px;
+                  max-height: 105px;
+                  object-fit: contain;
+                  object-position: center;
+                  display: block;
+                  margin: 0 auto;
+                  transform: rotate(0deg);
+                "
+                onerror="this.style.display='none'"
+              >
+            </div>
           </td>
 
           <td style="
@@ -1295,25 +1306,28 @@ function letterhead(profile) {
             <h1 style="
               margin: 0;
               padding: 0;
-              font-size: 18px;
-              font-weight: 700;
+              font-size: 20px;
+              font-weight: 800;
               line-height: 1.25;
               text-align: center;
+              text-transform: uppercase;
               white-space: normal;
               word-break: normal;
             ">${safe(profile.nama_instansi)}</h1>
 
             <p style="
-              margin: 3px 0 0 0;
-              font-size: 12px;
+              margin: 8px 0 0 0;
+              font-size: 13px;
               line-height: 1.35;
+              font-style: italic;
               text-align: center;
             ">${safe(profile.alamat)}</p>
 
             <p style="
-              margin: 2px 0 0 0;
-              font-size: 11px;
+              margin: 4px 0 0 0;
+              font-size: 12px;
               line-height: 1.35;
+              font-style: italic;
               text-align: center;
             ">Telp. ${safe(profile.telepon)} | Email: ${safe(profile.email)} | Web: ${safe(profile.website)}</p>
           </td>
@@ -1323,10 +1337,44 @@ function letterhead(profile) {
 
     <div class="letter-line" style="
       border-bottom: 3px solid #000;
-      margin-top: 6px;
-      margin-bottom: 18px;
+      margin-top: 8px;
+      margin-bottom: 34px;
       width: 100%;
     "></div>`;
+}
+
+function applyPdfPageFix(container) {
+  if (!container) return;
+
+  const page = container.querySelector('.pdf-page') || container;
+
+  page.style.width = '794px';
+  page.style.minHeight = '1123px';
+  page.style.boxSizing = 'border-box';
+  page.style.background = '#ffffff';
+  page.style.color = '#000000';
+  page.style.fontFamily = 'Arial, Helvetica, sans-serif';
+  page.style.margin = '0 auto';
+  page.style.padding = '42px 54px';
+
+  const letterheadEl = page.querySelector('.letterhead');
+  if (letterheadEl) {
+    letterheadEl.style.width = '100%';
+    letterheadEl.style.marginBottom = '6px';
+  }
+
+  const logo = page.querySelector('.letterhead img');
+  if (logo) {
+    logo.style.width = '90px';
+    logo.style.height = '105px';
+    logo.style.maxWidth = '90px';
+    logo.style.maxHeight = '105px';
+    logo.style.objectFit = 'contain';
+    logo.style.objectPosition = 'center';
+    logo.style.display = 'block';
+    logo.style.margin = '0 auto';
+    logo.style.transform = 'rotate(0deg)';
+  }
 }
 
 function signature(profile, row = {}) {
@@ -1512,8 +1560,14 @@ function buildDecisionTemplate(row, profile, type) {
 
 function openPreview(row) {
   lastPreviewDocument = normalizeDocument(row);
-  if (el('previewContent')) el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
+
+  if (el('previewContent')) {
+    el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
+    applyPdfPageFix(el('previewContent'));
+  }
+
   lastPreviewElement = el('previewContent') ? el('previewContent').querySelector('.pdf-page') : null;
+
   if (el('previewModal')) el('previewModal').hidden = false;
 }
 
@@ -1615,7 +1669,8 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   workerDiv.style.position = 'absolute';
   workerDiv.style.top = '-9999px';
   workerDiv.style.left = '-9999px';
-  workerDiv.style.width = '210mm'; // Paksa lebar A4 presisi
+  workerDiv.style.width = '794px'; // Paksa lebar A4 presisi sama seperti preview
+  workerDiv.style.minHeight = '1123px';
   workerDiv.style.background = '#ffffff';
   workerDiv.style.color = '#000000';
   
@@ -1629,6 +1684,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   
   workerDiv.innerHTML = htmlContent;
   document.body.appendChild(workerDiv);
+  applyPdfPageFix(workerDiv);
 
   try {
     // 2. Berikan jeda waktu agar browser menyelesaikan tugas render text & aset gambar
@@ -1647,7 +1703,9 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
       width: 794,               // Lebar pixel standar untuk A4 pada 96 DPI
       height: 1123,             // Tinggi pixel standar untuk A4 pada 96 DPI
       windowWidth: 794,
-      windowHeight: 1123
+      windowHeight: 1123,
+      scrollX: 0,
+      scrollY: 0
     });
 
     // Setelah canvas berhasil dicapture, langsung hapus elemen pembantu dari DOM
