@@ -8,6 +8,12 @@ const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
+// Optimasi PDF: mode cepat agar download tidak terasa seperti reload lama.
+const PDF_RENDER_SCALE = 1.35;
+const PDF_IMAGE_QUALITY = 0.92;
+const PDF_RENDER_DELAY_MS = 80;
+const PDF_IMAGE_TIMEOUT_MS = 900;
+
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
   && typeof window.supabase.createClient === 'function';
@@ -105,6 +111,7 @@ const defaultProfile = {
   kepala_nama: 'Nama Ketua KKG',
   kepala_nip: '-',
   jabatan: 'Ketua KKG PJOK',
+  tembusan: '',
   logo_url: 'logo.png'
 };
 
@@ -124,7 +131,11 @@ function safe(value) {
 
 // DIPERBAIKI: Mengamankan argumen string agar aman masuk ke dalam atribut onclick HTML
 function jsAttr(value) {
-  return String(value ?? '').replace(/'/g, "\\'");
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '')
+    .replace(/\n/g, '\\n');
 }
 
 function todayInput() {
@@ -162,7 +173,9 @@ function slugify(value) {
 }
 
 function newId() {
-  if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  if (typeof window !== 'undefined' && window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return window.crypto.randomUUID();
+  }
   return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
@@ -263,14 +276,24 @@ function setActiveMenu(route) {
 
 function readJSON(key, fallback) {
   try {
-    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+    if (typeof localStorage === 'undefined') return fallback;
+    const storedValue = localStorage.getItem(key);
+    if (storedValue === null || storedValue === undefined || storedValue === '') return fallback;
+    return JSON.parse(storedValue);
   } catch (error) {
+    console.warn(`Gagal membaca data lokal: ${key}`, error);
     return fallback;
   }
 }
 
 function writeJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Gagal menyimpan data lokal: ${key}`, error);
+    showToast('Penyimpanan lokal browser tidak tersedia atau sudah penuh.', 'warning');
+  }
 }
 
 function getLocalSession() {
@@ -284,7 +307,11 @@ function setLocalSession(user) {
 }
 
 function clearLocalSession() {
-  localStorage.removeItem(LOCAL_SESSION_KEY);
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(LOCAL_SESSION_KEY);
+  } catch (error) {
+    console.warn('Gagal menghapus sesi lokal:', error);
+  }
 }
 
 function getLocalDocuments() {
@@ -374,8 +401,15 @@ function applyRoleUI() {
 }
 
 async function doLogin() {
-  const email = el('email').value.trim().toLowerCase();
-  const password = el('password').value;
+  const emailInput = el('email');
+  const passwordInput = el('password');
+  if (!emailInput || !passwordInput) {
+    showToast('Form login tidak lengkap. Periksa id input email dan password.', 'error');
+    return;
+  }
+
+  const email = emailInput.value.trim().toLowerCase();
+  const password = passwordInput.value;
   showLoginError('');
 
   if (!email || !password) {
@@ -602,7 +636,7 @@ async function deleteDocumentFromStorage(row) {
 
   markDocumentDeleted(id);
   setLocalDocuments(getLocalDocuments().filter((item) => String(item.id) !== id));
-  cachedDocuments = cachedDocuments.filter((item) => String(item.id) !== id);
+  cachedDocuments = (Array.isArray(cachedDocuments) ? cachedDocuments : []).filter((item) => String(item.id) !== id);
 
   if (!supabaseClient || row.local_only || id.startsWith('local-')) {
     return { onlineDeleted: false, localDeleted: true };
@@ -671,11 +705,12 @@ async function deleteAllDocumentsFromStorage(rows = []) {
 }
 
 function getFormData(form, typeKey, existing = {}) {
+  const typeConfig = documentTypes[typeKey] || documentTypes.keluar;
   const data = new FormData(form);
   return normalizeDocument({
     ...existing,
     id: existing.id || newId(),
-    jenis: typeKey,
+    jenis: typeKey in documentTypes ? typeKey : 'keluar',
     nomor_surat: data.get('nomor_surat')?.trim(),
     nomor_agenda: data.get('nomor_agenda')?.trim(),
     tanggal_surat: data.get('tanggal_surat') || todayInput(),
@@ -691,7 +726,7 @@ function getFormData(form, typeKey, existing = {}) {
     waktu: data.get('waktu')?.trim(),
     tempat: data.get('tempat')?.trim(),
     acara: data.get('acara')?.trim(),
-    status: data.get('status') || documentTypes[typeKey].defaultStatus,
+    status: data.get('status') || typeConfig.defaultStatus,
     catatan: data.get('catatan')?.trim(),
     dibuat_oleh: existing.dibuat_oleh || currentUser?.email || '-',
     updated_at: new Date().toISOString()
@@ -700,12 +735,13 @@ function getFormData(form, typeKey, existing = {}) {
 
 // DIPERBAIKI: Mengganti penggunaan ${js(x)} dengan ${jsAttr(x)} dan tanda kutip tunggal ('') agar parameter fungsi onclick HTML valid
 function documentFormHTML(typeKey, row = {}, mode = 'create') {
-  const type = documentTypes[typeKey];
-  const data = normalizeDocument({ jenis: typeKey, status: type.defaultStatus, ...row });
+  const type = documentTypes[typeKey] || documentTypes.keluar;
+  const resolvedTypeKey = typeKey in documentTypes ? typeKey : 'keluar';
+  const data = normalizeDocument({ jenis: resolvedTypeKey, status: type.defaultStatus, ...row });
   const formId = mode === 'edit' ? 'editDocumentForm' : 'documentForm';
   const submitHandler = mode === 'edit'
     ? `saveEditedDocument(event, '${jsAttr(data.id)}')`
-    : `saveDocument(event, '${jsAttr(typeKey)}')`;
+    : `saveDocument(event, '${jsAttr(resolvedTypeKey)}')`;
   const disabled = !getPerm(mode === 'edit' ? 'edit' : 'create') ? 'disabled' : '';
 
   return `
@@ -785,10 +821,10 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn secondary" onclick="previewForm('${jsAttr(typeKey)}', '${jsAttr(formId)}')">Preview Template</button>
+        <button type="button" class="btn secondary" onclick="previewForm('${jsAttr(resolvedTypeKey)}', '${jsAttr(formId)}')">Preview Template</button>
         ${mode === 'edit' ? `<button type="button" class="btn secondary" onclick="closeEditModal()">Batal</button>` : ''}
         <button type="submit" class="btn" ${disabled}>${mode === 'edit' ? 'Simpan Perubahan' : 'Simpan Data'}</button>
-        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${jsAttr(typeKey)}')" ${disabled}>Simpan & Download PDF</button>` : ''}
+        ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${jsAttr(resolvedTypeKey)}')" ${disabled}>Simpan & Download PDF</button>` : ''}
       </div>
     </form>`;
 }
@@ -813,18 +849,42 @@ async function saveDocument(event, typeKey) {
 }
 
 async function saveDocumentAndPdf(event, typeKey) {
-  event.preventDefault();
-  if (!getPerm('create')) return showToast('Role ini tidak dapat membuat dokumen.', 'error');
-  const form = getButtonForm(event, 'documentForm');
-  if (!validateForm(form)) return;
-  const row = getFormData(form, typeKey);
-  const saved = await saveDocumentToStorage(row);
-  await createPdfFromDocument(saved, { download: true, upload: !saved.local_only });
-  form.reset();
-  const dateInput = form.querySelector('[name="tanggal_surat"]');
-  if (dateInput) dateInput.value = todayInput();
-  showToast(saved.local_only ? `Data lokal tersimpan dan file dibuat. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}` : 'Data tersimpan dan PDF berhasil diproses.');
-  await refreshCurrentPage();
+  event?.preventDefault?.();
+  const btn = event?.currentTarget || event?.target || null;
+  const originalText = setButtonBusy(btn, 'Menyimpan & membuat PDF...');
+
+  try {
+    if (!getPerm('create')) {
+      showToast('Role ini tidak dapat membuat dokumen.', 'error');
+      return;
+    }
+
+    const form = getButtonForm(event, 'documentForm');
+    if (!validateForm(form)) return;
+
+    const row = getFormData(form, typeKey);
+    const saved = await saveDocumentToStorage(row);
+
+    // Download PDF dibuat lokal saja. Upload Storage dibuat opsional agar tidak memperlambat tombol download.
+    const pdfResult = await createPdfFromDocument(saved, { download: true, upload: false });
+    if (!pdfResult) {
+      showToast('Data sudah tersimpan, tetapi PDF gagal dibuat. Periksa library html2canvas dan jsPDF.', 'warning');
+      return;
+    }
+
+    form.reset();
+    const dateInput = form.querySelector('[name="tanggal_surat"]');
+    if (dateInput) dateInput.value = todayInput();
+
+    showToast(saved.local_only
+      ? `Data lokal tersimpan dan PDF berhasil diunduh. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
+      : 'Data tersimpan dan PDF berhasil diunduh.');
+
+    // Refresh tabel tanpa menahan proses download dan tanpa membuat tombol terasa lama.
+    window.setTimeout(() => refreshCurrentPage().catch((error) => console.warn('Refresh setelah PDF gagal:', error)), 0);
+  } finally {
+    restoreButton(btn, originalText);
+  }
 }
 
 async function saveEditedDocument(event, id) {
@@ -1008,7 +1068,7 @@ function renderTable(rows, options = {}) {
 function actionButtons(row) {
   const buttons = [];
   buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
-  if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById('${jsAttr(row.id)}')">PDF</button>`);
+  if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById(event, '${jsAttr(row.id)}')">PDF</button>`);
   if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById('${jsAttr(row.id)}')">Edit</button>`);
   if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById('${jsAttr(row.id)}')">Setujui</button>`);
   if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button type="button" onclick="archiveById('${jsAttr(row.id)}')">Arsip</button>`);
@@ -1018,7 +1078,8 @@ function actionButtons(row) {
 }
 
 function findDocumentById(id) {
-  return cachedDocuments.find((row) => String(row.id) === String(id))
+  const cachedRows = Array.isArray(cachedDocuments) ? cachedDocuments : [];
+  return cachedRows.find((row) => String(row.id) === String(id))
     || getLocalDocuments().map(normalizeDocument).find((row) => String(row.id) === String(id));
 }
 
@@ -1028,10 +1089,24 @@ async function previewById(id) {
   openPreview(row);
 }
 
-async function downloadById(id) {
-  const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
-  if (!row) return showToast('Data tidak ditemukan.', 'error');
-  await createPdfFromDocument(row, { download: true, upload: !row.local_only });
+async function downloadById(eventOrId, maybeId) {
+  const id = maybeId === undefined ? eventOrId : maybeId;
+  const btn = maybeId === undefined ? null : (eventOrId?.currentTarget || eventOrId?.target || null);
+  const originalText = setButtonBusy(btn, 'PDF...');
+
+  try {
+    const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
+    if (!row) {
+      showToast('Data tidak ditemukan.', 'error');
+      return;
+    }
+
+    // Tombol PDF hanya download. Tidak upload ke Supabase agar proses jauh lebih cepat.
+    const pdfResult = await createPdfFromDocument(row, { download: true, upload: false });
+    if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
+  } finally {
+    restoreButton(btn, originalText);
+  }
 }
 
 async function editById(id) {
@@ -1155,8 +1230,9 @@ async function renderSettingsPage() {
         <div class="field"><label>Nama Penandatangan</label><input name="kepala_nama" value="${safe(profile.kepala_nama)}"></div>
         <div class="field"><label>NIP</label><input name="kepala_nip" value="${safe(profile.kepala_nip)}"></div>
         <div class="field"><label>Jabatan</label><input name="jabatan" value="${safe(profile.jabatan)}"></div>
+        <div class="field full"><label>Tembusan</label><textarea name="tembusan" rows="4" placeholder="Contoh: 1. Ketua KKG 2. Bendahara 3. Arsip">${safe(profile.tembusan || '')}</textarea></div>
         <div class="field full"><label>URL Logo</label><input name="logo_url" value="${safe(profile.logo_url)}" placeholder="logo.png atau URL publik Supabase Storage"></div>
-      </div>
+        </div>
       <div class="form-actions"><button class="btn" type="submit">Simpan Pengaturan</button></div>
     </form>
     <div class="panel">
@@ -1176,9 +1252,11 @@ async function renderSettingsPage() {
 }
 
 async function saveProfile(event) {
-  event.preventDefault();
+  event?.preventDefault?.();
   if (!currentUser) return showToast('Sesi login tidak valid. Silakan login ulang.', 'error');
-  const form = new FormData(el('profileForm'));
+  const profileForm = el('profileForm');
+  if (!profileForm) return showToast('Form profil tidak ditemukan.', 'error');
+  const form = new FormData(profileForm);
   const payload = {
     id: 'default',
     nama_instansi: form.get('nama_instansi')?.trim(),
@@ -1191,6 +1269,7 @@ async function saveProfile(event) {
     kepala_nama: form.get('kepala_nama')?.trim(),
     kepala_nip: form.get('kepala_nip')?.trim(),
     jabatan: form.get('jabatan')?.trim(),
+    tembusan: form.get('tembusan')?.trim(),
     logo_url: form.get('logo_url')?.trim() || 'logo.png',
     updated_at: new Date().toISOString()
   };
@@ -1213,13 +1292,7 @@ async function saveProfile(event) {
 function letterhead(profile) {
   return `
     <div class="letterhead">
-      <img
-        src="${safe(profile.logo_url || 'logo.png')}"
-        alt="Logo"
-        class="letterhead-logo"
-        style="width:85px;height:85px;min-width:85px;min-height:85px;max-width:85px;max-height:85px;object-fit:contain;object-position:center;display:block;flex:0 0 85px;"
-        onerror="this.style.display='none'"
-      >
+      <img src="${safe(profile.logo_url || 'logo.png')}" alt="Logo" onerror="this.style.display='none'">
       <div>
         <h1 style="white-space: pre-line;">${safe(profile.nama_instansi)}</h1>
         <p>${safe(profile.alamat)}</p>
@@ -1229,57 +1302,32 @@ function letterhead(profile) {
     <div class="letter-line"></div>`;
 }
 
-
-function lockPdfLogoSize(container) {
-  if (!container) return;
-  const logos = container.querySelectorAll('.letterhead img, .letterhead-logo');
-  logos.forEach((logo) => {
-    logo.style.width = '85px';
-    logo.style.height = '85px';
-    logo.style.minWidth = '85px';
-    logo.style.minHeight = '85px';
-    logo.style.maxWidth = '85px';
-    logo.style.maxHeight = '85px';
-    logo.style.objectFit = 'contain';
-    logo.style.objectPosition = 'center';
-    logo.style.display = 'block';
-    logo.style.flex = '0 0 85px';
-  });
-}
-
-function lockPdfPageForCanvas(container) {
-  if (!container) return;
-  const page = container.querySelector('.pdf-page') || container;
-  page.style.width = '794px';
-  page.style.height = '1123px';
-  page.style.maxHeight = '1123px';
-  page.style.boxSizing = 'border-box';
-  page.style.backgroundColor = '#ffffff';
-  page.style.overflow = 'hidden';
-  lockPdfLogoSize(container);
-}
-
-async function waitForImages(container) {
-  const images = Array.from(container.querySelectorAll('img'));
-  await Promise.all(images.map((image) => {
-    if (image.complete && image.naturalWidth !== 0) return Promise.resolve();
-    return new Promise((resolve) => {
-      image.onload = resolve;
-      image.onerror = resolve;
-    });
-  }));
-}
-
 function signature(profile, row = {}) {
   return `
     <div class="signature-block">
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
+
       <div class="signature-space"></div>
+
       <p><strong>${safe(profile.kepala_nama)}</strong></p>
       <p>NIP. ${safe(profile.kepala_nip)}</p>
-      ${row.disetujui_oleh ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>` : ''}
-    </div>`;
+
+      ${row.disetujui_oleh
+        ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>`
+        : ''
+      }
+    </div>
+
+    ${profile.tembusan ? `
+      <div style="margin-top:80px;text-align:left;font-size:12px;">
+        <strong>Tembusan:</strong><br>
+        <div style="white-space:pre-line;">
+          ${safe(profile.tembusan)}
+        </div>
+      </div>
+    ` : ''}
+  `;
 }
 
 function metaTable(rows) {
@@ -1437,12 +1485,8 @@ function buildDecisionTemplate(row, profile, type) {
 
 function openPreview(row) {
   lastPreviewDocument = normalizeDocument(row);
-  const preview = el('previewContent');
-  if (preview) {
-    preview.innerHTML = buildDocumentHTML(lastPreviewDocument);
-    lockPdfLogoSize(preview);
-  }
-  lastPreviewElement = preview ? preview.querySelector('.pdf-page') : null;
+  if (el('previewContent')) el('previewContent').innerHTML = buildDocumentHTML(lastPreviewDocument);
+  lastPreviewElement = el('previewContent') ? el('previewContent').querySelector('.pdf-page') : null;
   if (el('previewModal')) el('previewModal').hidden = false;
 }
 
@@ -1478,84 +1522,134 @@ function calculateScale(el) {
 
 
 // PERBAIKAN: Fungsi trigger download dari preview modal agar tidak mengambil element yang sedang di-hidden
-async function downloadPreviewPdf() {
+async function downloadPreviewPdf(evt = null) {
   if (!lastPreviewDocument) {
     showToast('Tidak ada data dokumen yang aktif untuk diunduh.', 'error');
     return;
   }
-  
-  const btn = event?.target;
-  const originalText = btn ? btn.textContent : 'Download PDF';
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Memproses PDF...';
-  }
+
+  const fallbackEvent = typeof event !== 'undefined' ? event : null;
+  const btn = evt?.currentTarget || evt?.target || fallbackEvent?.currentTarget || fallbackEvent?.target || null;
+  const originalText = setButtonBusy(btn, 'Memproses PDF...');
 
   try {
-    // Panggil fungsi createPdfFromDocument yang telah diperbaiki dengan isolasi DOM di atas
-    await createPdfFromDocument(lastPreviewDocument, { download: true, upload: !lastPreviewDocument.local_only });
-    showToast('PDF Berhasil diunduh!');
+    // Preview download dibuat lokal saja. Upload Storage tidak dijalankan agar tombol tidak lambat.
+    const pdfResult = await createPdfFromDocument(lastPreviewDocument, { download: true, upload: false });
+    if (pdfResult) {
+      showToast('PDF berhasil diunduh.');
+    } else {
+      showToast('Gagal mengunduh PDF. Periksa library html2canvas dan jsPDF.', 'error');
+    }
   } catch (err) {
     console.error(err);
     showToast('Gagal mengunduh PDF.', 'error');
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = originalText;
-    }
+    restoreButton(btn, originalText);
   }
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function nextFrame() {
+  return new Promise((resolve) => window.requestAnimationFrame ? window.requestAnimationFrame(resolve) : window.setTimeout(resolve, 16));
+}
+
+function setButtonBusy(button, busyText = 'Memproses...') {
+  if (!button) return null;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = busyText;
+  return originalText;
+}
+
+function restoreButton(button, originalText) {
+  if (!button) return;
+  button.disabled = false;
+  if (originalText !== null && originalText !== undefined) button.textContent = originalText;
+}
+
+async function waitForImages(container, timeoutMs = PDF_IMAGE_TIMEOUT_MS) {
+  const images = Array.from(container.querySelectorAll('img'));
+  if (!images.length) return;
+
+  const imageLoad = Promise.all(images.map((image) => {
+    if (image.complete) return Promise.resolve();
+    return new Promise((resolve) => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    });
+  }));
+
+  // Jangan biarkan logo eksternal yang lambat menahan proses download PDF terlalu lama.
+  await Promise.race([imageLoad, wait(timeoutMs)]);
+}
+
+function hasPdfLibraries() {
+  return typeof html2canvas === 'function'
+    && typeof window !== 'undefined'
+    && window.jspdf
+    && typeof window.jspdf.jsPDF === 'function';
 }
 
 // PERBAIKAN FINAL ANTI-BLANK: Menggunakan teknik Off-Screen Rendering posisi absolut
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
-  if (typeof html2canvas !== 'function' || !window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+  const pdfOptions = { download: true, upload: false, ...options };
+  if (!hasPdfLibraries()) {
     showToast('Library PDF belum lengkap. Pastikan html2canvas dan jsPDF sudah dimuat di index.html.', 'error');
     return null;
   }
 
+  // 1. Buat kontainer khusus rendering di luar layar (off-screen)
   const workerDiv = document.createElement('div');
+  
+  // PENTING: Jangan gunakan opacity: 0 atau display: none agar html2canvas tidak blank!
+  // Kita lempar posisinya jauh ke kiri luar layar (-9999px) agar tidak mengganggu pandangan user.
   workerDiv.style.position = 'absolute';
   workerDiv.style.top = '-9999px';
   workerDiv.style.left = '-9999px';
-  workerDiv.style.width = '794px';
-  workerDiv.style.minHeight = '1123px';
+  workerDiv.style.width = '210mm'; // Paksa lebar A4 presisi
   workerDiv.style.background = '#ffffff';
   workerDiv.style.color = '#000000';
-  workerDiv.style.visibility = 'visible';
-
+  
+  // Ambil template HTML surat Anda
   let htmlContent = buildDocumentHTML(data);
+  
+  // Cek jika class .pdf-page tidak ikut terpasang, bungkus manual agar styling CSS Anda aktif
   if (!htmlContent.includes('class="pdf-page"')) {
     htmlContent = `<div class="pdf-page">${htmlContent}</div>`;
   }
-
+  
   workerDiv.innerHTML = htmlContent;
   document.body.appendChild(workerDiv);
-  lockPdfPageForCanvas(workerDiv);
 
   try {
+    // 2. Berikan jeda waktu agar browser menyelesaikan tugas render text & aset gambar
     await waitForImages(workerDiv);
-    await new Promise((resolve) => window.setTimeout(resolve, 250));
+    await nextFrame();
+    await wait(PDF_RENDER_DELAY_MS);
 
     const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
-    lockPdfPageForCanvas(workerDiv);
 
+    // 3. Eksekusi html2canvas dengan pemaksaan dimensi dan bypass batasan CORS gambar
     const canvas = await html2canvas(captureTarget, {
-      scale: 2,
-      useCORS: true,
+      scale: PDF_RENDER_SCALE,  // Resolusi cukup tajam, lebih ringan untuk perangkat lambat
+      useCORS: true,            // Penting jika ada gambar eksternal/Supabase
       allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
-      width: 794,
-      height: 1123,
+      width: 794,               // Lebar pixel standar untuk A4 pada 96 DPI
+      height: 1123,             // Tinggi pixel standar untuk A4 pada 96 DPI
       windowWidth: 794,
-      windowHeight: 1123,
-      scrollX: 0,
-      scrollY: 0
+      windowHeight: 1123
     });
 
+    // Setelah canvas berhasil dicapture, langsung hapus elemen pembantu dari DOM
     workerDiv.remove();
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+    // 4. Konversi hasil tangkapan gambar menjadi PDF halaman tunggal
+    const imgData = canvas.toDataURL('image/jpeg', PDF_IMAGE_QUALITY);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -1563,16 +1657,19 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
       format: 'a4'
     });
 
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    // Gambar ditempel pas memenuhi batas kertas kertas A4 (210mm x 297mm)
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
 
     const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
 
-    if (options.upload) {
+    // Simpan ke Supabase Storage apabila opsi upload aktif
+    if (pdfOptions.upload) {
       await uploadPdf(data, pdfBlob, fileName);
     }
 
-    if (options.download) {
+    // Unduh langsung ke device user
+    if (pdfOptions.download) {
       pdf.save(fileName);
     }
 
@@ -1673,3 +1770,13 @@ window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', checkSession);
 // KURUNG KURAWAL EKSTRA DI SINI SUDAH DIHAPUS
+
+
+function renderTembusan(profile) {
+  const t = profile?.tembusan || '';
+  if (!t) return '';
+  return `<div style="position:absolute;bottom:18mm;left:20mm;font-size:11px;font-family:'Times New Roman';">
+<b>Tembusan:</b><br>
+${t.split('\n').map((v) => `• ${safe(v)}`).join('<br>')}
+</div>`;
+}
