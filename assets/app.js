@@ -383,6 +383,28 @@ function setLocalProfile(profile) {
   writeJSON(LOCAL_PROFILE_KEY, profile);
 }
 
+function syncProfileSignatureToLocalDocuments(profile = cachedProfile) {
+  if (!profile?.ttd_url) return;
+
+  const localRows = getLocalDocuments().map((row) => normalizeDocument({
+    ...row,
+    ttd_url: profile.ttd_url,
+    ttd_path: profile.ttd_path || row.ttd_path || '',
+    ttd_name: profile.ttd_name || row.ttd_name || ''
+  }));
+
+  if (localRows.length) setLocalDocuments(localRows);
+
+  if (Array.isArray(cachedDocuments)) {
+    cachedDocuments = cachedDocuments.map((row) => normalizeDocument({
+      ...row,
+      ttd_url: profile.ttd_url,
+      ttd_path: profile.ttd_path || row.ttd_path || '',
+      ttd_name: profile.ttd_name || row.ttd_name || ''
+    }));
+  }
+}
+
 function showApplication() {
   if (el('loginPage')) el('loginPage').style.display = 'none';
   if (el('app')) el('app').style.display = 'block';
@@ -568,9 +590,11 @@ function normalizeDocument(row) {
     surat_asli_url: row.surat_asli_url || '',
     surat_asli_path: row.surat_asli_path || '',
     surat_asli_name: row.surat_asli_name || '',
-    ttd_url: row.ttd_url || '',
-    ttd_path: row.ttd_path || '',
-    ttd_name: row.ttd_name || '',
+    // FINAL: jangan biarkan TTD hilang setelah data disimpan / reload.
+    // Prioritas: TTD dokumen -> TTD profil aktif -> TTD profil localStorage.
+    ttd_url: row.ttd_url || cachedProfile?.ttd_url || getLocalProfile()?.ttd_url || '',
+    ttd_path: row.ttd_path || cachedProfile?.ttd_path || getLocalProfile()?.ttd_path || '',
+    ttd_name: row.ttd_name || cachedProfile?.ttd_name || getLocalProfile()?.ttd_name || '',
     local_only: Boolean(row.local_only),
     created_at: row.created_at || new Date().toISOString(),
     updated_at: row.updated_at || new Date().toISOString()
@@ -638,7 +662,14 @@ async function fetchDocuments(filter = {}, forceRefresh = false) {
 }
 
 async function saveDocumentToStorage(row) {
-  const normalized = normalizeDocument(row);
+  const activeProfile = cachedProfile || getLocalProfile() || {};
+  const normalized = normalizeDocument({
+    ...(row || {}),
+    // FINAL: data surat yang disimpan selalu membawa TTD aktif.
+    ttd_url: row?.ttd_url || activeProfile.ttd_url || '',
+    ttd_path: row?.ttd_path || activeProfile.ttd_path || '',
+    ttd_name: row?.ttd_name || activeProfile.ttd_name || ''
+  });
   unmarkDocumentDeleted(normalized.id);
   const localRows = getLocalDocuments().filter((item) => String(item.id) !== String(normalized.id));
 
@@ -667,7 +698,16 @@ async function saveDocumentToStorage(row) {
 
     if (result.error) throw result.error;
 
-    const onlineRow = normalizeDocument({ ...normalized, ...(result.data || {}), local_only: false });
+    const resultData = result.data || {};
+    const onlineRow = normalizeDocument({
+      ...normalized,
+      ...resultData,
+      // FINAL: jika Supabase mengembalikan null/kosong, tetap pakai TTD yang sudah aktif.
+      ttd_url: resultData.ttd_url || normalized.ttd_url || activeProfile.ttd_url || '',
+      ttd_path: resultData.ttd_path || normalized.ttd_path || activeProfile.ttd_path || '',
+      ttd_name: resultData.ttd_name || normalized.ttd_name || activeProfile.ttd_name || '',
+      local_only: false
+    });
     setLocalDocuments([onlineRow, ...localRows]);
     return onlineRow;
   } catch (error) {
@@ -843,6 +883,24 @@ async function uploadAttachmentToSupabase(file, folder, ownerId) {
   };
 }
 
+
+async function uploadProfileSignatureFile(file) {
+  if (!file) return null;
+  if (!validateUploadFile(file, { imageOnly: true })) return null;
+  if (!supabaseClient) throw new Error('Supabase belum aktif, tanda tangan belum bisa diunggah.');
+
+  const uploaded = await uploadAttachmentToSupabase(file, 'profil-tanda-tangan', 'default');
+  cachedProfile = {
+    ...defaultProfile,
+    ...(cachedProfile || {}),
+    ttd_url: uploaded.url,
+    ttd_path: uploaded.path,
+    ttd_name: uploaded.name
+  };
+  setLocalProfile(cachedProfile);
+  return uploaded;
+}
+
 async function attachUploadedFiles(form, row) {
   const nextRow = normalizeDocument(row);
   const originalFile = getSelectedFile(form, 'surat_asli_file');
@@ -883,6 +941,40 @@ async function attachUploadedFiles(form, row) {
     showToast(errorText(error, 'Upload file ke Supabase gagal.'), 'error');
     return null;
   }
+}
+
+function previewSignatureInput(input) {
+  const file = input?.files?.[0] || null;
+  const wrapper = input?.closest?.('.upload-card')?.querySelector?.('.ttd-current-preview');
+  if (!wrapper) return;
+
+  if (!file) {
+    wrapper.hidden = true;
+    wrapper.innerHTML = '';
+    return;
+  }
+
+  if (!validateUploadFile(file, { imageOnly: true })) {
+    input.value = '';
+    wrapper.hidden = true;
+    wrapper.innerHTML = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    wrapper.hidden = false;
+    wrapper.innerHTML = `
+      <img src="${String(reader.result || '')}" alt="Preview tanda tangan baru">
+      <small class="file-current">Preview TTD baru: ${safe(file.name || 'Tanda tangan')}</small>
+    `;
+  };
+  reader.onerror = () => {
+    wrapper.hidden = true;
+    wrapper.innerHTML = '';
+    showToast('Preview tanda tangan gagal dibaca.', 'warning');
+  };
+  reader.readAsDataURL(file);
 }
 
 // DIPERBAIKI: Mengganti penggunaan ${js(x)} dengan ${jsAttr(x)} dan tanda kutip tunggal ('') agar parameter fungsi onclick HTML valid
@@ -980,9 +1072,18 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
           </div>` : ''}
         <div class="field full upload-card">
           <label>Upload Tanda Tangan</label>
-          <input type="file" name="ttd_file" accept="image/png,image/jpeg,image/webp" ${disabled}>
+          <input type="file" name="ttd_file" accept="image/png,image/jpeg,image/webp" onchange="previewSignatureInput(this)" ${disabled}>
           <small>Format: PNG/JPG/WebP. Gunakan gambar tanda tangan transparan agar hasil PDF rapi.</small>
-          ${data.ttd_url ? `<small class="file-current">Tanda tangan tersimpan: <a href="${safe(data.ttd_url)}" target="_blank" rel="noopener">${safe(data.ttd_name || 'Lihat tanda tangan')}</a></small>` : ''}
+          ${(() => {
+            const currentTtd = data.ttd_url || cachedProfile?.ttd_url || '';
+            const currentName = data.ttd_name || cachedProfile?.ttd_name || 'Tanda tangan tersimpan';
+            return currentTtd ? `
+              <div class="ttd-current-preview">
+                <img src="${safe(currentTtd)}" alt="Tanda tangan tersimpan" crossorigin="anonymous">
+                <small class="file-current">Tanda tangan aktif: <a href="${safe(currentTtd)}" target="_blank" rel="noopener">${safe(currentName)}</a></small>
+              </div>
+            ` : `<div class="ttd-current-preview" hidden></div>`;
+          })()}
         </div>
       </div>
       <div class="form-actions">
@@ -1326,6 +1427,7 @@ function findDocumentById(id) {
 }
 
 async function previewById(id) {
+  await loadProfile();
   const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
   if (!row) return showToast('Data tidak ditemukan.', 'error');
   openPreview(row);
@@ -1337,6 +1439,7 @@ async function downloadById(eventOrId, maybeId) {
   const originalText = setButtonBusy(btn, 'PDF...');
 
   try {
+    await loadProfile();
     const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
     if (!row) {
       showToast('Data tidak ditemukan.', 'error');
@@ -1459,7 +1562,7 @@ async function renderSettingsPage() {
   if (!pageContent) return;
 
   pageContent.innerHTML = `
-    <form class="panel form-panel" id="profileForm" onsubmit="saveProfile(event)">
+    <form class="panel form-panel" id="profileForm" onsubmit="saveProfile(event)" enctype="multipart/form-data">
       <div class="panel-header"><div><h2>Profil Instansi</h2><p>Data ini muncul otomatis pada kop surat dan tanda tangan.</p></div></div>
       <div class="form-grid">
         <div class="field"><label>Nama Instansi</label><textarea name="nama_instansi" required>${safe(profile.nama_instansi)}</textarea></div>
@@ -1474,6 +1577,17 @@ async function renderSettingsPage() {
         <div class="field"><label>Jabatan</label><input name="jabatan" value="${safe(profile.jabatan)}"></div>
         <div class="field full"><label>Tembusan</label><textarea name="tembusan" rows="4" placeholder="Contoh: 1. Ketua KKG 2. Bendahara 3. Arsip">${safe(profile.tembusan || '')}</textarea></div>
         <div class="field full"><label>URL Logo</label><input name="logo_url" value="${safe(profile.logo_url)}" placeholder="logo.png atau URL publik Supabase Storage"></div>
+        <div class="field full upload-card">
+          <label>Upload Tanda Tangan Ketua</label>
+          <input type="file" name="profile_ttd_file" accept="image/png,image/jpeg,image/webp">
+          <small>TTD ini akan otomatis tampil di semua review dan PDF, tepat di atas nama ketua.</small>
+          ${profile.ttd_url ? `
+            <div class="ttd-profile-preview">
+              <img src="${safe(profile.ttd_url)}" alt="Tanda tangan tersimpan" crossorigin="anonymous">
+              <small>File tersimpan: <a href="${safe(profile.ttd_url)}" target="_blank" rel="noopener">${safe(profile.ttd_name || 'Lihat tanda tangan')}</a></small>
+            </div>
+          ` : ''}
+        </div>
         </div>
       <div class="form-actions"><button class="btn" type="submit">Simpan Pengaturan</button></div>
     </form>
@@ -1496,41 +1610,82 @@ async function renderSettingsPage() {
 async function saveProfile(event) {
   event?.preventDefault?.();
   if (!currentUser) return showToast('Sesi login tidak valid. Silakan login ulang.', 'error');
+
   const profileForm = el('profileForm');
   if (!profileForm) return showToast('Form profil tidak ditemukan.', 'error');
-  const form = new FormData(profileForm);
-  const payload = {
-    id: 'default',
-    nama_instansi: form.get('nama_instansi')?.trim(),
-    nama_aplikasi: form.get('nama_aplikasi')?.trim(),
-    alamat: form.get('alamat')?.trim(),
-    telepon: form.get('telepon')?.trim(),
-    email: form.get('email')?.trim(),
-    website: form.get('website')?.trim(),
-    kota: form.get('kota')?.trim(),
-    kepala_nama: form.get('kepala_nama')?.trim(),
-    kepala_nip: form.get('kepala_nip')?.trim(),
-    jabatan: form.get('jabatan')?.trim(),
-    tembusan: form.get('tembusan')?.trim(),
-    logo_url: form.get('logo_url')?.trim() || 'logo.png',
-    ttd_url: cachedProfile?.ttd_url || '',
-    ttd_path: cachedProfile?.ttd_path || '',
-    ttd_name: cachedProfile?.ttd_name || '',
-    updated_at: new Date().toISOString()
-  };
 
-  cachedProfile = { ...defaultProfile, ...(cachedProfile || {}), ...payload };
-  setLocalProfile(cachedProfile);
-  applyRoleUI();
+  const btn = event?.submitter || profileForm.querySelector('button[type="submit"]') || null;
+  const originalText = setButtonBusy(btn, 'Menyimpan...');
 
   try {
-    if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
-    const { error } = await supabaseClient.from(TABLE_PROFIL).upsert(payload, { onConflict: 'id' });
-    if (error) throw error;
-    showToast('Pengaturan berhasil disimpan ke Supabase.');
-  } catch (error) {
-    showToast('Pengaturan tersimpan lokal. Jalankan SQL Supabase agar tersimpan online.', 'warning');
-    console.warn(error);
+    const form = new FormData(profileForm);
+    const ttdFile = getSelectedFile(profileForm, 'profile_ttd_file');
+
+    let ttdPayload = {
+      ttd_url: cachedProfile?.ttd_url || '',
+      ttd_path: cachedProfile?.ttd_path || '',
+      ttd_name: cachedProfile?.ttd_name || ''
+    };
+
+    if (ttdFile) {
+      const uploaded = await uploadProfileSignatureFile(ttdFile);
+      if (uploaded) {
+        ttdPayload = {
+          ttd_url: uploaded.url,
+          ttd_path: uploaded.path,
+          ttd_name: uploaded.name
+        };
+      }
+    }
+
+    const payload = {
+      id: 'default',
+      nama_instansi: form.get('nama_instansi')?.trim(),
+      nama_aplikasi: form.get('nama_aplikasi')?.trim(),
+      alamat: form.get('alamat')?.trim(),
+      telepon: form.get('telepon')?.trim(),
+      email: form.get('email')?.trim(),
+      website: form.get('website')?.trim(),
+      kota: form.get('kota')?.trim(),
+      kepala_nama: form.get('kepala_nama')?.trim(),
+      kepala_nip: form.get('kepala_nip')?.trim(),
+      jabatan: form.get('jabatan')?.trim(),
+      tembusan: form.get('tembusan')?.trim(),
+      logo_url: form.get('logo_url')?.trim() || 'logo.png',
+      ...ttdPayload,
+      updated_at: new Date().toISOString()
+    };
+
+    cachedProfile = { ...defaultProfile, ...(cachedProfile || {}), ...payload };
+    setLocalProfile(cachedProfile);
+    syncProfileSignatureToLocalDocuments(cachedProfile);
+    applyRoleUI();
+
+    try {
+      if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
+
+      let { error } = await supabaseClient.from(TABLE_PROFIL).upsert(payload, { onConflict: 'id' });
+
+      // Fallback jika database lama belum punya kolom TTD. Data TTD tetap aman di localStorage.
+      if (error && isMissingUploadColumnError(error)) {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.ttd_url;
+        delete fallbackPayload.ttd_path;
+        delete fallbackPayload.ttd_name;
+        const fallbackResult = await supabaseClient.from(TABLE_PROFIL).upsert(fallbackPayload, { onConflict: 'id' });
+        error = fallbackResult.error;
+      }
+
+      if (error) throw error;
+      showToast('Pengaturan dan tanda tangan berhasil disimpan.');
+    } catch (error) {
+      showToast('Pengaturan tersimpan lokal. Periksa SQL/RLS Supabase agar tersimpan online.', 'warning');
+      console.warn(error);
+    }
+
+    await renderSettingsPage();
+  } finally {
+    restoreButton(btn, originalText);
   }
 }
 
@@ -1548,8 +1703,10 @@ function letterhead(profile) {
 }
 
 function signature(profile, row = {}) {
-  const ttd = row?.ttd_url || cachedProfile?.ttd_url || profile?.ttd_url || '';
-  const ttdName = row?.ttd_name || cachedProfile?.ttd_name || profile?.ttd_name || 'Tanda tangan';
+  // Prioritas utama: TTD global terbaru dari Pengaturan.
+  // Dengan ini, surat lama yang sudah tersimpan ikut memakai TTD terbaru.
+  const ttd = cachedProfile?.ttd_url || profile?.ttd_url || row?.ttd_url || '';
+  const ttdName = cachedProfile?.ttd_name || profile?.ttd_name || row?.ttd_name || 'Tanda tangan';
 
   return `
     <div class="signature-block">
@@ -1558,7 +1715,7 @@ function signature(profile, row = {}) {
 
       <div class="signature-image-wrap">
         ${ttd
-          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous">`
+          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer">`
           : `<div class="signature-space"></div>`
         }
       </div>
@@ -1607,11 +1764,14 @@ function buildActivityMeta(row) {
 
 function getFinalDocumentRow(documentRow) {
   const row = normalizeDocument(documentRow || {});
+  const profile = cachedProfile || getLocalProfile() || defaultProfile;
+
   return normalizeDocument({
     ...row,
-    ttd_url: row.ttd_url || cachedProfile?.ttd_url || '',
-    ttd_path: row.ttd_path || cachedProfile?.ttd_path || '',
-    ttd_name: row.ttd_name || cachedProfile?.ttd_name || ''
+    // FINAL: preview/PDF selalu memakai TTD aktif terbaru.
+    ttd_url: profile?.ttd_url || row.ttd_url || '',
+    ttd_path: profile?.ttd_path || row.ttd_path || '',
+    ttd_name: profile?.ttd_name || row.ttd_name || ''
   });
 }
 
@@ -1762,7 +1922,17 @@ function openPreview(row) {
   }
 
   lastPreviewElement = preview ? preview.querySelector('.pdf-page') : null;
-  if (el('previewModal')) el('previewModal').hidden = false;
+
+  const modal = el('previewModal');
+  if (modal) {
+    // FINAL: preview harus selalu berada di atas modal edit.
+    document.body.appendChild(modal);
+    modal.hidden = false;
+    modal.style.zIndex = '12000';
+  }
+
+  const editModal = el('editModal');
+  if (editModal) editModal.style.zIndex = '9000';
 }
 
 function closePreview() {
@@ -2026,6 +2196,7 @@ window.saveDocument = saveDocument;
 window.saveDocumentAndPdf = saveDocumentAndPdf;
 window.saveEditedDocument = saveEditedDocument;
 window.previewForm = previewForm;
+window.previewSignatureInput = previewSignatureInput;
 window.closePreview = closePreview;
 window.printPreview = printPreview;
 window.downloadPreviewPdf = downloadPreviewPdf;
