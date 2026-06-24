@@ -13,7 +13,7 @@ const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 const PDF_RENDER_SCALE = 3;
 const PDF_IMAGE_QUALITY = 1.0;
 const PDF_RENDER_DELAY_MS = 80;
-const PDF_IMAGE_TIMEOUT_MS = 900;
+const PDF_IMAGE_TIMEOUT_MS = 3500;
 
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
@@ -501,7 +501,11 @@ async function loadProfile() {
       .maybeSingle();
     if (error) throw error;
     if (data) {
-      cachedProfile = { ...defaultProfile, ...data };
+      cachedProfile = { ...defaultProfile, ...(localProfile || {}), ...data };
+      // Pertahankan fallback TTD lokal kalau tabel profil belum punya kolom ttd.
+      cachedProfile.ttd_url = data.ttd_url || localProfile?.ttd_url || cachedProfile.ttd_url || '';
+      cachedProfile.ttd_path = data.ttd_path || localProfile?.ttd_path || cachedProfile.ttd_path || '';
+      cachedProfile.ttd_name = data.ttd_name || localProfile?.ttd_name || cachedProfile.ttd_name || '';
       setLocalProfile(cachedProfile);
     }
   } catch (error) {
@@ -1509,10 +1513,13 @@ async function saveProfile(event) {
     jabatan: form.get('jabatan')?.trim(),
     tembusan: form.get('tembusan')?.trim(),
     logo_url: form.get('logo_url')?.trim() || 'logo.png',
+    ttd_url: cachedProfile?.ttd_url || '',
+    ttd_path: cachedProfile?.ttd_path || '',
+    ttd_name: cachedProfile?.ttd_name || '',
     updated_at: new Date().toISOString()
   };
 
-  cachedProfile = { ...defaultProfile, ...payload };
+  cachedProfile = { ...defaultProfile, ...(cachedProfile || {}), ...payload };
   setLocalProfile(cachedProfile);
   applyRoleUI();
 
@@ -1545,41 +1552,19 @@ function signature(profile, row = {}) {
   const ttdName = row?.ttd_name || cachedProfile?.ttd_name || profile?.ttd_name || 'Tanda tangan';
 
   return `
-    <div class="signature-block" style="position:relative; z-index:5;">
+    <div class="signature-block">
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
 
-      <div class="signature-image-wrap" style="
-        height:86px;
-        min-height:86px;
-        margin:6px 0 2px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        position:relative;
-        z-index:20;
-        background:transparent;
-        overflow:visible;
-      ">
+      <div class="signature-image-wrap">
         ${ttd
-          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" style="
-              display:block;
-              position:relative;
-              z-index:30;
-              max-width:190px;
-              max-height:82px;
-              width:auto;
-              height:auto;
-              object-fit:contain;
-              object-position:center;
-              background:transparent;
-            ">`
+          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous">`
           : `<div class="signature-space"></div>`
         }
       </div>
 
-      <p><strong>${safe(profile.kepala_nama)}</strong></p>
-      <p>NIP. ${safe(profile.kepala_nip)}</p>
+      <p class="signature-name"><strong>${safe(profile.kepala_nama)}</strong></p>
+      <p class="signature-nip">NIP. ${safe(profile.kepala_nip)}</p>
 
       ${row.disetujui_oleh
         ? `<p class="stamp-space"></p><p><small>Disetujui oleh: ${safe(row.disetujui_oleh)}</small></p>`
@@ -1588,11 +1573,9 @@ function signature(profile, row = {}) {
     </div>
 
     ${profile.tembusan ? `
-      <div style="margin-top:80px;text-align:left;font-size:12px;">
+      <div class="tembusan-block">
         <strong>Tembusan:</strong><br>
-        <div style="white-space:pre-line;">
-          ${safe(profile.tembusan)}
-        </div>
+        <div style="white-space:pre-line;">${safe(profile.tembusan)}</div>
       </div>
     ` : ''}
   `;
@@ -1888,6 +1871,7 @@ function hasPdfLibraries() {
 // PERBAIKAN FINAL ANTI-BLANK: Menggunakan teknik Off-Screen Rendering posisi absolut
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
   const pdfOptions = { download: true, upload: false, ...options };
+  const documentData = getFinalDocumentRow(data);
   if (!hasPdfLibraries()) {
     showToast('Library PDF belum lengkap. Pastikan html2canvas dan jsPDF sudah dimuat di index.html.', 'error');
     return null;
@@ -1906,7 +1890,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   workerDiv.style.color = '#000000';
   
   // Ambil template HTML surat Anda
-  let htmlContent = buildDocumentHTML(data);
+  let htmlContent = buildDocumentHTML(documentData);
   
   // Cek jika class .pdf-page tidak ikut terpasang, bungkus manual agar styling CSS Anda aktif
   if (!htmlContent.includes('class="pdf-page"')) {
@@ -1952,12 +1936,12 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     // Gambar ditempel pas memenuhi batas kertas kertas A4 (210mm x 297mm)
     pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'SLOW');
 
-    const fileName = `${slugify(data.nomor_surat || 'surat')}.pdf`;
+    const fileName = `${slugify(documentData.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
 
     // Simpan ke Supabase Storage apabila opsi upload aktif
     if (pdfOptions.upload) {
-      await uploadPdf(data, pdfBlob, fileName);
+      await uploadPdf(documentData, pdfBlob, fileName);
     }
 
     // Unduh langsung ke device user
@@ -1978,7 +1962,7 @@ async function uploadPdf(documentRow, pdfBlob, fileName) {
   try {
     if (!supabaseClient) throw new Error('Supabase belum aktif');
 
-    const path = `${documentRow.jenis}/${Date.now()}-${fileName}`;
+    const path = `surat-pdf/${documentRow.id || 'tanpa-id'}/${Date.now()}-${fileName}`;
 
     const { error } = await supabaseClient.storage
       .from(STORAGE_BUCKET)
