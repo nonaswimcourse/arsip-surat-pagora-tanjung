@@ -2281,3 +2281,71 @@ img {
     flex-basis: 46px !important;
   }
 }
+
+
+/* === FIX FINAL 20260625: PERBESAR TTD / STEMPEL DI PREVIEW, CETAK, DAN PDF === */
+.signature-block {
+  width: 360px !important;
+  margin-left: auto !important;
+  overflow: visible !important;
+}
+
+.signature-image-wrap {
+  height: 155px !important;
+  min-height: 155px !important;
+  margin: -6px auto -12px auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 999 !important;
+  background: transparent !important;
+}
+
+.signature-image-wrap img,
+.ttd-img {
+  display: block !important;
+  width: 360px !important;
+  max-width: 360px !important;
+  height: 150px !important;
+  max-height: 150px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: translate(-70px, 8px) !important;
+  margin: 0 auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 999 !important;
+  background: transparent !important;
+}
+
+.signature-name,
+.signature-nip {
+  position: relative !important;
+  z-index: 1000 !important;
+}
+
+@media print {
+  .signature-block {
+    width: 360px !important;
+    overflow: visible !important;
+  }
+
+  .signature-image-wrap {
+    height: 155px !important;
+    min-height: 155px !important;
+    margin: -6px auto -12px auto !important;
+    overflow: visible !important;
+  }
+
+  .signature-image-wrap img,
+  .ttd-img {
+    width: 360px !important;
+    max-width: 360px !important;
+    height: 150px !important;
+    max-height: 150px !important;
+    transform: translate(-70px, 8px) !important;
+  }
+}
