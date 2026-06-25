@@ -2053,9 +2053,9 @@ function signature(profile, row = {}) {
           ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" 
               style="
                 display: block;
-                width: 460px; 
-                max-width: 460px; 
-                max-height: 260px; 
+                width: 520px; 
+                max-width:520px; 
+                max-height: 300px; 
                 height: auto; 
                 object-fit: contain; 
                 visibility: visible; 
@@ -2063,7 +2063,7 @@ function signature(profile, row = {}) {
                 position: relative; 
                 z-index: 999; 
                 /* Geser ke kiri (-125px) dan ke atas (-160px) karena ukuran gambar makin besar */
-                transform: translate(-125px, -160px); 
+                transform: translate(-170px, -160px); 
                 /* Menarik nama & NIP di bawah agar naik ke tengah stempel besar */
                 margin-bottom: -210px;
                 /* Menghilangkan background hitam pada file mentahan gambar Anda */
