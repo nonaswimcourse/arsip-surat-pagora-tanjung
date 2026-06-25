@@ -1,4 +1,4 @@
-const CACHE_NAME = 'siap-tanjung-v20260625-pwa-logo-1';
+const CACHE_NAME = 'siap-tanjung-v20260625-icon-fix-3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -8,6 +8,9 @@ const APP_SHELL = [
   './assets/logo.png',
   './manifest.json',
   './favicon.ico',
+  './apple-touch-icon.png',
+  './icon-192.png',
+  './icon-512.png',
   './icons/favicon-16.png',
   './icons/favicon-32.png',
   './icons/apple-touch-icon.png',
@@ -53,10 +56,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-      return response;
-    }))
+    fetch(request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });
