@@ -14,6 +14,7 @@ const PDF_RENDER_SCALE = 3;
 const PDF_IMAGE_QUALITY = 1.0;
 const PDF_RENDER_DELAY_MS = 80;
 const PDF_IMAGE_TIMEOUT_MS = 8000;
+const WORD_RENDER_SCALE = 2;
 
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
@@ -2480,6 +2481,32 @@ async function inlineImagesForPdf(container) {
   await waitForImages(container, PDF_IMAGE_TIMEOUT_MS);
 }
 
+function normalizeSignatureImages(container) {
+  container.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
+    const naturalWidth = img.naturalWidth || 0;
+    const naturalHeight = img.naturalHeight || 0;
+    const targetWidth = 360;
+
+    img.style.display = 'block';
+    img.style.width = `${targetWidth}px`;
+    img.style.maxWidth = `${targetWidth}px`;
+    img.style.height = 'auto';
+    img.style.maxHeight = 'none';
+    img.style.objectFit = 'contain';
+    img.style.objectPosition = 'center';
+    img.style.visibility = 'visible';
+    img.style.opacity = '1';
+    img.style.background = 'transparent';
+
+    // Jika browser PDF tidak patuh pada height:auto, kunci tinggi sesuai rasio asli gambar.
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      const targetHeight = Math.round(targetWidth * naturalHeight / naturalWidth);
+      img.style.height = `${targetHeight}px`;
+      img.style.maxHeight = `${targetHeight}px`;
+    }
+  });
+}
+
 
 function wordDocumentStyles() {
   return `
@@ -2561,9 +2588,143 @@ function wordSafeHtml(html) {
     .replace(/\scontenteditable="[^"]*"/gi, '');
 }
 
+
+async function canvasFromA4Element(sourceElement, useLiveClone = false) {
+  if (!sourceElement) return null;
+
+  const workerDiv = document.createElement('div');
+  workerDiv.style.position = 'absolute';
+  workerDiv.style.top = '-9999px';
+  workerDiv.style.left = '-9999px';
+  workerDiv.style.width = '210mm';
+  workerDiv.style.height = '297mm';
+  workerDiv.style.background = '#ffffff';
+  workerDiv.style.color = '#000000';
+  workerDiv.style.overflow = 'hidden';
+
+  const captureTarget = useLiveClone ? sourceElement.cloneNode(true) : sourceElement;
+  captureTarget.classList.add(useLiveClone ? 'pdf-live-capture' : 'pdf-export-page');
+  captureTarget.style.width = '210mm';
+  captureTarget.style.height = '297mm';
+  captureTarget.style.minHeight = '297mm';
+  captureTarget.style.maxHeight = '297mm';
+  captureTarget.style.boxSizing = 'border-box';
+  captureTarget.style.boxShadow = 'none';
+  captureTarget.style.margin = '0';
+  captureTarget.style.overflow = 'hidden';
+
+  if (useLiveClone) {
+    workerDiv.appendChild(captureTarget);
+    document.body.appendChild(workerDiv);
+  } else {
+    // Elemen sudah berada dalam workerDiv pemanggil. Tambahkan workerDiv hanya bila belum terpasang.
+    if (!captureTarget.isConnected) {
+      workerDiv.appendChild(captureTarget);
+      document.body.appendChild(workerDiv);
+    }
+  }
+
+  try {
+    await inlineImagesForPdf(captureTarget);
+    normalizeSignatureImages(captureTarget);
+    await nextFrame();
+    await wait(PDF_RENDER_DELAY_MS);
+
+    const targetWidth = captureTarget.offsetWidth || 794;
+    const targetHeight = Math.round(targetWidth * 297 / 210);
+
+    return await html2canvas(captureTarget, {
+      scale: WORD_RENDER_SCALE,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: targetWidth,
+      height: targetHeight,
+      windowWidth: targetWidth,
+      windowHeight: targetHeight,
+      scrollX: 0,
+      scrollY: 0,
+      imageTimeout: PDF_IMAGE_TIMEOUT_MS
+    });
+  } finally {
+    if (useLiveClone && workerDiv.parentNode) workerDiv.remove();
+  }
+}
+
+function createWordBlobFromCanvas(canvas, documentData) {
+  const imgData = canvas.toDataURL('image/png');
+  const title = safe(documentData.nomor_surat || 'Dokumen Word');
+  const fullHtml = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+  <style>
+    @page WordSection1 { size: 21cm 29.7cm; margin: 0cm 0cm 0cm 0cm; }
+    html, body { margin: 0; padding: 0; background: #ffffff; }
+    .WordSection1 { margin: 0; padding: 0; width: 21cm; height: 29.7cm; overflow: hidden; }
+    img.preview-word-page { display: block; width: 21cm; height: 29.7cm; margin: 0; padding: 0; border: 0; }
+  </style>
+</head>
+<body><div class="WordSection1"><img class="preview-word-page" src="${imgData}" alt="${title}"></div></body>
+</html>`;
+
+  const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8' });
+  const fileName = `${slugify(documentData.nomor_surat || documentData.perihal || 'surat')}.doc`;
+  return { fileName, wordBlob: blob };
+}
+
+async function createVisualWordFromElement(sourceElement, documentData, wordOptions) {
+  const canvas = await canvasFromA4Element(sourceElement, true);
+  if (!canvas) return null;
+  const result = createWordBlobFromCanvas(canvas, documentData);
+  if (wordOptions.download) downloadBlob(result.wordBlob, result.fileName);
+  return result;
+}
+
+async function createVisualWordFromDocument(documentData, wordOptions) {
+  const workerDiv = document.createElement('div');
+  workerDiv.style.position = 'absolute';
+  workerDiv.style.top = '-9999px';
+  workerDiv.style.left = '-9999px';
+  workerDiv.style.width = '210mm';
+  workerDiv.style.height = '297mm';
+  workerDiv.style.background = '#ffffff';
+  workerDiv.style.color = '#000000';
+  workerDiv.style.overflow = 'hidden';
+  workerDiv.innerHTML = buildDocumentHTML(documentData);
+  document.body.appendChild(workerDiv);
+
+  try {
+    const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+    const canvas = await canvasFromA4Element(captureTarget, false);
+    if (!canvas) return null;
+    const result = createWordBlobFromCanvas(canvas, documentData);
+    if (wordOptions.download) downloadBlob(result.wordBlob, result.fileName);
+    return result;
+  } finally {
+    if (workerDiv.parentNode) workerDiv.remove();
+  }
+}
+
 async function createWordFromDocument(data, options = { download: true }) {
   const wordOptions = { download: true, ...options };
   const documentData = getFinalDocumentRow(data);
+
+  // Word dibuat dari hasil capture preview A4 agar tampilannya sama dengan Review dan PDF.
+  // Fallback HTML lama tetap tersedia bila html2canvas gagal dimuat.
+  if (hasPdfLibraries()) {
+    try {
+      if (wordOptions.sourceElement && wordOptions.sourceElement.isConnected) {
+        return await createVisualWordFromElement(wordOptions.sourceElement, documentData, wordOptions);
+      }
+      return await createVisualWordFromDocument(documentData, wordOptions);
+    } catch (error) {
+      console.warn('Word visual gagal, memakai fallback HTML Word:', error);
+    }
+  }
 
   const workerDiv = document.createElement('div');
   workerDiv.style.position = 'absolute';
@@ -2628,8 +2789,30 @@ async function finalizePdfFromCanvas(canvas, documentData, pdfOptions) {
     format: 'a4'
   });
 
-  // Canvas selalu ditempel ke A4 penuh. Karena sumbernya A4, hasilnya tidak gepeng.
-  pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+  // Anti gepeng: jangan paksa canvas yang rasionya berubah untuk memenuhi A4.
+  // Gambar selalu dimasukkan dengan rasio asli, lalu dipusatkan di halaman A4.
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const canvasRatio = canvas.width / canvas.height;
+  const pageRatio = pageWidth / pageHeight;
+  let renderWidth = pageWidth;
+  let renderHeight = pageHeight;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (Math.abs(canvasRatio - pageRatio) > 0.003) {
+    if (canvasRatio > pageRatio) {
+      renderWidth = pageWidth;
+      renderHeight = pageWidth / canvasRatio;
+      offsetY = (pageHeight - renderHeight) / 2;
+    } else {
+      renderHeight = pageHeight;
+      renderWidth = pageHeight * canvasRatio;
+      offsetX = (pageWidth - renderWidth) / 2;
+    }
+  }
+
+  pdf.addImage(imgData, 'PNG', offsetX, offsetY, renderWidth, renderHeight, undefined, 'FAST');
 
   const fileName = `${slugify(documentData.nomor_surat || 'surat')}.pdf`;
   const pdfBlob = pdf.output('blob');
@@ -2648,31 +2831,42 @@ async function finalizePdfFromCanvas(canvas, documentData, pdfOptions) {
 async function createPdfFromVisiblePreview(sourceElement, documentData, pdfOptions) {
   if (!sourceElement || !sourceElement.isConnected) return null;
 
-  const original = {
-    boxShadow: sourceElement.style.boxShadow,
-    margin: sourceElement.style.margin,
-    overflow: sourceElement.style.overflow,
-    width: sourceElement.style.width,
-    height: sourceElement.style.height,
-    maxHeight: sourceElement.style.maxHeight
-  };
+  // Anti gepeng: jangan capture elemen modal yang tingginya bisa berubah karena scroll.
+  // Clone preview dibuat off-screen dengan ukuran A4 pasti, lalu baru dirender ke PDF.
+  const workerDiv = document.createElement('div');
+  workerDiv.style.position = 'absolute';
+  workerDiv.style.top = '-9999px';
+  workerDiv.style.left = '-9999px';
+  workerDiv.style.width = '210mm';
+  workerDiv.style.height = '297mm';
+  workerDiv.style.background = '#ffffff';
+  workerDiv.style.color = '#000000';
+  workerDiv.style.overflow = 'hidden';
+
+  const captureClone = sourceElement.cloneNode(true);
+  captureClone.classList.add('pdf-live-capture');
+  captureClone.style.width = '210mm';
+  captureClone.style.height = '297mm';
+  captureClone.style.minHeight = '297mm';
+  captureClone.style.maxHeight = '297mm';
+  captureClone.style.boxSizing = 'border-box';
+  captureClone.style.boxShadow = 'none';
+  captureClone.style.margin = '0';
+  captureClone.style.overflow = 'hidden';
+
+  workerDiv.appendChild(captureClone);
+  document.body.appendChild(workerDiv);
 
   try {
-    sourceElement.classList.add('pdf-live-capture');
-    sourceElement.style.boxShadow = 'none';
-    sourceElement.style.margin = '0 auto';
-    sourceElement.style.overflow = 'hidden';
-
-    // Inline gambar pada elemen preview aktif agar html2canvas menangkap logo dan stempel yang sama.
-    await inlineImagesForPdf(sourceElement);
+    await inlineImagesForPdf(captureClone);
+    normalizeSignatureImages(captureClone);
     await nextFrame();
     await wait(PDF_RENDER_DELAY_MS);
 
-    const rect = sourceElement.getBoundingClientRect();
-    const targetWidth = Math.ceil(sourceElement.scrollWidth || rect.width || 794);
-    const targetHeight = Math.ceil(sourceElement.scrollHeight || rect.height || Math.round(targetWidth * 297 / 210));
+    const targetWidth = captureClone.offsetWidth || 794;
+    const targetHeight = Math.round(targetWidth * 297 / 210);
 
-    const canvas = await html2canvas(sourceElement, {
+    const canvas = await html2canvas(captureClone, {
       scale: PDF_RENDER_SCALE,
       useCORS: true,
       allowTaint: false,
@@ -2680,8 +2874,8 @@ async function createPdfFromVisiblePreview(sourceElement, documentData, pdfOptio
       logging: false,
       width: targetWidth,
       height: targetHeight,
-      windowWidth: Math.max(document.documentElement.clientWidth || 0, targetWidth),
-      windowHeight: Math.max(document.documentElement.clientHeight || 0, targetHeight),
+      windowWidth: targetWidth,
+      windowHeight: targetHeight,
       scrollX: 0,
       scrollY: 0,
       imageTimeout: PDF_IMAGE_TIMEOUT_MS
@@ -2689,13 +2883,7 @@ async function createPdfFromVisiblePreview(sourceElement, documentData, pdfOptio
 
     return await finalizePdfFromCanvas(canvas, documentData, pdfOptions);
   } finally {
-    sourceElement.classList.remove('pdf-live-capture');
-    sourceElement.style.boxShadow = original.boxShadow;
-    sourceElement.style.margin = original.margin;
-    sourceElement.style.overflow = original.overflow;
-    sourceElement.style.width = original.width;
-    sourceElement.style.height = original.height;
-    sourceElement.style.maxHeight = original.maxHeight;
+    if (workerDiv.parentNode) workerDiv.remove();
   }
 }
 
@@ -2749,6 +2937,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     captureTarget.style.boxSizing = 'border-box';
 
     await inlineImagesForPdf(captureTarget);
+    normalizeSignatureImages(captureTarget);
     await nextFrame();
     await wait(PDF_RENDER_DELAY_MS);
 
