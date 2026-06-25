@@ -2247,3 +2247,37 @@ img {
   border-color: transparent !important;
   box-shadow: none !important;
 }
+
+
+/* ==========================================================================
+   LOGO TRANSPARAN + HOMESCREEN ICON SUPPORT
+   ========================================================================== */
+.brand-logo-wrap,
+.sidebar-brand,
+.login-logo,
+.sidebar-logo {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.login-logo,
+.sidebar-logo {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+}
+
+.sidebar-logo {
+  width: 58px !important;
+  height: 58px !important;
+  flex: 0 0 58px !important;
+}
+
+@media screen and (max-width: 880px) {
+  .sidebar-logo {
+    width: 46px !important;
+    height: 46px !important;
+    flex-basis: 46px !important;
+  }
+}
