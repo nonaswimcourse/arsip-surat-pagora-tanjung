@@ -1,4 +1,4 @@
-const CACHE_NAME = 'siap-tanjung-v20260625-icon-noblue-1';
+const CACHE_NAME = 'siap-tanjung-v20260625-iphone-print-fix-1';
 const APP_SHELL = [
   './',
   './index.html',
