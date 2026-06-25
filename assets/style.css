@@ -2567,3 +2567,105 @@ img {
   box-sizing: border-box !important;
   background: #ffffff !important;
 }
+
+
+/* === FIX FINAL 20260625-ttd-stempel-word-safe-1: TTD/STEMPEL PROPORSIONAL DAN WORD TIDAK TERPOTONG === */
+.signature-block,
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  width: 300px !important;
+  margin-left: auto !important;
+  margin-top: 18px !important;
+  text-align: center !important;
+  overflow: visible !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.signature-image-wrap,
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  height: 96px !important;
+  min-height: 96px !important;
+  margin: 0 auto -10px auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+.signature-image-wrap img,
+.ttd-img,
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  display: block !important;
+  width: auto !important;
+  max-width: 280px !important;
+  height: auto !important;
+  max-height: 95px !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: none !important;
+  margin: 0 auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: transparent !important;
+}
+
+.signature-name {
+  position: relative !important;
+  z-index: 1000 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.signature-nip {
+  position: relative !important;
+  z-index: 1000 !important;
+  margin-top: 0 !important;
+}
+
+.ttd-current-preview img,
+.ttd-profile-preview img {
+  width: auto !important;
+  max-width: 220px !important;
+  height: auto !important;
+  max-height: 90px !important;
+  object-fit: contain !important;
+  transform: none !important;
+}
+
+@media print {
+  .signature-block,
+  .pdf-live-capture .signature-block,
+  .pdf-export-page .signature-block {
+    width: 300px !important;
+    margin-top: 18px !important;
+  }
+
+  .signature-image-wrap,
+  .pdf-live-capture .signature-image-wrap,
+  .pdf-export-page .signature-image-wrap {
+    height: 96px !important;
+    min-height: 96px !important;
+    margin: 0 auto -10px auto !important;
+  }
+
+  .signature-image-wrap img,
+  .ttd-img,
+  .pdf-live-capture .signature-image-wrap img,
+  .pdf-live-capture .ttd-img,
+  .pdf-export-page .signature-image-wrap img,
+  .pdf-export-page .ttd-img {
+    width: auto !important;
+    max-width: 280px !important;
+    height: auto !important;
+    max-height: 95px !important;
+    transform: none !important;
+  }
+}

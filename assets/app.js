@@ -2482,28 +2482,37 @@ async function inlineImagesForPdf(container) {
 }
 
 function normalizeSignatureImages(container) {
+  const maxWidth = 280;
+  const maxHeight = 95;
+
   container.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
     const naturalWidth = img.naturalWidth || 0;
     const naturalHeight = img.naturalHeight || 0;
-    const targetWidth = 360;
+    let renderWidth = maxWidth;
+    let renderHeight = '';
 
+    // Jaga rasio asli gambar TTD/stempel. Jangan paksa tinggi tetap,
+    // karena itu yang membuat stempel terlihat gepeng dan bisa terpotong.
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight, 1.25);
+      renderWidth = Math.round(naturalWidth * scale);
+      renderHeight = Math.round(naturalHeight * scale);
+    }
+
+    img.removeAttribute('width');
+    img.removeAttribute('height');
     img.style.display = 'block';
-    img.style.width = `${targetWidth}px`;
-    img.style.maxWidth = `${targetWidth}px`;
-    img.style.height = 'auto';
-    img.style.maxHeight = 'none';
+    img.style.width = `${renderWidth}px`;
+    img.style.maxWidth = `${maxWidth}px`;
+    img.style.height = renderHeight ? `${renderHeight}px` : 'auto';
+    img.style.maxHeight = `${maxHeight}px`;
     img.style.objectFit = 'contain';
     img.style.objectPosition = 'center';
+    img.style.transform = 'none';
+    img.style.margin = '0 auto';
     img.style.visibility = 'visible';
     img.style.opacity = '1';
     img.style.background = 'transparent';
-
-    // Jika browser PDF tidak patuh pada height:auto, kunci tinggi sesuai rasio asli gambar.
-    if (naturalWidth > 0 && naturalHeight > 0) {
-      const targetHeight = Math.round(targetWidth * naturalHeight / naturalWidth);
-      img.style.height = `${targetHeight}px`;
-      img.style.maxHeight = `${targetHeight}px`;
-    }
   });
 }
 
@@ -2532,10 +2541,10 @@ function wordDocumentStyles() {
     .body-text p, .body-box p, .disposition-box p { margin: 6px 0; text-align: justify; line-height: 1.35; }
     .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
     .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 12pt; }
-    .signature-block { width: 300px; margin-left: auto; margin-top: 20px; text-align: center; page-break-inside: avoid; overflow: visible; }
+    .signature-block { width: 300px; margin-left: auto; margin-top: 18px; text-align: center; page-break-inside: avoid; overflow: visible; }
     .signature-block p { margin: 2px 0; line-height: 1.15; }
-    .signature-image-wrap { height: 92px; min-height: 92px; margin: 0 auto -12px auto; display: block; text-align: center; overflow: visible; }
-    .signature-image-wrap img, .ttd-img { width: 260px; max-width: 260px; height: auto; max-height: 110px; display: block; margin: 0 auto; object-fit: contain; }
+    .signature-image-wrap { height: 96px; min-height: 96px; margin: 0 auto -10px auto; display: block; text-align: center; overflow: visible; }
+    .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 95px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
     .signature-name { font-weight: bold; text-decoration: underline; margin-top: 0; }
     .signature-nip { margin-top: 0; }
     .tembusan-block { margin-top: 55px; text-align: left; font-size: 12pt; line-height: 1.35; }
@@ -2552,17 +2561,18 @@ function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-block').forEach((node) => {
-    node.setAttribute('style', 'width:300px;margin-left:auto;margin-top:20px;text-align:center;page-break-inside:avoid;overflow:visible;');
+    node.setAttribute('style', 'width:300px;margin-left:auto;margin-top:18px;text-align:center;page-break-inside:avoid;overflow:visible;');
   });
 
   clone.querySelectorAll('.signature-image-wrap').forEach((node) => {
-    node.setAttribute('style', 'height:92px;min-height:92px;margin:0 auto -12px auto;text-align:center;overflow:visible;');
+    node.setAttribute('style', 'height:96px;min-height:96px;margin:0 auto -10px auto;text-align:center;overflow:visible;');
   });
 
   clone.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
     img.removeAttribute('style');
-    img.setAttribute('width', '260');
-    img.setAttribute('style', 'display:block;width:260px;max-width:260px;height:auto;max-height:110px;margin:0 auto;object-fit:contain;background:transparent;');
+    img.removeAttribute('width');
+    img.removeAttribute('height');
+    img.setAttribute('style', 'display:block;width:auto;max-width:280px;height:auto;max-height:95px;margin:0 auto;object-fit:contain;transform:none;background:transparent;');
   });
 
   clone.querySelectorAll('.signature-name').forEach((node) => {
@@ -2662,10 +2672,10 @@ function createWordBlobFromCanvas(canvas, documentData) {
   <title>${title}</title>
   <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
   <style>
-    @page WordSection1 { size: 21cm 29.7cm; margin: 0cm 0cm 0cm 0cm; }
+    @page WordSection1 { size: 21cm 29.7cm; margin: 0.25cm 0.25cm 0.25cm 0.25cm; }
     html, body { margin: 0; padding: 0; background: #ffffff; }
-    .WordSection1 { margin: 0; padding: 0; width: 21cm; height: 29.7cm; overflow: hidden; }
-    img.preview-word-page { display: block; width: 21cm; height: 29.7cm; margin: 0; padding: 0; border: 0; }
+    .WordSection1 { margin: 0; padding: 0; width: 20.5cm; height: 29.2cm; overflow: hidden; text-align: center; }
+    img.preview-word-page { display: block; width: 20.3cm; height: auto; max-height: 29.1cm; margin: 0 auto; padding: 0; border: 0; }
   </style>
 </head>
 <body><div class="WordSection1"><img class="preview-word-page" src="${imgData}" alt="${title}"></div></body>
