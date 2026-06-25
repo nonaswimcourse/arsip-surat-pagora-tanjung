@@ -2283,7 +2283,7 @@ img {
 }
 
 
-/* === FIX FINAL 20260625: PERBESAR TTD / STEMPEL DI PREVIEW, CETAK, DAN PDF === */
+/* === FIX FINAL 20260625: PERBESAR TTD / STEMPEL + NAMA/NIP NAIK === */
 .signature-block {
   width: 360px !important;
   margin-left: auto !important;
@@ -2291,9 +2291,9 @@ img {
 }
 
 .signature-image-wrap {
-  height: 155px !important;
-  min-height: 155px !important;
-  margin: -6px auto -12px auto !important;
+  height: 112px !important;
+  min-height: 112px !important;
+  margin: -6px auto -34px auto !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -2312,7 +2312,7 @@ img {
   max-height: 150px !important;
   object-fit: contain !important;
   object-position: center !important;
-  transform: translate(-70px, 8px) !important;
+  transform: translate(-70px, -4px) !important;
   margin: 0 auto !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -2321,7 +2321,12 @@ img {
   background: transparent !important;
 }
 
-.signature-name,
+.signature-name {
+  position: relative !important;
+  z-index: 1000 !important;
+  margin-top: -2px !important;
+}
+
 .signature-nip {
   position: relative !important;
   z-index: 1000 !important;
@@ -2334,9 +2339,9 @@ img {
   }
 
   .signature-image-wrap {
-    height: 155px !important;
-    min-height: 155px !important;
-    margin: -6px auto -12px auto !important;
+    height: 100px !important;
+    min-height: 100px !important;
+    margin: -6px auto -45px auto !important;
     overflow: visible !important;
   }
 
@@ -2346,6 +2351,6 @@ img {
     max-width: 360px !important;
     height: 150px !important;
     max-height: 150px !important;
-    transform: translate(-70px, 8px) !important;
+    transform: translate(-70px, -4px) !important;
   }
 }
