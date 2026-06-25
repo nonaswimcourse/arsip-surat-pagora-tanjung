@@ -2438,3 +2438,53 @@ img {
     page-break-inside: avoid !important;
   }
 }
+
+
+/* === FIX 20260625: PDF DARI PREVIEW HARUS SAMA DENGAN REVIEW === */
+.pdf-live-capture {
+  box-shadow: none !important;
+  margin: 0 auto !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
+}
+
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  width: 360px !important;
+  margin-left: auto !important;
+  overflow: visible !important;
+}
+
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  height: 112px !important;
+  min-height: 112px !important;
+  margin: -6px auto -34px auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 999 !important;
+  background: transparent !important;
+}
+
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  display: block !important;
+  width: 360px !important;
+  max-width: 360px !important;
+  height: 150px !important;
+  max-height: 150px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: translate(-70px, -4px) !important;
+  margin: 0 auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 999 !important;
+  background: transparent !important;
+}

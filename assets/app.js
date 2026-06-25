@@ -2344,8 +2344,13 @@ async function downloadPreviewPdf(evt = null) {
   const originalText = setButtonBusy(btn, 'Memproses PDF...');
 
   try {
-    // Preview download dibuat lokal saja. Upload Storage tidak dijalankan agar tombol tidak lambat.
-    const pdfResult = await createPdfFromDocument(lastPreviewDocument, { download: true, upload: false });
+    // Download dari menu Preview harus menangkap elemen preview yang sedang terlihat.
+    // Dengan cara ini posisi dan ukuran stempel sama persis seperti tampilan Review.
+    const pdfResult = await createPdfFromDocument(lastPreviewDocument, {
+      download: true,
+      upload: false,
+      sourceElement: lastPreviewElement
+    });
     if (pdfResult) {
       showToast('PDF berhasil diunduh.');
     } else {
@@ -2371,7 +2376,10 @@ async function downloadPreviewWord(evt = null) {
   const originalText = setButtonBusy(btn, 'Memproses Word...');
 
   try {
-    const wordResult = await createWordFromDocument(lastPreviewDocument, { download: true });
+    const wordResult = await createWordFromDocument(lastPreviewDocument, {
+      download: true,
+      sourceElement: lastPreviewElement
+    });
     if (wordResult) {
       showToast('Word berhasil diunduh.');
     } else {
@@ -2610,6 +2618,87 @@ function hasPdfLibraries() {
     && typeof window.jspdf.jsPDF === 'function';
 }
 
+
+async function finalizePdfFromCanvas(canvas, documentData, pdfOptions) {
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  // Canvas selalu ditempel ke A4 penuh. Karena sumbernya A4, hasilnya tidak gepeng.
+  pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+
+  const fileName = `${slugify(documentData.nomor_surat || 'surat')}.pdf`;
+  const pdfBlob = pdf.output('blob');
+
+  if (pdfOptions.upload) {
+    await uploadPdf(documentData, pdfBlob, fileName);
+  }
+
+  if (pdfOptions.download) {
+    downloadBlob(pdfBlob, fileName);
+  }
+
+  return { fileName, pdfBlob };
+}
+
+async function createPdfFromVisiblePreview(sourceElement, documentData, pdfOptions) {
+  if (!sourceElement || !sourceElement.isConnected) return null;
+
+  const original = {
+    boxShadow: sourceElement.style.boxShadow,
+    margin: sourceElement.style.margin,
+    overflow: sourceElement.style.overflow,
+    width: sourceElement.style.width,
+    height: sourceElement.style.height,
+    maxHeight: sourceElement.style.maxHeight
+  };
+
+  try {
+    sourceElement.classList.add('pdf-live-capture');
+    sourceElement.style.boxShadow = 'none';
+    sourceElement.style.margin = '0 auto';
+    sourceElement.style.overflow = 'hidden';
+
+    // Inline gambar pada elemen preview aktif agar html2canvas menangkap logo dan stempel yang sama.
+    await inlineImagesForPdf(sourceElement);
+    await nextFrame();
+    await wait(PDF_RENDER_DELAY_MS);
+
+    const rect = sourceElement.getBoundingClientRect();
+    const targetWidth = Math.ceil(sourceElement.scrollWidth || rect.width || 794);
+    const targetHeight = Math.ceil(sourceElement.scrollHeight || rect.height || Math.round(targetWidth * 297 / 210));
+
+    const canvas = await html2canvas(sourceElement, {
+      scale: PDF_RENDER_SCALE,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: targetWidth,
+      height: targetHeight,
+      windowWidth: Math.max(document.documentElement.clientWidth || 0, targetWidth),
+      windowHeight: Math.max(document.documentElement.clientHeight || 0, targetHeight),
+      scrollX: 0,
+      scrollY: 0,
+      imageTimeout: PDF_IMAGE_TIMEOUT_MS
+    });
+
+    return await finalizePdfFromCanvas(canvas, documentData, pdfOptions);
+  } finally {
+    sourceElement.classList.remove('pdf-live-capture');
+    sourceElement.style.boxShadow = original.boxShadow;
+    sourceElement.style.margin = original.margin;
+    sourceElement.style.overflow = original.overflow;
+    sourceElement.style.width = original.width;
+    sourceElement.style.height = original.height;
+    sourceElement.style.maxHeight = original.maxHeight;
+  }
+}
+
 // PERBAIKAN FINAL ANTI-BLANK: Menggunakan teknik Off-Screen Rendering posisi absolut
 async function createPdfFromDocument(data, options = { download: true, upload: false }) {
   const pdfOptions = { download: true, upload: false, ...options };
@@ -2617,6 +2706,11 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   if (!hasPdfLibraries()) {
     showToast('Library PDF belum lengkap. Pastikan html2canvas dan jsPDF sudah dimuat di index.html.', 'error');
     return null;
+  }
+
+  // Khusus tombol PDF dari menu Review: ambil tampilan preview aktif supaya ukuran dan posisi stempel sama.
+  if (pdfOptions.sourceElement && pdfOptions.sourceElement.isConnected) {
+    return await createPdfFromVisiblePreview(pdfOptions.sourceElement, documentData, pdfOptions);
   }
 
   // 1. Buat kontainer khusus rendering di luar layar (off-screen)
@@ -2687,32 +2781,8 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     // Setelah canvas berhasil dicapture, langsung hapus elemen pembantu dari DOM
     workerDiv.remove();
 
-    // 4. Konversi hasil tangkapan gambar menjadi PDF halaman tunggal
-    const imgData = canvas.toDataURL('image/png');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    // Gambar ditempel dengan rasio A4 yang sama dengan hasil capture.
-    pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-
-    const fileName = `${slugify(documentData.nomor_surat || 'surat')}.pdf`;
-    const pdfBlob = pdf.output('blob');
-
-    // Simpan ke Supabase Storage apabila opsi upload aktif
-    if (pdfOptions.upload) {
-      await uploadPdf(documentData, pdfBlob, fileName);
-    }
-
-    // Unduh langsung ke device user
-    if (pdfOptions.download) {
-      pdf.save(fileName);
-    }
-
-    return { fileName, pdfBlob };
+    // 4. Konversi hasil tangkapan gambar menjadi PDF halaman tunggal.
+    return await finalizePdfFromCanvas(canvas, documentData, pdfOptions);
   } catch (error) {
     console.error('Gagal membuat PDF:', error);
     showToast('Gagal memproses file PDF.', 'error');
