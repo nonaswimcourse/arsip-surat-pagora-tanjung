@@ -16,6 +16,7 @@ const PDF_RENDER_DELAY_MS = 80;
 const PDF_IMAGE_TIMEOUT_MS = 8000;
 const WORD_RENDER_SCALE = 2;
 const STAMPEL_IMAGE_URL = 'assets/stempel-kkg-pjok.png';
+const DEFAULT_SIGNATURE_RENDER_OPTIONS = Object.freeze({ showStamp: true, showTtd: true });
 
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
@@ -2032,7 +2033,59 @@ function letterhead(profile) {
     <div class="letter-line"></div>`;
 }
 
-function signature(profile, row = {}) {
+
+function normalizeSignatureOptions(options = {}) {
+  return {
+    showStamp: options.showStamp !== false,
+    showTtd: options.showTtd !== false
+  };
+}
+
+function setPreviewSignatureOptions(options = {}) {
+  const normalized = normalizeSignatureOptions(options);
+  const stamp = el('previewUseStamp');
+  const ttd = el('previewUseTtd');
+  if (stamp) stamp.checked = normalized.showStamp;
+  if (ttd) ttd.checked = normalized.showTtd;
+}
+
+function getPreviewSignatureOptions() {
+  const stamp = el('previewUseStamp');
+  const ttd = el('previewUseTtd');
+  return normalizeSignatureOptions({
+    showStamp: stamp ? stamp.checked : true,
+    showTtd: ttd ? ttd.checked : true
+  });
+}
+
+function applyPreviewSignatureLayer(preview) {
+  if (!preview) return;
+  // Jaga lapisan tanda tangan dan stempel tetap di depan tanpa mengubah struktur surat.
+  preview.querySelectorAll('.signature-visual-wrap, .signature-stamp-img, .signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
+    node.style.visibility = 'visible';
+    node.style.opacity = '1';
+    if (node.classList?.contains('signature-stamp-img')) {
+      node.style.zIndex = '30';
+    } else if (node.classList?.contains('ttd-img') || node.closest?.('.signature-image-wrap')) {
+      node.style.zIndex = '31';
+    }
+  });
+}
+
+function renderActivePreviewDocument() {
+  const preview = el('previewContent');
+  if (!preview || !lastPreviewDocument) return;
+  preview.innerHTML = buildDocumentHTML(lastPreviewDocument, getPreviewSignatureOptions());
+  applyPreviewSignatureLayer(preview);
+  lastPreviewElement = preview.querySelector('.pdf-page');
+}
+
+function refreshPreviewSignatureOptions() {
+  renderActivePreviewDocument();
+}
+
+function signature(profile, row = {}, options = {}) {
+  const signatureOptions = normalizeSignatureOptions(options);
   const rowDataTtd = row?.ttd_data_url || '';
   const rowUrlTtd = row?.ttd_url || '';
   const profileTtd = profile?.ttd_url || profile?.ttd_data_url || '';
@@ -2042,8 +2095,11 @@ function signature(profile, row = {}) {
   // 2. TTD profil dari Supabase sebagai fallback.
   // Fallback profil penting agar surat lama yang belum punya kolom TTD tetap menampilkan tanda tangan
   // setelah cookies/site data browser dibersihkan.
-  const ttd = rowDataTtd || rowUrlTtd || profileTtd || '';
+  const ttd = signatureOptions.showTtd ? (rowDataTtd || rowUrlTtd || profileTtd || '') : '';
   const ttdName = row?.ttd_name || profile?.ttd_name || 'Tanda tangan';
+  const stampHtml = signatureOptions.showStamp
+    ? `<img src="${safe(STAMPEL_IMAGE_URL)}" alt="Stempel KKG PJOK" class="signature-stamp-img" crossorigin="anonymous" referrerpolicy="no-referrer">`
+    : '';
 
   return `
     <div class="signature-block" style="position: relative;">
@@ -2051,7 +2107,7 @@ function signature(profile, row = {}) {
       <p>${safe(profile.jabatan)}</p>
 
       <div class="signature-visual-wrap" style="position: relative; z-index: 999;">
-        <img src="${safe(STAMPEL_IMAGE_URL)}" alt="Stempel KKG PJOK" class="signature-stamp-img" crossorigin="anonymous" referrerpolicy="no-referrer">
+        ${stampHtml}
         <div class="signature-image-wrap" style="position: relative; z-index: 1000;">
           ${ttd
             ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" 
@@ -2121,18 +2177,19 @@ function getFinalDocumentRow(documentRow) {
     ttd_name: row.ttd_name || 'Tanda tangan'
   });
 }
-function buildDocumentHTML(documentRow) {
+function buildDocumentHTML(documentRow, renderOptions = {}) {
   const profile = cachedProfile || defaultProfile;
   const row = getFinalDocumentRow(documentRow);
   const type = documentTypes[row.jenis] || documentTypes.keluar;
-  if (row.jenis === 'masuk') return buildIncomingTemplate(row, profile, type);
-  if (row.jenis === 'tugas') return buildAssignmentTemplate(row, profile, type);
-  if (row.jenis === 'undangan') return buildInvitationTemplate(row, profile, type);
-  if (row.jenis === 'sk') return buildDecisionTemplate(row, profile, type);
-  return buildOutgoingTemplate(row, profile, type);
+  const signatureOptions = normalizeSignatureOptions(renderOptions);
+  if (row.jenis === 'masuk') return buildIncomingTemplate(row, profile, type, signatureOptions);
+  if (row.jenis === 'tugas') return buildAssignmentTemplate(row, profile, type, signatureOptions);
+  if (row.jenis === 'undangan') return buildInvitationTemplate(row, profile, type, signatureOptions);
+  if (row.jenis === 'sk') return buildDecisionTemplate(row, profile, type, signatureOptions);
+  return buildOutgoingTemplate(row, profile, type, signatureOptions);
 }
 
-function buildOutgoingTemplate(row, profile) {
+function buildOutgoingTemplate(row, profile, type, signatureOptions = DEFAULT_SIGNATURE_RENDER_OPTIONS) {
   return `
     <article class="pdf-page">
       ${letterhead(profile)}
@@ -2152,11 +2209,11 @@ function buildOutgoingTemplate(row, profile) {
       </div>
       ${buildActivityMeta(row)}
       <div class="body-text"><p>Dengan hormat,</p>${paragraphText(row.isi_surat)}</div>
-      ${signature(profile, row)}
+      ${signature(profile, row, signatureOptions)}
     </article>`;
 }
 
-function buildIncomingTemplate(row, profile, type) {
+function buildIncomingTemplate(row, profile, type, signatureOptions = DEFAULT_SIGNATURE_RENDER_OPTIONS) {
   return `
     <article class="pdf-page">
       ${letterhead(profile)}
@@ -2175,11 +2232,11 @@ function buildIncomingTemplate(row, profile, type) {
       ${buildActivityMeta(row)}
       <div class="body-box"><h3>Ringkasan Isi Surat</h3>${paragraphText(row.isi_surat)}</div>
       <div class="disposition-box"><h3>Catatan Tindak Lanjut</h3>${paragraphText(row.catatan || '........................................................................................................')}</div>
-      ${signature(profile, row)}
+      ${signature(profile, row, signatureOptions)}
     </article>`;
 }
 
-function buildAssignmentTemplate(row, profile, type) {
+function buildAssignmentTemplate(row, profile, type, signatureOptions = DEFAULT_SIGNATURE_RENDER_OPTIONS) {
   return `
     <article class="pdf-page">
       ${letterhead(profile)}
@@ -2197,11 +2254,11 @@ function buildAssignmentTemplate(row, profile, type) {
         ${paragraphText(row.isi_surat)}
         <p>Surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.</p>
       </div>
-      ${signature(profile, row)}
+      ${signature(profile, row, signatureOptions)}
     </article>`;
 }
 
-function buildInvitationTemplate(row, profile) {
+function buildInvitationTemplate(row, profile, type, signatureOptions = DEFAULT_SIGNATURE_RENDER_OPTIONS) {
   return `
     <article class="pdf-page">
       ${letterhead(profile)}
@@ -2225,11 +2282,11 @@ function buildInvitationTemplate(row, profile) {
         ${paragraphText(row.isi_surat)}
         <p>Demikian undangan ini disampaikan. Atas perhatian dan kehadirannya, kami ucapkan terima kasih.</p>
       </div>
-      ${signature(profile, row)}
+      ${signature(profile, row, signatureOptions)}
     </article>`;
 }
 
-function buildDecisionTemplate(row, profile, type) {
+function buildDecisionTemplate(row, profile, type, signatureOptions = DEFAULT_SIGNATURE_RENDER_OPTIONS) {
   return `
     <article class="pdf-page">
       ${letterhead(profile)}
@@ -2247,27 +2304,14 @@ function buildDecisionTemplate(row, profile, type) {
         <p><strong>MEMUTUSKAN:</strong></p>
         ${paragraphText(row.isi_surat)}
       </div>
-      ${signature(profile, row)}
+      ${signature(profile, row, signatureOptions)}
     </article>`;
 }
 
 function openPreview(row) {
   lastPreviewDocument = getFinalDocumentRow(row);
-
-  const preview = el('previewContent');
-  if (preview) {
-    preview.innerHTML = buildDocumentHTML(lastPreviewDocument);
-
-    // Paksa TTD tampil di lapisan depan pada modal preview.
-    preview.querySelectorAll('.signature-visual-wrap, .signature-stamp-img, .signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
-      node.style.position = 'relative';
-      node.style.zIndex = '30';
-      node.style.visibility = 'visible';
-      node.style.opacity = '1';
-    });
-  }
-
-  lastPreviewElement = preview ? preview.querySelector('.pdf-page') : null;
+  setPreviewSignatureOptions({ showStamp: true, showTtd: true });
+  renderActivePreviewDocument();
 
   const modal = el('previewModal');
   if (modal) {
@@ -2294,6 +2338,8 @@ function isIOSDevice() {
 }
 
 function printPreview() {
+  if (!lastPreviewDocument) return showToast('Tidak ada dokumen untuk dicetak.', 'error');
+  renderActivePreviewDocument();
   if (!lastPreviewElement) return showToast('Tidak ada dokumen untuk dicetak.', 'error');
 
   const previewModal = el('previewModal');
@@ -2349,6 +2395,7 @@ async function downloadPreviewPdf(evt = null) {
   const originalText = setButtonBusy(btn, 'Memproses PDF...');
 
   try {
+    renderActivePreviewDocument();
     // Download dari menu Preview harus menangkap elemen preview yang sedang terlihat.
     // Dengan cara ini posisi dan ukuran stempel sama persis seperti tampilan Review.
     const pdfResult = await createPdfFromDocument(lastPreviewDocument, {
@@ -2381,6 +2428,7 @@ async function downloadPreviewWord(evt = null) {
   const originalText = setButtonBusy(btn, 'Memproses Word...');
 
   try {
+    renderActivePreviewDocument();
     const wordResult = await createWordFromDocument(lastPreviewDocument, {
       download: true,
       sourceElement: lastPreviewElement
@@ -2523,11 +2571,14 @@ function normalizeSignatureImages(container) {
 
 function wordDocumentStyles() {
   return `
-    @page WordSection1 { size: 21cm 29.7cm; margin: 1.5cm 1.7cm 1.5cm 1.7cm; }
-    body { font-family: "Times New Roman", serif; font-size: 12pt; color: #000; background: #fff; }
-    .pdf-page { width: 100%; min-height: 29.7cm; box-sizing: border-box; background: #fff; }
+    @page WordSection1 { size: 21cm 29.7cm; margin: 1.4cm 2cm 1cm 2cm; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body { font-family: "Times New Roman", serif; font-size: 11pt; color: #000; }
+    .WordSection1 { page: WordSection1; width: 100%; margin: 0; padding: 0; }
+    .pdf-page { width: 100%; min-height: 26.3cm; box-sizing: border-box; background: #fff; margin: 0; padding: 0; box-shadow: none; overflow: visible; }
+    p { margin: 2px 0; }
     .letterhead { display: table; width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    .letterhead img { display: table-cell; width: 72px; height: auto; max-height: 72px; vertical-align: middle; margin-right: 12px; }
+    .letterhead img { display: table-cell; width: 85px; height: 85px; max-width: 85px; max-height: 85px; vertical-align: middle; margin-right: 12px; object-fit: contain; }
     .letterhead > div { display: table-cell; vertical-align: middle; text-align: center; width: 100%; }
     .letterhead h1 { font-size: 15pt; margin: 0; font-weight: bold; text-transform: uppercase; line-height: 1.2; }
     .letterhead p { font-size: 10pt; margin: 2px 0; }
@@ -2537,23 +2588,23 @@ function wordDocumentStyles() {
     .small-title { font-size: 11pt; margin: 3px 0; }
     .letter-meta-grid { width: 100%; margin: 8px 0 14px; }
     table.meta-table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; }
-    table.meta-table td { font-size: 12pt; vertical-align: top; padding: 2px 4px; }
+    table.meta-table td { font-size: 11pt; vertical-align: top; padding: 2px 4px; }
     table.meta-table td:first-child { width: 130px; }
     table.meta-table td:nth-child(2) { width: 10px; }
     .recipient { margin: 14px 0; }
     .recipient p { margin: 2px 0; }
     .body-text p, .body-box p, .disposition-box p { margin: 6px 0; text-align: justify; line-height: 1.35; }
     .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
-    .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 12pt; }
-    .signature-block { width: 300px; margin-left: auto; margin-top: 18px; text-align: center; page-break-inside: avoid; overflow: visible; position: relative; }
+    .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 11pt; }
+    .signature-block { width: 300px; margin-left: auto; margin-right: 0; margin-top: 18px; text-align: center; page-break-inside: avoid; overflow: visible; position: relative; }
     .signature-block p { margin: 2px 0; line-height: 1.15; position: relative; z-index: 5; }
-    .signature-visual-wrap { height: 108px; min-height: 108px; margin: -4px auto -14px auto; position: relative; overflow: visible; }
-    .signature-stamp-img { position: absolute; left: 5px; top: -13px; width: 142px; height: 135px; max-width: 142px; max-height: 135px; object-fit: contain; opacity: .88; z-index: 1; }
+    .signature-visual-wrap { width: 300px; height: 108px; min-height: 108px; margin: -4px auto -14px auto; position: relative; overflow: visible; }
+    .signature-stamp-img { position: absolute; left: 4px; top: -14px; width: 145px; height: 138px; max-width: 145px; max-height: 138px; object-fit: contain; opacity: .88; z-index: 1; }
     .signature-image-wrap { height: 96px; min-height: 96px; margin: 0 auto -10px auto; display: block; text-align: center; overflow: visible; position: relative; z-index: 4; }
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 260px; height: auto; max-height: 94px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
     .signature-name { font-weight: bold; text-decoration: underline; margin-top: 0; }
     .signature-nip { margin-top: 0; }
-    .tembusan-block { margin-top: 55px; text-align: left; font-size: 12pt; line-height: 1.35; }
+    .tembusan-block { margin-top: 55px; text-align: left; font-size: 11pt; line-height: 1.35; }
   `;
 }
 
@@ -2567,7 +2618,7 @@ function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-block').forEach((node) => {
-    node.setAttribute('style', 'width:300px;margin-left:auto;margin-top:18px;text-align:center;page-break-inside:avoid;overflow:visible;');
+    node.setAttribute('style', 'width:300px;margin-left:auto;margin-right:0;margin-top:18px;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;');
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
@@ -2602,8 +2653,8 @@ function prepareWordHtml(root) {
 
   clone.querySelectorAll('.letterhead img').forEach((img) => {
     if (img.classList.contains('ttd-img')) return;
-    img.setAttribute('width', '72');
-    img.setAttribute('style', 'width:72px;height:auto;max-height:72px;vertical-align:middle;margin-right:12px;');
+    img.setAttribute('width', '85');
+    img.setAttribute('style', 'width:85px;height:85px;max-width:85px;max-height:85px;vertical-align:middle;margin-right:12px;object-fit:contain;');
   });
 
   return clone.outerHTML;
@@ -2721,7 +2772,7 @@ async function createVisualWordFromDocument(documentData, wordOptions) {
   workerDiv.style.background = '#ffffff';
   workerDiv.style.color = '#000000';
   workerDiv.style.overflow = 'hidden';
-  workerDiv.innerHTML = buildDocumentHTML(documentData);
+  workerDiv.innerHTML = buildDocumentHTML(documentData, wordOptions);
   document.body.appendChild(workerDiv);
 
   try {
@@ -2740,19 +2791,8 @@ async function createWordFromDocument(data, options = { download: true }) {
   const wordOptions = { download: true, ...options };
   const documentData = getFinalDocumentRow(data);
 
-  // Word dibuat dari hasil capture preview A4 agar tampilannya sama dengan Review dan PDF.
-  // Fallback HTML lama tetap tersedia bila html2canvas gagal dimuat.
-  if (hasPdfLibraries()) {
-    try {
-      if (wordOptions.sourceElement && wordOptions.sourceElement.isConnected) {
-        return await createVisualWordFromElement(wordOptions.sourceElement, documentData, wordOptions);
-      }
-      return await createVisualWordFromDocument(documentData, wordOptions);
-    } catch (error) {
-      console.warn('Word visual gagal, memakai fallback HTML Word:', error);
-    }
-  }
-
+  // FINAL: Word dibuat sebagai HTML teks, bukan hasil screenshot/canvas.
+  // Dengan cara ini isi surat tetap bisa diedit di Word dan tidak terpotong ke kanan.
   const workerDiv = document.createElement('div');
   workerDiv.style.position = 'absolute';
   workerDiv.style.top = '-9999px';
@@ -2760,14 +2800,31 @@ async function createWordFromDocument(data, options = { download: true }) {
   workerDiv.style.width = '210mm';
   workerDiv.style.background = '#ffffff';
   workerDiv.style.color = '#000000';
-  workerDiv.innerHTML = buildDocumentHTML(documentData);
+
+  if (wordOptions.sourceElement && wordOptions.sourceElement.isConnected) {
+    workerDiv.appendChild(wordOptions.sourceElement.cloneNode(true));
+  } else {
+    workerDiv.innerHTML = buildDocumentHTML(documentData, wordOptions);
+  }
+
   document.body.appendChild(workerDiv);
 
   try {
     const wordTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
 
-    // Inline logo/TTD supaya file Word tetap menampilkan gambar saat dibuka.
+    // Hilangkan style khusus capture agar Word tidak membaca ukuran screenshot.
+    wordTarget.classList.remove('pdf-live-capture', 'pdf-export-page');
+    wordTarget.style.width = '';
+    wordTarget.style.height = '';
+    wordTarget.style.minHeight = '';
+    wordTarget.style.maxHeight = '';
+    wordTarget.style.overflow = '';
+    wordTarget.style.boxShadow = '';
+    wordTarget.style.margin = '';
+
+    // Inline logo, stempel permanen, dan TTD agar tetap muncul saat file dibuka di Word.
     await inlineImagesForPdf(wordTarget);
+    await waitForImages(wordTarget, PDF_IMAGE_TIMEOUT_MS);
     await nextFrame();
 
     const htmlContent = wordSafeHtml(prepareWordHtml(wordTarget));
@@ -2941,7 +2998,7 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   workerDiv.style.color = '#000000';
   
   // Ambil template HTML surat Anda
-  let htmlContent = buildDocumentHTML(documentData);
+  let htmlContent = buildDocumentHTML(documentData, pdfOptions);
   
   // Cek jika class .pdf-page tidak ikut terpasang, bungkus manual agar styling CSS Anda aktif
   if (!htmlContent.includes('class="pdf-page"')) {
@@ -3096,6 +3153,7 @@ window.closePreview = closePreview;
 window.printPreview = printPreview;
 window.downloadPreviewPdf = downloadPreviewPdf;
 window.downloadPreviewWord = downloadPreviewWord;
+window.refreshPreviewSignatureOptions = refreshPreviewSignatureOptions;
 window.filterTable = filterTable;
 window.previewById = previewById;
 window.downloadById = downloadById;

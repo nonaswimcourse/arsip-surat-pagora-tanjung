@@ -2569,7 +2569,7 @@ img {
 }
 
 
-/* === FIX FINAL 20260625-ttd-stempel-word-safe-1: TTD/STEMPEL PROPORSIONAL DAN WORD TIDAK TERPOTONG === */
+/* === FIX FINAL 20260626-signature-options-1: TTD/STEMPEL PROPORSIONAL DAN WORD TIDAK TERPOTONG === */
 .signature-block,
 .pdf-live-capture .signature-block,
 .pdf-export-page .signature-block {
@@ -2797,5 +2797,65 @@ img {
     height: 138px !important;
     max-width: 145px !important;
     max-height: 138px !important;
+  }
+}
+
+
+/* === FIX 20260626-SIGNATURE-OPTIONS: opsi export dengan/tanpa stempel dan TTD === */
+.preview-export-footer {
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.signature-export-options {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-right: auto;
+}
+
+.signature-export-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.signature-export-options input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.preview-export-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .preview-export-footer {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .signature-export-options,
+  .preview-export-actions {
+    width: 100%;
+  }
+
+  .preview-export-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }
