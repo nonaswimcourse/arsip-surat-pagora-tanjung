@@ -423,50 +423,74 @@ function applyRoleUI() {
   document.querySelectorAll('.admin-only').forEach((item) => item.classList.toggle('hidden', !getPerm('settings')));
 }
 
-async function doLogin() {
-  const emailInput = el('email');
-  const passwordInput = el('password');
-  if (!emailInput || !passwordInput) {
-    showToast('Form login tidak lengkap. Periksa id input email dan password.', 'error');
-    return;
-  }
+async function doLogin(event) {
+  event?.preventDefault?.();
 
-  const email = emailInput.value.trim().toLowerCase();
-  const password = passwordInput.value;
-  showLoginError('');
+  const loginButton = event?.submitter || document.querySelector('#loginPage button[type="submit"], #loginPage button, button[onclick*="doLogin"]') || null;
+  const originalText = setButtonBusy(loginButton, 'Masuk...');
 
-  if (!email || !password) {
-    showLoginError('Email dan password wajib diisi.');
-    return;
-  }
-
-  if (supabaseClient) {
-    try {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (!error && data?.user) {
-        clearLocalSession();
-        currentUser = buildSupabaseUser(data.user);
-        showApplication();
-        await bootstrapApp();
-        return;
-      }
-      console.warn('Login Supabase gagal, cek akun demo lokal.', error);
-    } catch (error) {
-      console.warn('Supabase belum siap, cek akun demo lokal.', error);
+  try {
+    const emailInput = el('email');
+    const passwordInput = el('password');
+    if (!emailInput || !passwordInput) {
+      showToast('Form login tidak lengkap. Periksa id input email dan password.', 'error');
+      return;
     }
-  }
 
-  const demo = demoAccounts[email];
-  if (!demo || demo.password !== password) {
-    showLoginError('Login gagal. Gunakan akun Supabase aktif atau akun demo lokal yang tersedia.');
-    return;
-  }
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+    showLoginError('');
 
-  currentUser = { id: email, email, role: demo.role, name: demo.name, local_only: true };
-  setLocalSession(currentUser);
-  showApplication();
-  await bootstrapApp();
-  showToast('Login lokal berhasil. Data tersimpan di browser sampai Supabase disiapkan.', 'warning');
+    if (!email || !password) {
+      showLoginError('Email dan password wajib diisi.');
+      return;
+    }
+
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (!error && data?.user) {
+          clearLocalSession();
+          currentUser = buildSupabaseUser(data.user);
+          showApplication();
+          try {
+            await bootstrapApp();
+          } catch (bootstrapError) {
+            console.error('Login berhasil, tetapi aplikasi gagal dimuat:', bootstrapError);
+            showToast(`Login berhasil, tetapi aplikasi gagal dimuat: ${bootstrapError.message || 'Periksa Console.'}`, 'error');
+          }
+          return;
+        }
+        console.warn('Login Supabase gagal, cek akun demo lokal.', error);
+      } catch (error) {
+        console.warn('Supabase belum siap, cek akun demo lokal.', error);
+      }
+    }
+
+    const demo = demoAccounts[email];
+    if (!demo || demo.password !== password) {
+      showLoginError('Login gagal. Gunakan akun Supabase aktif atau akun demo lokal yang tersedia.');
+      return;
+    }
+
+    currentUser = { id: email, email, role: demo.role, name: demo.name, local_only: true };
+    setLocalSession(currentUser);
+    showApplication();
+
+    try {
+      await bootstrapApp();
+    } catch (bootstrapError) {
+      console.error('Login lokal berhasil, tetapi aplikasi gagal dimuat:', bootstrapError);
+      showToast(`Login lokal berhasil, tetapi aplikasi gagal dimuat: ${bootstrapError.message || 'Periksa Console.'}`, 'error');
+    }
+
+    showToast('Login lokal berhasil. Data tersimpan di browser sampai Supabase disiapkan.', 'warning');
+  } catch (error) {
+    console.error('Crash saat login:', error);
+    showLoginError(`Login crash: ${error.message || 'Periksa Console browser.'}`);
+  } finally {
+    restoreButton(loginButton, originalText);
+  }
 }
 
 async function logout() {
@@ -493,11 +517,22 @@ async function getCurrentSession() {
 }
 
 async function checkSession() {
-  const session = await getCurrentSession();
-  if (session?.user) {
-    currentUser = session.user;
-    showApplication();
-    await bootstrapApp();
+  try {
+    const session = await getCurrentSession();
+    if (session?.user) {
+      currentUser = session.user;
+      showApplication();
+      try {
+        await bootstrapApp();
+      } catch (bootstrapError) {
+        console.error('Sesi terbaca, tetapi aplikasi gagal dimuat:', bootstrapError);
+        showToast(`Aplikasi gagal dimuat: ${bootstrapError.message || 'Periksa Console browser.'}`, 'error');
+      }
+    }
+  } catch (error) {
+    console.error('Gagal cek sesi login:', error);
+    clearLocalSession();
+    showToast(`Gagal membaca sesi login: ${error.message || 'Silakan login ulang.'}`, 'error');
   }
 }
 
@@ -2448,8 +2483,22 @@ function downloadText(content, filename, type) {
   URL.revokeObjectURL(url);
 }
 
+
+function resetLocalCacheAndReload() {
+  try {
+    localStorage.removeItem(LOCAL_SESSION_KEY);
+    localStorage.removeItem(LOCAL_DOC_KEY);
+    localStorage.removeItem(LOCAL_PROFILE_KEY);
+    localStorage.removeItem(LOCAL_DELETED_KEY);
+  } catch (error) {
+    console.warn('Gagal menghapus cache lokal:', error);
+  }
+  location.reload();
+}
+
 window.doLogin = doLogin;
 window.logout = logout;
+window.resetLocalCacheAndReload = resetLocalCacheAndReload;
 window.navigate = navigate;
 window.refreshCurrentPage = refreshCurrentPage;
 window.saveDocument = saveDocument;
