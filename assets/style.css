@@ -2669,3 +2669,133 @@ img {
     transform: none !important;
   }
 }
+
+/* === FIX FINAL 20260626-STEMPEL-KKG: stempel seperti contoh, tanpa mengubah struktur surat === */
+.signature-block,
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  width: 300px !important;
+  margin-left: auto !important;
+  margin-top: 18px !important;
+  text-align: center !important;
+  position: relative !important;
+  overflow: visible !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.signature-block p,
+.pdf-live-capture .signature-block p,
+.pdf-export-page .signature-block p {
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+.signature-visual-wrap,
+.pdf-live-capture .signature-visual-wrap,
+.pdf-export-page .signature-visual-wrap {
+  width: 300px !important;
+  height: 108px !important;
+  min-height: 108px !important;
+  margin: -4px auto -14px auto !important;
+  position: relative !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+.signature-stamp-img,
+.pdf-live-capture .signature-stamp-img,
+.pdf-export-page .signature-stamp-img {
+  position: absolute !important;
+  left: 4px !important;
+  top: -14px !important;
+  width: 145px !important;
+  height: 138px !important;
+  max-width: 145px !important;
+  max-height: 138px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  opacity: 0.88 !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  background: transparent !important;
+  transform: none !important;
+}
+
+.signature-image-wrap,
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  height: 96px !important;
+  min-height: 96px !important;
+  margin: 0 auto -10px auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  z-index: 4 !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+.signature-image-wrap img,
+.ttd-img,
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  display: block !important;
+  width: auto !important;
+  max-width: 260px !important;
+  height: auto !important;
+  max-height: 94px !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: none !important;
+  margin: 0 auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: transparent !important;
+}
+
+.signature-name,
+.signature-nip,
+.pdf-live-capture .signature-name,
+.pdf-live-capture .signature-nip,
+.pdf-export-page .signature-name,
+.pdf-export-page .signature-nip {
+  position: relative !important;
+  z-index: 6 !important;
+}
+
+.ttd-current-preview img,
+.ttd-profile-preview img {
+  width: auto !important;
+  max-width: 220px !important;
+  height: auto !important;
+  max-height: 90px !important;
+  object-fit: contain !important;
+  transform: none !important;
+}
+
+@media print {
+  .signature-visual-wrap,
+  .pdf-live-capture .signature-visual-wrap,
+  .pdf-export-page .signature-visual-wrap {
+    height: 108px !important;
+    min-height: 108px !important;
+    margin: -4px auto -14px auto !important;
+  }
+
+  .signature-stamp-img,
+  .pdf-live-capture .signature-stamp-img,
+  .pdf-export-page .signature-stamp-img {
+    left: 4px !important;
+    top: -14px !important;
+    width: 145px !important;
+    height: 138px !important;
+    max-width: 145px !important;
+    max-height: 138px !important;
+  }
+}

@@ -15,6 +15,7 @@ const PDF_IMAGE_QUALITY = 1.0;
 const PDF_RENDER_DELAY_MS = 80;
 const PDF_IMAGE_TIMEOUT_MS = 8000;
 const WORD_RENDER_SCALE = 2;
+const STAMPEL_IMAGE_URL = 'assets/stempel-kkg-pjok.png';
 
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
@@ -2049,12 +2050,15 @@ function signature(profile, row = {}) {
       <p>${safe(profile.kota)}, ${formatDateLong(row.tanggal_surat || todayInput())}</p>
       <p>${safe(profile.jabatan)}</p>
 
-      <div class="signature-image-wrap" style="position: relative; z-index: 999;">
-        ${ttd
-          ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" 
-              style="display:block; visibility:visible; opacity:1; background:transparent;">`
-          : `<div class="signature-space" style="height: 100px;"></div>`
-        }
+      <div class="signature-visual-wrap" style="position: relative; z-index: 999;">
+        <img src="${safe(STAMPEL_IMAGE_URL)}" alt="Stempel KKG PJOK" class="signature-stamp-img" crossorigin="anonymous" referrerpolicy="no-referrer">
+        <div class="signature-image-wrap" style="position: relative; z-index: 1000;">
+          ${ttd
+            ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" 
+                style="display:block; visibility:visible; opacity:1; background:transparent;">`
+            : `<div class="signature-space" style="height: 100px;"></div>`
+          }
+        </div>
       </div>
 
       <p class="signature-name"><strong>${safe(profile.kepala_nama)}</strong></p>
@@ -2255,7 +2259,7 @@ function openPreview(row) {
     preview.innerHTML = buildDocumentHTML(lastPreviewDocument);
 
     // Paksa TTD tampil di lapisan depan pada modal preview.
-    preview.querySelectorAll('.signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
+    preview.querySelectorAll('.signature-visual-wrap, .signature-stamp-img, .signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
       node.style.position = 'relative';
       node.style.zIndex = '30';
       node.style.visibility = 'visible';
@@ -2472,8 +2476,8 @@ async function inlineImagesForPdf(container) {
 
   // TTD diproses lebih dulu karena ini yang wajib masuk render PDF.
   images.sort((a, b) => {
-    const aTtd = a.classList.contains('ttd-img') || a.closest('.signature-image-wrap');
-    const bTtd = b.classList.contains('ttd-img') || b.closest('.signature-image-wrap');
+    const aTtd = a.classList.contains('ttd-img') || a.classList.contains('signature-stamp-img') || a.closest('.signature-image-wrap') || a.closest('.signature-visual-wrap');
+    const bTtd = b.classList.contains('ttd-img') || b.classList.contains('signature-stamp-img') || b.closest('.signature-image-wrap') || b.closest('.signature-visual-wrap');
     return Number(bTtd) - Number(aTtd);
   });
 
@@ -2541,10 +2545,12 @@ function wordDocumentStyles() {
     .body-text p, .body-box p, .disposition-box p { margin: 6px 0; text-align: justify; line-height: 1.35; }
     .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
     .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 12pt; }
-    .signature-block { width: 300px; margin-left: auto; margin-top: 18px; text-align: center; page-break-inside: avoid; overflow: visible; }
-    .signature-block p { margin: 2px 0; line-height: 1.15; }
-    .signature-image-wrap { height: 96px; min-height: 96px; margin: 0 auto -10px auto; display: block; text-align: center; overflow: visible; }
-    .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 95px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
+    .signature-block { width: 300px; margin-left: auto; margin-top: 18px; text-align: center; page-break-inside: avoid; overflow: visible; position: relative; }
+    .signature-block p { margin: 2px 0; line-height: 1.15; position: relative; z-index: 5; }
+    .signature-visual-wrap { height: 108px; min-height: 108px; margin: -4px auto -14px auto; position: relative; overflow: visible; }
+    .signature-stamp-img { position: absolute; left: 5px; top: -13px; width: 142px; height: 135px; max-width: 142px; max-height: 135px; object-fit: contain; opacity: .88; z-index: 1; }
+    .signature-image-wrap { height: 96px; min-height: 96px; margin: 0 auto -10px auto; display: block; text-align: center; overflow: visible; position: relative; z-index: 4; }
+    .signature-image-wrap img, .ttd-img { width: auto; max-width: 260px; height: auto; max-height: 94px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
     .signature-name { font-weight: bold; text-decoration: underline; margin-top: 0; }
     .signature-nip { margin-top: 0; }
     .tembusan-block { margin-top: 55px; text-align: left; font-size: 12pt; line-height: 1.35; }
@@ -2564,15 +2570,26 @@ function prepareWordHtml(root) {
     node.setAttribute('style', 'width:300px;margin-left:auto;margin-top:18px;text-align:center;page-break-inside:avoid;overflow:visible;');
   });
 
+  clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
+    node.setAttribute('style', 'height:108px;min-height:108px;margin:-4px auto -14px auto;position:relative;overflow:visible;');
+  });
+
+  clone.querySelectorAll('.signature-stamp-img').forEach((img) => {
+    img.removeAttribute('style');
+    img.removeAttribute('width');
+    img.removeAttribute('height');
+    img.setAttribute('style', 'position:absolute;left:5px;top:-13px;width:142px;height:135px;max-width:142px;max-height:135px;object-fit:contain;opacity:.88;z-index:1;background:transparent;');
+  });
+
   clone.querySelectorAll('.signature-image-wrap').forEach((node) => {
-    node.setAttribute('style', 'height:96px;min-height:96px;margin:0 auto -10px auto;text-align:center;overflow:visible;');
+    node.setAttribute('style', 'height:96px;min-height:96px;margin:0 auto -10px auto;text-align:center;overflow:visible;position:relative;z-index:4;');
   });
 
   clone.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
     img.removeAttribute('style');
     img.removeAttribute('width');
     img.removeAttribute('height');
-    img.setAttribute('style', 'display:block;width:auto;max-width:280px;height:auto;max-height:95px;margin:0 auto;object-fit:contain;transform:none;background:transparent;');
+    img.setAttribute('style', 'display:block;width:auto;max-width:260px;height:auto;max-height:94px;margin:0 auto;object-fit:contain;transform:none;background:transparent;');
   });
 
   clone.querySelectorAll('.signature-name').forEach((node) => {
