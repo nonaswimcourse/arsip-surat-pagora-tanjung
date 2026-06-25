@@ -2052,21 +2052,19 @@ function signature(profile, row = {}) {
         ${ttd
           ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" 
               style="
-                display: block;
-                width: 520px; 
-                max-width:520px; 
-                max-height: 300px; 
-                height: auto; 
-                object-fit: contain; 
-                visibility: visible; 
-                opacity: 1; 
-                position: relative; 
-                z-index: 999; 
-                /* Geser ke kiri (-125px) dan ke atas (-160px) karena ukuran gambar makin besar */
-                transform: translate(-170px, -160px); 
-                /* Menarik nama & NIP di bawah agar naik ke tengah stempel besar */
-                margin-bottom: -210px;
-                /* Menghilangkan background hitam pada file mentahan gambar Anda */
+                display: block !important;
+                width: 360px !important;
+                max-width: 360px !important;
+                height: 150px !important;
+                max-height: 150px !important;
+                object-fit: contain !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                position: relative !important;
+                z-index: 999 !important;
+                transform: translate(-70px, -4px) !important;
+                margin: 0 auto !important;
+                background: transparent !important;
                 mix-blend-mode: screen;
               ">`
           : `<div class="signature-space" style="height: 100px;"></div>`
@@ -2300,16 +2298,41 @@ function closePreview() {
   lastPreviewDocument = null;
 }
 
+function isIOSDevice() {
+  return /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
 function printPreview() {
   if (!lastPreviewElement) return showToast('Tidak ada dokumen untuk dicetak.', 'error');
-  const printWindow = window.open('', '_blank', 'width=900,height=700');
-  if (!printWindow) return showToast('Popup cetak diblokir browser.', 'error');
-  printWindow.document.write(`
-    <!DOCTYPE html><html><head><title>Cetak Dokumen</title>
-    <link rel="stylesheet" href="assets/style.css"></head><body class="print-body">${lastPreviewElement.outerHTML}</body></html>`);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => printWindow.print(), 500);
+
+  const previewModal = el('previewModal');
+  if (previewModal) previewModal.hidden = false;
+
+  // iPhone/iPad sering tertahan di tab kosong jika cetak memakai window.open().
+  // Karena itu cetak langsung dari halaman preview yang sedang aktif.
+  document.body.classList.add('printing-preview');
+
+  const cleanupPrintMode = () => {
+    document.body.classList.remove('printing-preview');
+    window.removeEventListener('afterprint', cleanupPrintMode);
+  };
+
+  window.addEventListener('afterprint', cleanupPrintMode, { once: true });
+
+  setTimeout(() => {
+    try {
+      window.focus();
+      window.print();
+    } catch (error) {
+      console.warn('Cetak gagal:', error);
+      showToast('Cetak gagal dibuka. Coba gunakan Download PDF.', 'error');
+      cleanupPrintMode();
+    }
+  }, isIOSDevice() ? 350 : 120);
+
+  // Fallback untuk iOS karena event afterprint kadang tidak selalu terpanggil.
+  setTimeout(cleanupPrintMode, 8000);
 }
 
 
@@ -2489,11 +2512,11 @@ function wordDocumentStyles() {
     .body-text p, .body-box p, .disposition-box p { margin: 6px 0; text-align: justify; line-height: 1.35; }
     .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
     .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 12pt; }
-    .signature-block { width: 230px; margin-left: auto; margin-top: 24px; text-align: center; page-break-inside: avoid; }
+    .signature-block { width: 360px; margin-left: auto; margin-top: 24px; text-align: center; page-break-inside: avoid; overflow: visible; }
     .signature-block p { margin: 2px 0; }
-    .signature-image-wrap { min-height: 62px; display: block; text-align: center; }
-    .signature-image-wrap img, .ttd-img { max-width: 145px; max-height: 72px; display: block; margin: 0 auto; }
-    .signature-name { font-weight: bold; text-decoration: underline; }
+    .signature-image-wrap { height: 112px; min-height: 112px; margin: -6px auto -34px auto; display: block; text-align: center; overflow: visible; }
+    .signature-image-wrap img, .ttd-img { width: 360px; max-width: 360px; height: 150px; max-height: 150px; display: block; margin: 0 auto 0 -70px; object-fit: contain; transform: translateY(-4px); }
+    .signature-name { font-weight: bold; text-decoration: underline; margin-top: -2px; }
   `;
 }
 

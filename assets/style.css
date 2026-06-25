@@ -2339,9 +2339,9 @@ img {
   }
 
   .signature-image-wrap {
-    height: 100px !important;
-    min-height: 100px !important;
-    margin: -6px auto -45px auto !important;
+    height: 112px !important;
+    min-height: 112px !important;
+    margin: -6px auto -34px auto !important;
     overflow: visible !important;
   }
 
@@ -2352,5 +2352,89 @@ img {
     height: 150px !important;
     max-height: 150px !important;
     transform: translate(-70px, -4px) !important;
+  }
+}
+
+
+/* === FIX IPHONE PRINT: CETAK DARI PREVIEW TANPA MEMBUKA TAB KOSONG === */
+@media print {
+  body.printing-preview {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.printing-preview .app-shell,
+  body.printing-preview #editModal,
+  body.printing-preview #toast,
+  body.printing-preview .topbar,
+  body.printing-preview .sidebar,
+  body.printing-preview .modal-header,
+  body.printing-preview .modal-footer,
+  body.printing-preview button,
+  body.printing-preview .btn {
+    display: none !important;
+  }
+
+  body.printing-preview #previewModal,
+  body.printing-preview #previewModal.modal {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.printing-preview #previewModal .modal-card,
+  body.printing-preview #previewModal .modal-wide {
+    display: block !important;
+    visibility: visible !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    max-height: none !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+  }
+
+  body.printing-preview #previewContent,
+  body.printing-preview .preview-content {
+    display: block !important;
+    visibility: visible !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+  }
+
+  body.printing-preview #previewContent .pdf-page,
+  body.printing-preview .preview-content .pdf-page {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    overflow: hidden !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
   }
 }
