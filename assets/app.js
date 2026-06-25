@@ -2657,7 +2657,7 @@ function wordDocumentStyles() {
     .signature-visual-wrap { width: 300px; height: 112px; min-height: 112px; margin: 0 auto -20px auto; position: relative; overflow: visible; text-align: center; }
     .word-signature-composite { width: 300px; height: 112px; max-width: 300px; max-height: 112px; display: block; margin: 0 auto; border: 0; }
     .word-signature-blank { height: 112px; line-height: 112px; font-size: 1pt; }
-    .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
+    .signature-stamp-img { position: absolute; left: 36px; top: -2px; width: 140px; height: 130px; max-width: 140px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
     .signature-image-wrap { height: 98px; min-height: 98px; margin: 0 auto -14px auto; display: block; text-align: center; overflow: visible; position: relative; z-index: 4; }
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 250px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
     .signature-name { font-weight: bold; text-decoration: underline; margin-top: 0; white-space: nowrap; }
@@ -2757,6 +2757,63 @@ function drawImageContainToCanvas(ctx, img, x, y, boxWidth, boxHeight) {
   ctx.drawImage(img, drawX, drawY, renderWidth, renderHeight);
 }
 
+function getImageVisibleBounds(img) {
+  const width = img.naturalWidth || img.width || 0;
+  const height = img.naturalHeight || img.height || 0;
+  if (!width || !height) return null;
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+    const { data } = ctx.getImageData(0, 0, width, height);
+
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = ((y * width) + x) * 4;
+        const alpha = data[index + 3];
+        if (alpha > 12) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (maxX < minX || maxY < minY) return null;
+    const pad = 2;
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(width - 1, maxX + pad);
+    maxY = Math.min(height - 1, maxY + pad);
+    return { sx: minX, sy: minY, sw: maxX - minX + 1, sh: maxY - minY + 1 };
+  } catch (error) {
+    return null;
+  }
+}
+
+function drawImageContainToCanvasCropped(ctx, img, x, y, boxWidth, boxHeight) {
+  const bounds = getImageVisibleBounds(img);
+  if (!bounds) {
+    drawImageContainToCanvas(ctx, img, x, y, boxWidth, boxHeight);
+    return;
+  }
+
+  const scale = Math.min(boxWidth / bounds.sw, boxHeight / bounds.sh);
+  const renderWidth = Math.max(1, Math.round(bounds.sw * scale));
+  const renderHeight = Math.max(1, Math.round(bounds.sh * scale));
+  const drawX = Math.round(x + (boxWidth - renderWidth) / 2);
+  const drawY = Math.round(y + (boxHeight - renderHeight) / 2);
+  ctx.drawImage(img, bounds.sx, bounds.sy, bounds.sw, bounds.sh, drawX, drawY, renderWidth, renderHeight);
+}
+
 function loadCanvasImage(src) {
   return new Promise((resolve, reject) => {
     if (!src) {
@@ -2801,15 +2858,15 @@ async function convertSignatureVisualsForWord(root) {
       if (stampImg) {
         ctx.save();
         ctx.globalAlpha = 0.88;
-        // Disamakan dengan PDF/preview: stempel tidak terlalu jauh dari tanda tangan.
-        // Koordinat memakai kanvas 2x dari area Word 300 x 108 px.
-        drawImageContainToCanvas(ctx, stampImg, 12, 0, 276, 222);
+        // Word memakai gambar gabungan supaya posisinya stabil.
+        // Stempel dan TTD dibuat saling menimpa seperti tampilan Review/PDF.
+        drawImageContainToCanvasCropped(ctx, stampImg, 72, 0, 280, 222);
         ctx.restore();
       }
 
       if (ttdImg) {
-        // TTD digeser lebih dekat ke stempel agar hasil Word mengikuti PDF.
-        drawImageContainToCanvas(ctx, ttdImg, 128, 24, 380, 158);
+        // Crop margin transparan TTD, lalu geser ke kiri agar tidak berjauhan dari stempel.
+        drawImageContainToCanvasCropped(ctx, ttdImg, 186, 34, 300, 144);
       }
 
       const img = document.createElement('img');
@@ -2933,11 +2990,11 @@ async function prepareWordHtml(root) {
     img.removeAttribute('style');
     img.removeAttribute('width');
     img.removeAttribute('height');
-    img.setAttribute('style', 'position:absolute;left:6px;top:-2px;width:138px;height:130px;max-width:138px;max-height:130px;object-fit:contain;opacity:.88;z-index:1;background:transparent;');
+    img.setAttribute('style', 'position:absolute;left:36px;top:-2px;width:140px;height:130px;max-width:140px;max-height:130px;object-fit:contain;opacity:.88;z-index:1;background:transparent;');
   });
 
   clone.querySelectorAll('.signature-image-wrap').forEach((node) => {
-    node.setAttribute('style', 'height:98px;min-height:98px;margin:0 auto -14px auto;text-align:center;overflow:visible;position:relative;z-index:4;');
+    node.setAttribute('style', 'height:98px;min-height:98px;margin:0 auto -14px auto;text-align:center;overflow:visible;position:relative;z-index:4;left:-22px;');
   });
 
   clone.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
