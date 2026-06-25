@@ -1,4 +1,4 @@
-const CACHE_NAME = 'siap-tanjung-v20260625-word-pdf-rasio-fix-1';
+const CACHE_NAME = 'siap-tanjung-v20260625-preview-sama-pdf-1';
 const APP_SHELL = [
   './',
   './index.html',
