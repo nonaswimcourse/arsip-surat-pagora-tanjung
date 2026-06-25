@@ -386,8 +386,10 @@ function setLocalProfile(profile) {
 
 function getProfileSignatureSnapshot(profile = cachedProfile || getLocalProfile() || {}) {
   return {
-    ttd_data_url: profile?.ttd_data_url || '',
-    ttd_url: profile?.ttd_url || profile?.ttd_data_url || '',
+    // TTD profil untuk surat baru harus berasal dari Supabase Storage.
+    // Base64 localStorage tidak dijadikan sumber utama agar tidak hilang saat clear cookies/site data.
+    ttd_data_url: '',
+    ttd_url: profile?.ttd_url || '',
     ttd_path: profile?.ttd_path || '',
     ttd_name: profile?.ttd_name || ''
   };
@@ -515,21 +517,26 @@ async function loadProfile() {
       .select('*')
       .eq('id', 'default')
       .maybeSingle();
+
     if (error) throw error;
+
     if (data) {
-      cachedProfile = { ...defaultProfile, ...(localProfile || {}), ...data };
-      // Pertahankan fallback TTD lokal kalau tabel profil belum punya kolom ttd.
-      cachedProfile.ttd_data_url = localProfile?.ttd_data_url || cachedProfile.ttd_data_url || '';
-      cachedProfile.ttd_path = data.ttd_path || localProfile?.ttd_path || cachedProfile.ttd_path || '';
+      cachedProfile = { ...defaultProfile, ...data };
+
+      // TTD permanen dibaca dari Supabase. LocalStorage hanya cache, bukan sumber utama.
+      cachedProfile.ttd_data_url = '';
+      cachedProfile.ttd_path = data.ttd_path || '';
       cachedProfile.ttd_url = cachedProfile.ttd_path
-        ? await resolveStoragePublicOrSignedUrl(cachedProfile.ttd_path, data.ttd_url || localProfile?.ttd_url || cachedProfile.ttd_url || '')
-        : (data.ttd_url || localProfile?.ttd_url || cachedProfile.ttd_url || '');
-      cachedProfile.ttd_name = data.ttd_name || localProfile?.ttd_name || cachedProfile.ttd_name || '';
+        ? await resolveStoragePublicOrSignedUrl(cachedProfile.ttd_path, data.ttd_url || '')
+        : (data.ttd_url || '');
+      cachedProfile.ttd_name = data.ttd_name || '';
+
       setLocalProfile(cachedProfile);
     }
   } catch (error) {
-    console.warn('Profil memakai data lokal:', error);
+    console.warn('Profil online belum terbaca. Aplikasi memakai cache lokal sementara:', error);
   }
+
   return cachedProfile;
 }
 
@@ -900,35 +907,44 @@ async function uploadProfileSignatureFile(file) {
   if (!file) return null;
   if (!validateUploadFile(file, { imageOnly: true })) return null;
 
-  const localDataUrl = await fileToDataUrl(file);
-  let uploaded = {
-    path: '',
-    url: localDataUrl,
-    name: file.name || 'Tanda tangan'
-  };
-
-  if (supabaseClient) {
-    try {
-      uploaded = await uploadAttachmentToSupabase(file, 'profil-tanda-tangan', 'default');
-      uploaded.url = uploaded.url || localDataUrl;
-    } catch (error) {
-      console.warn('Upload TTD profil ke Supabase gagal. Base64 lokal tetap dipakai:', error);
-      showToast('TTD profil tersimpan lokal. Upload Supabase gagal, periksa Storage/RLS.', 'warning');
-    }
-  } else {
-    showToast('TTD profil tersimpan lokal karena Supabase belum aktif.', 'warning');
+  if (!supabaseClient) {
+    showToast('Supabase belum aktif. Tanda tangan tidak bisa disimpan permanen.', 'error');
+    return null;
   }
 
-  cachedProfile = {
-    ...defaultProfile,
-    ...(cachedProfile || {}),
-    ttd_data_url: localDataUrl,
-    ttd_url: uploaded.url || localDataUrl,
-    ttd_path: uploaded.path || '',
-    ttd_name: uploaded.name || file.name || 'Tanda tangan'
-  };
-  setLocalProfile(cachedProfile);
-  return uploaded;
+  try {
+    const uploaded = await uploadAttachmentToSupabase(file, 'profil-tanda-tangan', 'default');
+
+    if (!uploaded?.path) {
+      throw new Error('Path tanda tangan tidak terbentuk.');
+    }
+
+    const resolvedUrl = await resolveStoragePublicOrSignedUrl(uploaded.path, uploaded.url || '');
+
+    const result = {
+      path: uploaded.path,
+      url: resolvedUrl,
+      name: uploaded.name || file.name || 'Tanda tangan'
+    };
+
+    cachedProfile = {
+      ...defaultProfile,
+      ...(cachedProfile || {}),
+      ttd_data_url: '',
+      ttd_url: result.url,
+      ttd_path: result.path,
+      ttd_name: result.name
+    };
+
+    // LocalStorage hanya cache tampilan. Sumber utama tetap Supabase.
+    setLocalProfile(cachedProfile);
+
+    return result;
+  } catch (error) {
+    console.warn('Upload TTD profil ke Supabase gagal:', error);
+    showToast('Upload TTD ke Supabase gagal. Periksa bucket Storage atau RLS Supabase.', 'error');
+    return null;
+  }
 }
 
 
@@ -1161,7 +1177,7 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
           <input type="file" name="ttd_file" accept="image/png,image/jpeg,image/webp" onchange="previewSignatureInput(this)" ${disabled}>
           <small>Format: PNG/JPG/WebP. TTD pada form surat hanya tersimpan untuk surat ini dan tidak mengubah surat lama.</small>
           ${(() => {
-            const defaultTtd = mode === 'create' ? (cachedProfile?.ttd_data_url || cachedProfile?.ttd_url || '') : '';
+            const defaultTtd = mode === 'create' ? (cachedProfile?.ttd_url || cachedProfile?.ttd_data_url || '') : '';
             const defaultName = mode === 'create' ? (cachedProfile?.ttd_name || 'Tanda tangan tersimpan') : 'Tanda tangan tersimpan';
             const currentTtd = data.ttd_data_url || data.ttd_url || defaultTtd;
             const currentName = data.ttd_name || defaultName;
@@ -1684,7 +1700,7 @@ async function renderSettingsPage() {
           <input type="file" name="profile_ttd_file" accept="image/png,image/jpeg,image/webp">
           <small>TTD ini menjadi default untuk surat baru saja. Surat lama tetap memakai TTD yang tersimpan pada surat tersebut.</small>
           ${(() => {
-            const activeTtd = profile.ttd_data_url || profile.ttd_url || '';
+            const activeTtd = profile.ttd_url || profile.ttd_data_url || '';
             return activeTtd ? `
               <div class="ttd-profile-preview">
                 <img src="${safe(activeTtd)}" alt="Tanda tangan tersimpan" crossorigin="anonymous">
@@ -1727,22 +1743,28 @@ async function saveProfile(event) {
     const ttdFile = getSelectedFile(profileForm, 'profile_ttd_file');
 
     let ttdPayload = {
-      ttd_data_url: cachedProfile?.ttd_data_url || '',
-      ttd_url: cachedProfile?.ttd_url || cachedProfile?.ttd_data_url || '',
+      // Jangan simpan base64 sebagai sumber utama.
+      // Tanda tangan permanen wajib memakai ttd_path dan ttd_url dari Supabase Storage.
+      ttd_data_url: '',
+      ttd_url: cachedProfile?.ttd_url || '',
       ttd_path: cachedProfile?.ttd_path || '',
       ttd_name: cachedProfile?.ttd_name || ''
     };
 
     if (ttdFile) {
       const uploaded = await uploadProfileSignatureFile(ttdFile);
-      if (uploaded) {
-        ttdPayload = {
-          ttd_data_url: cachedProfile?.ttd_data_url || uploaded.url || '',
-          ttd_url: uploaded.url || cachedProfile?.ttd_data_url || '',
-          ttd_path: uploaded.path || '',
-          ttd_name: uploaded.name || ttdFile.name || 'Tanda tangan'
-        };
+
+      if (!uploaded) {
+        showToast('Tanda tangan belum tersimpan permanen. Simpan pengaturan dibatalkan.', 'error');
+        return;
       }
+
+      ttdPayload = {
+        ttd_data_url: '',
+        ttd_url: uploaded.url || '',
+        ttd_path: uploaded.path || '',
+        ttd_name: uploaded.name || ttdFile.name || 'Tanda tangan'
+      };
     }
 
     const payload = {
@@ -1763,37 +1785,35 @@ async function saveProfile(event) {
       updated_at: new Date().toISOString()
     };
 
+    if (!supabaseClient) {
+      showToast('Supabase belum aktif. Pengaturan tidak disimpan agar TTD tidak hilang saat clear cookies.', 'error');
+      return;
+    }
+
+    const supabaseProfilePayload = { ...payload };
+
+    // Jangan kirim base64 ke database.
+    // Database cukup menyimpan path dan URL Storage.
+    delete supabaseProfilePayload.ttd_data_url;
+
+    const { error } = await supabaseClient
+      .from(TABLE_PROFIL)
+      .upsert(supabaseProfilePayload, { onConflict: 'id' });
+
+    if (error) throw error;
+
     cachedProfile = { ...defaultProfile, ...(cachedProfile || {}), ...payload };
     setLocalProfile(cachedProfile);
+
     // Jangan sinkronkan TTD profil ke dokumen lama.
     // TTD profil hanya menjadi default untuk surat baru setelah pengaturan ini disimpan.
     applyRoleUI();
 
-    try {
-      if (!supabaseClient) throw new Error('Supabase SDK tidak tersedia');
-
-      const supabaseProfilePayload = { ...payload };
-      delete supabaseProfilePayload.ttd_data_url;
-      let { error } = await supabaseClient.from(TABLE_PROFIL).upsert(supabaseProfilePayload, { onConflict: 'id' });
-
-      // Fallback jika database lama belum punya kolom TTD. Data TTD tetap aman di localStorage.
-      if (error && isMissingUploadColumnError(error)) {
-        const fallbackPayload = { ...supabaseProfilePayload };
-        delete fallbackPayload.ttd_url;
-        delete fallbackPayload.ttd_path;
-        delete fallbackPayload.ttd_name;
-        const fallbackResult = await supabaseClient.from(TABLE_PROFIL).upsert(fallbackPayload, { onConflict: 'id' });
-        error = fallbackResult.error;
-      }
-
-      if (error) throw error;
-      showToast('Pengaturan dan tanda tangan berhasil disimpan.');
-    } catch (error) {
-      showToast('Pengaturan tersimpan lokal. Periksa SQL/RLS Supabase agar tersimpan online.', 'warning');
-      console.warn(error);
-    }
-
+    showToast('Pengaturan dan tanda tangan berhasil disimpan permanen.');
     await renderSettingsPage();
+  } catch (error) {
+    showToast('Pengaturan belum tersimpan online. Periksa kolom tabel, bucket, atau RLS Supabase.', 'error');
+    console.warn(error);
   } finally {
     restoreButton(btn, originalText);
   }
