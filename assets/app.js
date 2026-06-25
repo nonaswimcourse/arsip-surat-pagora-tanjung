@@ -2051,22 +2051,7 @@ function signature(profile, row = {}) {
       <div class="signature-image-wrap" style="position: relative; z-index: 999;">
         ${ttd
           ? `<img src="${safe(ttd)}" alt="${safe(ttdName)}" class="ttd-img" crossorigin="anonymous" referrerpolicy="no-referrer" 
-              style="
-                display: block !important;
-                width: 360px !important;
-                max-width: 360px !important;
-                height: 150px !important;
-                max-height: 150px !important;
-                object-fit: contain !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                position: relative !important;
-                z-index: 999 !important;
-                transform: translate(-70px, -4px) !important;
-                margin: 0 auto !important;
-                background: transparent !important;
-                mix-blend-mode: screen;
-              ">`
+              style="display:block; visibility:visible; opacity:1; background:transparent;">`
           : `<div class="signature-space" style="height: 100px;"></div>`
         }
       </div>
@@ -2494,9 +2479,9 @@ function wordDocumentStyles() {
     body { font-family: "Times New Roman", serif; font-size: 12pt; color: #000; background: #fff; }
     .pdf-page { width: 100%; min-height: 29.7cm; box-sizing: border-box; background: #fff; }
     .letterhead { display: table; width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    .letterhead img { display: table-cell; width: 72px; max-height: 72px; vertical-align: middle; margin-right: 12px; }
+    .letterhead img { display: table-cell; width: 72px; height: auto; max-height: 72px; vertical-align: middle; margin-right: 12px; }
     .letterhead > div { display: table-cell; vertical-align: middle; text-align: center; width: 100%; }
-    .letterhead h1 { font-size: 15pt; margin: 0; font-weight: bold; text-transform: uppercase; }
+    .letterhead h1 { font-size: 15pt; margin: 0; font-weight: bold; text-transform: uppercase; line-height: 1.2; }
     .letterhead p { font-size: 10pt; margin: 2px 0; }
     .letter-line { border-top: 3px double #000; height: 0; margin: 6px 0 14px; }
     .template-title, .center-text, .small-title { text-align: center; }
@@ -2512,12 +2497,54 @@ function wordDocumentStyles() {
     .body-text p, .body-box p, .disposition-box p { margin: 6px 0; text-align: justify; line-height: 1.35; }
     .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
     .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 12pt; }
-    .signature-block { width: 360px; margin-left: auto; margin-top: 24px; text-align: center; page-break-inside: avoid; overflow: visible; }
-    .signature-block p { margin: 2px 0; }
-    .signature-image-wrap { height: 112px; min-height: 112px; margin: -6px auto -34px auto; display: block; text-align: center; overflow: visible; }
-    .signature-image-wrap img, .ttd-img { width: 360px; max-width: 360px; height: 150px; max-height: 150px; display: block; margin: 0 auto 0 -70px; object-fit: contain; transform: translateY(-4px); }
-    .signature-name { font-weight: bold; text-decoration: underline; margin-top: -2px; }
+    .signature-block { width: 300px; margin-left: auto; margin-top: 20px; text-align: center; page-break-inside: avoid; overflow: visible; }
+    .signature-block p { margin: 2px 0; line-height: 1.15; }
+    .signature-image-wrap { height: 92px; min-height: 92px; margin: 0 auto -12px auto; display: block; text-align: center; overflow: visible; }
+    .signature-image-wrap img, .ttd-img { width: 260px; max-width: 260px; height: auto; max-height: 110px; display: block; margin: 0 auto; object-fit: contain; }
+    .signature-name { font-weight: bold; text-decoration: underline; margin-top: 0; }
+    .signature-nip { margin-top: 0; }
+    .tembusan-block { margin-top: 55px; text-align: left; font-size: 12pt; line-height: 1.35; }
   `;
+}
+
+function prepareWordHtml(root) {
+  const clone = root.cloneNode(true);
+
+  clone.querySelectorAll('[contenteditable], [crossorigin], [referrerpolicy]').forEach((node) => {
+    node.removeAttribute('contenteditable');
+    node.removeAttribute('crossorigin');
+    node.removeAttribute('referrerpolicy');
+  });
+
+  clone.querySelectorAll('.signature-block').forEach((node) => {
+    node.setAttribute('style', 'width:300px;margin-left:auto;margin-top:20px;text-align:center;page-break-inside:avoid;overflow:visible;');
+  });
+
+  clone.querySelectorAll('.signature-image-wrap').forEach((node) => {
+    node.setAttribute('style', 'height:92px;min-height:92px;margin:0 auto -12px auto;text-align:center;overflow:visible;');
+  });
+
+  clone.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
+    img.removeAttribute('style');
+    img.setAttribute('width', '260');
+    img.setAttribute('style', 'display:block;width:260px;max-width:260px;height:auto;max-height:110px;margin:0 auto;object-fit:contain;background:transparent;');
+  });
+
+  clone.querySelectorAll('.signature-name').forEach((node) => {
+    node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:0;margin-bottom:0;');
+  });
+
+  clone.querySelectorAll('.signature-nip').forEach((node) => {
+    node.setAttribute('style', 'margin-top:0;');
+  });
+
+  clone.querySelectorAll('.letterhead img').forEach((img) => {
+    if (img.classList.contains('ttd-img')) return;
+    img.setAttribute('width', '72');
+    img.setAttribute('style', 'width:72px;height:auto;max-height:72px;vertical-align:middle;margin-right:12px;');
+  });
+
+  return clone.outerHTML;
 }
 
 function wordSafeHtml(html) {
@@ -2547,7 +2574,7 @@ async function createWordFromDocument(data, options = { download: true }) {
     await inlineImagesForPdf(wordTarget);
     await nextFrame();
 
-    const htmlContent = wordSafeHtml(wordTarget.outerHTML);
+    const htmlContent = wordSafeHtml(prepareWordHtml(wordTarget));
     const fullHtml = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
@@ -2619,30 +2646,41 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     // 2. Paksa seluruh gambar eksternal/Supabase menjadi data URL lokal sebelum html2canvas.
     // Ini memperbaiki kasus TTD tampil di preview, tetapi hilang saat render PDF.
     const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+    captureTarget.classList.add('pdf-export-page');
+    captureTarget.style.width = '210mm';
+    captureTarget.style.height = '297mm';
+    captureTarget.style.minHeight = '297mm';
+    captureTarget.style.maxHeight = '297mm';
+    captureTarget.style.overflow = 'hidden';
+    captureTarget.style.boxSizing = 'border-box';
 
     await inlineImagesForPdf(captureTarget);
     await nextFrame();
     await wait(PDF_RENDER_DELAY_MS);
 
     captureTarget.querySelectorAll('.signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
-      node.style.position = 'relative';
-      node.style.zIndex = '999';
       node.style.visibility = 'visible';
       node.style.opacity = '1';
-      node.style.display = node.tagName === 'IMG' ? 'block' : 'flex';
+      if (node.tagName === 'IMG') node.style.display = 'block';
     });
 
-    // 3. Eksekusi html2canvas setelah TTD/logonya benar-benar termuat.
+    const targetWidth = captureTarget.offsetWidth || 794;
+    const targetHeight = captureTarget.offsetHeight || Math.round(targetWidth * 297 / 210);
+
+    // 3. Eksekusi html2canvas dengan ukuran A4 tetap.
+    // Ini mencegah hasil PDF gepeng karena canvas tidak lagi dipaksa masuk ke A4 dengan rasio berbeda.
     const canvas = await html2canvas(captureTarget, {
       scale: PDF_RENDER_SCALE,
       useCORS: true,
       allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
-      width: captureTarget.scrollWidth || 794,
-      height: captureTarget.scrollHeight || 1123,
-      windowWidth: captureTarget.scrollWidth || 794,
-      windowHeight: captureTarget.scrollHeight || 1123,
+      width: targetWidth,
+      height: targetHeight,
+      windowWidth: targetWidth,
+      windowHeight: targetHeight,
+      scrollX: 0,
+      scrollY: 0,
       imageTimeout: PDF_IMAGE_TIMEOUT_MS
     });
 
@@ -2658,8 +2696,8 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
       format: 'a4'
     });
 
-    // Gambar ditempel pas memenuhi batas kertas kertas A4 (210mm x 297mm)
-    pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'SLOW');
+    // Gambar ditempel dengan rasio A4 yang sama dengan hasil capture.
+    pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
 
     const fileName = `${slugify(documentData.nomor_surat || 'surat')}.pdf`;
     const pdfBlob = pdf.output('blob');
