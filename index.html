@@ -12,13 +12,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="SIAP TANJUNG">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="manifest" href="./manifest.json?v=20260625-ttd-stempel-word-safe-1">
+  <link rel="manifest" href="./manifest.json?v=20260626-signature-options-1">
   <link rel="icon" href="./favicon.ico?v=20260625-icon-noblue-1" sizes="any">
   <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png?v=20260625-icon-noblue-1">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png?v=20260625-icon-noblue-1">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=20260625-icon-noblue-1">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=20260625-icon-noblue-1">
-  <link rel="stylesheet" href="assets/style.css?v=20260625-ttd-stempel-word-safe-1">
+  <link rel="stylesheet" href="assets/style.css?v=20260626-signature-options-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -107,10 +107,16 @@
         <button class="icon-btn" onclick="closePreview()">×</button>
       </div>
       <div id="previewContent" class="preview-content"></div>
-      <div class="modal-footer">
-        <button class="btn secondary" onclick="printPreview()">Cetak</button>
-        <button class="btn" onclick="downloadPreviewPdf()">Download PDF</button>
-        <button class="btn secondary" onclick="downloadPreviewWord()">Download Word</button>
+      <div class="modal-footer preview-export-footer">
+        <div class="signature-export-options" aria-label="Pilihan tampilan tanda tangan">
+          <label><input type="checkbox" id="previewUseStamp" checked onchange="refreshPreviewSignatureOptions()"> Pakai Stempel</label>
+          <label><input type="checkbox" id="previewUseTtd" checked onchange="refreshPreviewSignatureOptions()"> Pakai TTD</label>
+        </div>
+        <div class="preview-export-actions">
+          <button class="btn secondary" onclick="printPreview()">Cetak</button>
+          <button class="btn" onclick="downloadPreviewPdf()">Download PDF</button>
+          <button class="btn secondary" onclick="downloadPreviewWord()">Download Word</button>
+        </div>
       </div>
     </div>
   </div>
@@ -125,7 +131,7 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=20260625-ttd-stempel-word-safe-1"></script>
+  <script src="assets/app.js?v=20260626-signature-options-1"></script>
   <script>
     if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
       window.addEventListener('load', () => {

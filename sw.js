@@ -1,4 +1,4 @@
-const CACHE_NAME = 'siap-tanjung-v20260626-word-teks-stempel-1';
+const CACHE_NAME = 'siap-tanjung-v20260626-signature-options-1';
 const APP_SHELL = [
   './',
   './index.html',
