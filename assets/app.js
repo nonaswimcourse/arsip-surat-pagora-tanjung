@@ -405,11 +405,54 @@ function syncProfileSignatureToLocalDocuments() {
 function showApplication() {
   if (el('loginPage')) el('loginPage').style.display = 'none';
   if (el('app')) el('app').style.display = 'block';
+  startLiveDateTime();
 }
 
 function showLoginError(message) {
   const loginError = el('loginError');
   if (loginError) loginError.textContent = message;
+}
+
+let liveDateTimeTimer = null;
+
+function formatIndonesianDateTimeParts(date = new Date()) {
+  const timeZone = 'Asia/Jakarta';
+  const time = new Intl.DateTimeFormat('id-ID', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(date).replace(/\./g, ':');
+
+  const dateText = new Intl.DateTimeFormat('id-ID', {
+    timeZone,
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  }).format(date);
+
+  return {
+    time: `${time} WIB`,
+    date: dateText
+  };
+}
+
+function updateLiveDateTime() {
+  const clockEl = el('currentClock');
+  const dateEl = el('currentDate');
+  if (!clockEl && !dateEl) return;
+
+  const parts = formatIndonesianDateTimeParts();
+  if (clockEl) clockEl.textContent = parts.time;
+  if (dateEl) dateEl.textContent = parts.date;
+}
+
+function startLiveDateTime() {
+  updateLiveDateTime();
+  if (liveDateTimeTimer) window.clearInterval(liveDateTimeTimer);
+  liveDateTimeTimer = window.setInterval(updateLiveDateTime, 1000);
 }
 
 function applyRoleUI() {
@@ -1263,6 +1306,7 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
         ${mode === 'edit' ? `<button type="button" class="btn secondary" onclick="closeEditModal()">Batal</button>` : ''}
         <button type="submit" class="btn" ${disabled}>${mode === 'edit' ? 'Simpan Perubahan' : 'Simpan Data'}</button>
         ${mode === 'create' ? `<button type="button" class="btn gold" onclick="saveDocumentAndPdf(event, '${jsAttr(resolvedTypeKey)}')" ${disabled}>Simpan & Download PDF</button>` : ''}
+        ${mode === 'create' ? `<button type="button" class="btn secondary" onclick="saveDocumentAndWord(event, '${jsAttr(resolvedTypeKey)}')" ${disabled}>Simpan & Download Word</button>` : ''}
       </div>
     </form>`;
 }
@@ -1360,6 +1404,56 @@ async function saveDocumentAndPdf(event, typeKey) {
 
     // Refresh tabel tanpa menahan proses download dan tanpa membuat tombol terasa lama.
     window.setTimeout(() => refreshCurrentPage().catch((error) => console.warn('Refresh setelah PDF gagal:', error)), 0);
+  } finally {
+    restoreButton(btn, originalText);
+  }
+}
+
+
+async function saveDocumentAndWord(event, typeKey) {
+  event?.preventDefault?.();
+  const btn = event?.currentTarget || event?.target || null;
+  const originalText = setButtonBusy(btn, 'Menyimpan & membuat Word...');
+
+  try {
+    if (!getPerm('create')) {
+      showToast('Role ini tidak dapat membuat dokumen.', 'error');
+      return;
+    }
+
+    const form = getButtonForm(event, 'documentForm');
+    if (!validateForm(form)) return;
+
+    const originalFile = getSelectedFile(form, 'surat_asli_file');
+    const signatureFile = getSelectedFile(form, 'ttd_file');
+    if (originalFile && !validateUploadFile(originalFile)) return;
+    if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return;
+
+    const row = getFormData(form, typeKey);
+
+    // Simpan data utama lebih dulu, sama seperti tombol PDF.
+    let saved = await saveDocumentToStorage(row);
+
+    if (originalFile || signatureFile) {
+      const rowWithFiles = await attachUploadedFiles(form, saved);
+      if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
+    }
+
+    const wordResult = await createWordFromDocument(saved, { download: true });
+    if (!wordResult) {
+      showToast('Data sudah tersimpan, tetapi file Word gagal dibuat.', 'warning');
+      return;
+    }
+
+    form.reset();
+    const dateInput = form.querySelector('[name="tanggal_surat"]');
+    if (dateInput) dateInput.value = todayInput();
+
+    showToast(saved.local_only
+      ? `Data lokal tersimpan dan Word berhasil diunduh. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
+      : 'Data tersimpan dan Word berhasil diunduh.');
+
+    window.setTimeout(() => refreshCurrentPage().catch((error) => console.warn('Refresh setelah Word gagal:', error)), 0);
   } finally {
     restoreButton(btn, originalText);
   }
@@ -1597,7 +1691,10 @@ function actionButtons(row) {
   const buttons = [];
   buttons.push(`<button type="button" onclick="previewById('${jsAttr(row.id)}')">Preview</button>`);
   if (row.surat_asli_url) buttons.push(`<a class="action-link" href="${safe(row.surat_asli_url)}" target="_blank" rel="noopener">Surat Asli</a>`);
-  if (getPerm('pdf')) buttons.push(`<button type="button" onclick="downloadById(event, '${jsAttr(row.id)}')">PDF</button>`);
+  if (getPerm('pdf')) {
+    buttons.push(`<button type="button" onclick="downloadById(event, '${jsAttr(row.id)}')">PDF</button>`);
+    buttons.push(`<button type="button" onclick="downloadWordById(event, '${jsAttr(row.id)}')">Word</button>`);
+  }
   if (getPerm('edit')) buttons.push(`<button type="button" onclick="editById('${jsAttr(row.id)}')">Edit</button>`);
   if (getPerm('approve') && row.status === 'diajukan') buttons.push(`<button type="button" class="green" onclick="approveById('${jsAttr(row.id)}')">Setujui</button>`);
   if (getPerm('archive') && row.status !== 'diarsipkan') buttons.push(`<button type="button" onclick="archiveById('${jsAttr(row.id)}')">Arsip</button>`);
@@ -1635,6 +1732,31 @@ async function downloadById(eventOrId, maybeId) {
     // Tombol PDF hanya download. Tidak upload ke Supabase agar proses jauh lebih cepat.
     const pdfResult = await createPdfFromDocument(row, { download: true, upload: true });
     if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
+  } finally {
+    restoreButton(btn, originalText);
+  }
+}
+
+
+async function downloadWordById(eventOrId, maybeId) {
+  const id = maybeId === undefined ? eventOrId : maybeId;
+  const btn = maybeId === undefined ? null : (eventOrId?.currentTarget || eventOrId?.target || null);
+  const originalText = setButtonBusy(btn, 'Word...');
+
+  try {
+    await loadProfile();
+    const row = findDocumentById(id) || (await fetchDocuments()).find((item) => String(item.id) === String(id));
+    if (!row) {
+      showToast('Data tidak ditemukan.', 'error');
+      return;
+    }
+
+    const wordResult = await createWordFromDocument(row, { download: true });
+    if (wordResult) {
+      showToast('Word berhasil diunduh.');
+    } else {
+      showToast('Word gagal dibuat.', 'error');
+    }
   } finally {
     restoreButton(btn, originalText);
   }
@@ -2229,6 +2351,32 @@ async function downloadPreviewPdf(evt = null) {
   }
 }
 
+
+async function downloadPreviewWord(evt = null) {
+  if (!lastPreviewDocument) {
+    showToast('Tidak ada data dokumen yang aktif untuk diunduh.', 'error');
+    return;
+  }
+
+  const fallbackEvent = typeof event !== 'undefined' ? event : null;
+  const btn = evt?.currentTarget || evt?.target || fallbackEvent?.currentTarget || fallbackEvent?.target || null;
+  const originalText = setButtonBusy(btn, 'Memproses Word...');
+
+  try {
+    const wordResult = await createWordFromDocument(lastPreviewDocument, { download: true });
+    if (wordResult) {
+      showToast('Word berhasil diunduh.');
+    } else {
+      showToast('Gagal mengunduh Word.', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Gagal mengunduh Word.', 'error');
+  } finally {
+    restoreButton(btn, originalText);
+  }
+}
+
 function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -2314,6 +2462,95 @@ async function inlineImagesForPdf(container) {
 
   await Promise.all(images.map((image) => inlineImageForPdf(image)));
   await waitForImages(container, PDF_IMAGE_TIMEOUT_MS);
+}
+
+
+function wordDocumentStyles() {
+  return `
+    @page WordSection1 { size: 21cm 29.7cm; margin: 1.5cm 1.7cm 1.5cm 1.7cm; }
+    body { font-family: "Times New Roman", serif; font-size: 12pt; color: #000; background: #fff; }
+    .pdf-page { width: 100%; min-height: 29.7cm; box-sizing: border-box; background: #fff; }
+    .letterhead { display: table; width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+    .letterhead img { display: table-cell; width: 72px; max-height: 72px; vertical-align: middle; margin-right: 12px; }
+    .letterhead > div { display: table-cell; vertical-align: middle; text-align: center; width: 100%; }
+    .letterhead h1 { font-size: 15pt; margin: 0; font-weight: bold; text-transform: uppercase; }
+    .letterhead p { font-size: 10pt; margin: 2px 0; }
+    .letter-line { border-top: 3px double #000; height: 0; margin: 6px 0 14px; }
+    .template-title, .center-text, .small-title { text-align: center; }
+    .template-title { font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 12px 0 4px; }
+    .small-title { font-size: 11pt; margin: 3px 0; }
+    .letter-meta-grid { width: 100%; margin: 8px 0 14px; }
+    table.meta-table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; }
+    table.meta-table td { font-size: 12pt; vertical-align: top; padding: 2px 4px; }
+    table.meta-table td:first-child { width: 130px; }
+    table.meta-table td:nth-child(2) { width: 10px; }
+    .recipient { margin: 14px 0; }
+    .recipient p { margin: 2px 0; }
+    .body-text p, .body-box p, .disposition-box p { margin: 6px 0; text-align: justify; line-height: 1.35; }
+    .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
+    .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 12pt; }
+    .signature-block { width: 230px; margin-left: auto; margin-top: 24px; text-align: center; page-break-inside: avoid; }
+    .signature-block p { margin: 2px 0; }
+    .signature-image-wrap { min-height: 62px; display: block; text-align: center; }
+    .signature-image-wrap img, .ttd-img { max-width: 145px; max-height: 72px; display: block; margin: 0 auto; }
+    .signature-name { font-weight: bold; text-decoration: underline; }
+  `;
+}
+
+function wordSafeHtml(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/\scontenteditable="[^"]*"/gi, '');
+}
+
+async function createWordFromDocument(data, options = { download: true }) {
+  const wordOptions = { download: true, ...options };
+  const documentData = getFinalDocumentRow(data);
+
+  const workerDiv = document.createElement('div');
+  workerDiv.style.position = 'absolute';
+  workerDiv.style.top = '-9999px';
+  workerDiv.style.left = '-9999px';
+  workerDiv.style.width = '210mm';
+  workerDiv.style.background = '#ffffff';
+  workerDiv.style.color = '#000000';
+  workerDiv.innerHTML = buildDocumentHTML(documentData);
+  document.body.appendChild(workerDiv);
+
+  try {
+    const wordTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+
+    // Inline logo/TTD supaya file Word tetap menampilkan gambar saat dibuka.
+    await inlineImagesForPdf(wordTarget);
+    await nextFrame();
+
+    const htmlContent = wordSafeHtml(wordTarget.outerHTML);
+    const fullHtml = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>${safe(documentData.nomor_surat || 'Dokumen Word')}</title>
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+  <style>${wordDocumentStyles()}</style>
+</head>
+<body><div class="WordSection1">${htmlContent}</div></body>
+</html>`;
+
+    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8' });
+    const fileName = `${slugify(documentData.nomor_surat || documentData.perihal || 'surat')}.doc`;
+
+    if (wordOptions.download) {
+      downloadBlob(blob, fileName);
+    }
+
+    return { fileName, wordBlob: blob };
+  } catch (error) {
+    console.error('Gagal membuat Word:', error);
+    showToast('Gagal memproses file Word.', 'error');
+    return null;
+  } finally {
+    if (workerDiv.parentNode) workerDiv.remove();
+  }
 }
 
 function hasPdfLibraries() {
@@ -2499,19 +2736,23 @@ function resetLocalCacheAndReload() {
 window.doLogin = doLogin;
 window.logout = logout;
 window.resetLocalCacheAndReload = resetLocalCacheAndReload;
+window.startLiveDateTime = startLiveDateTime;
 window.navigate = navigate;
 window.refreshCurrentPage = refreshCurrentPage;
 window.saveDocument = saveDocument;
 window.saveDocumentAndPdf = saveDocumentAndPdf;
+window.saveDocumentAndWord = saveDocumentAndWord;
 window.saveEditedDocument = saveEditedDocument;
 window.previewForm = previewForm;
 window.previewSignatureInput = previewSignatureInput;
 window.closePreview = closePreview;
 window.printPreview = printPreview;
 window.downloadPreviewPdf = downloadPreviewPdf;
+window.downloadPreviewWord = downloadPreviewWord;
 window.filterTable = filterTable;
 window.previewById = previewById;
 window.downloadById = downloadById;
+window.downloadWordById = downloadWordById;
 window.editById = editById;
 window.closeEditModal = closeEditModal;
 window.archiveById = archiveById;
@@ -2524,4 +2765,7 @@ window.saveSettings = saveProfile;
 window.exportCsv = exportCsv;
 window.backupJson = backupJson;
 
-document.addEventListener('DOMContentLoaded', checkSession);
+document.addEventListener('DOMContentLoaded', () => {
+  startLiveDateTime();
+  checkSession();
+});
