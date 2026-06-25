@@ -1,0 +1,37 @@
+{
+  "name": "SIAP TANJUNG - Sistem Informasi Administrasi Pagora Tanjung",
+  "short_name": "SIAP TANJUNG",
+  "description": "Sistem Informasi Administrasi Pagora Tanjung untuk pengelolaan surat dan arsip.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b4ea2",
+  "theme_color": "#0b4ea2",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
