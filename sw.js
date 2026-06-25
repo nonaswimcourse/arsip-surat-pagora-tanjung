@@ -1,4 +1,4 @@
-const CACHE_NAME = 'siap-tanjung-v20260625-review-exact-word-pdf-1';
+const CACHE_NAME = 'siap-tanjung-v20260625-ttd-stempel-word-safe-1';
 const APP_SHELL = [
   './',
   './index.html',
