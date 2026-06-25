@@ -2239,3 +2239,11 @@ img {
     text-align: center;
   }
 }
+
+
+/* FINAL: widget jam/tanggal dibuat transparan */
+.datetime-widget {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
