@@ -2099,7 +2099,7 @@ img {
 .signature-block {
   width: 310px !important;
   margin-left: auto !important;
-  margin-top: 18px !important;
+  margin-top: 6px !important;
   text-align: center !important;
   position: relative !important;
   overflow: visible !important;
@@ -2170,7 +2170,7 @@ img {
 
 @media print {
   .signature-block {
-    margin-top: 18px !important;
+    margin-top: 6px !important;
   }
 
   .signature-image-wrap {
@@ -2575,7 +2575,7 @@ img {
 .pdf-export-page .signature-block {
   width: 300px !important;
   margin-left: auto !important;
-  margin-top: 18px !important;
+  margin-top: 6px !important;
   text-align: center !important;
   overflow: visible !important;
   page-break-inside: avoid !important;
@@ -2645,7 +2645,7 @@ img {
   .pdf-live-capture .signature-block,
   .pdf-export-page .signature-block {
     width: 300px !important;
-    margin-top: 18px !important;
+    margin-top: 6px !important;
   }
 
   .signature-image-wrap,
@@ -2676,7 +2676,7 @@ img {
 .pdf-export-page .signature-block {
   width: 300px !important;
   margin-left: auto !important;
-  margin-top: 18px !important;
+  margin-top: 6px !important;
   text-align: center !important;
   position: relative !important;
   overflow: visible !important;
@@ -2861,10 +2861,10 @@ img {
 }
 
 
-/* === FIX 20260626-SIGNATURE-DOWN-PDF: jarak tanda tangan dari penutup surat lebih lega saat PDF === */
+/* === FIX 20260626-SIGNATURE-UP-PDF: tanda tangan naik 1 enter agar tembusan tidak terpotong === */
 .pdf-live-capture .signature-block,
 .pdf-export-page .signature-block {
-  margin-top: 30px !important;
+  margin-top: 14px !important;
 }
 
 
@@ -2969,7 +2969,7 @@ img {
 .signature-block,
 .pdf-live-capture .signature-block,
 .pdf-export-page .signature-block {
-  margin-top: 32px !important;
+  margin-top: 16px !important;
 }
 .signature-visual-wrap,
 .pdf-live-capture .signature-visual-wrap,

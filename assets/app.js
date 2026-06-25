@@ -2869,7 +2869,7 @@ function convertSignatureBlocksForWord(clone) {
     const spacer = document.createElement('p');
     spacer.className = 'word-signature-spacer';
     spacer.innerHTML = '&nbsp;';
-    spacer.setAttribute('style', 'margin:0;padding:0;height:36pt;line-height:36pt;font-size:1pt;mso-line-height-rule:exactly;');
+    spacer.setAttribute('style', 'margin:0;padding:0;height:24pt;line-height:24pt;font-size:1pt;mso-line-height-rule:exactly;');
     block.replaceWith(spacer, table);
   });
 }
