@@ -3115,3 +3115,117 @@ img {
 
 /* === FIX 20260626-INVITATION-GAP2-ONE-ENTER ===
    Jeda 1 enter setelah kalimat hadir pada sebelum tabel Hari/Tanggal/Waktu/Tempat/Acara. */
+
+
+/* === FIX 20260626-SIGNATURE-COMPACT-UP: area tanda tangan lebih naik dan rapat === */
+.signature-block,
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  margin-top: 8px !important;
+}
+.signature-visual-wrap,
+.pdf-live-capture .signature-visual-wrap,
+.pdf-export-page .signature-visual-wrap {
+  height: 120px !important;
+  min-height: 120px !important;
+  margin: 0 auto -20px auto !important;
+  overflow: visible !important;
+}
+.signature-stamp-img,
+.pdf-live-capture .signature-stamp-img,
+.pdf-export-page .signature-stamp-img {
+  left: 6px !important;
+  top: -2px !important;
+  width: 138px !important;
+  height: 130px !important;
+  max-width: 138px !important;
+  max-height: 130px !important;
+}
+.signature-image-wrap,
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  height: 104px !important;
+  min-height: 104px !important;
+  margin: 0 auto -12px auto !important;
+  overflow: visible !important;
+}
+.signature-image-wrap img,
+.ttd-img,
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  max-height: 96px !important;
+}
+.signature-name,
+.signature-nip,
+.pdf-live-capture .signature-name,
+.pdf-live-capture .signature-nip,
+.pdf-export-page .signature-name,
+.pdf-export-page .signature-nip {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.12 !important;
+}
+.tembusan-block,
+.pdf-live-capture .tembusan-block,
+.pdf-export-page .tembusan-block {
+  margin-top: 18px !important;
+}
+
+
+/* === FIX 20260626-SIGNATURE-DATE-STABLE: tanggal tetap turun, isi tanda tangan tetap rapat === */
+.signature-block,
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  margin-top: 18px !important;
+}
+.signature-visual-wrap,
+.pdf-live-capture .signature-visual-wrap,
+.pdf-export-page .signature-visual-wrap {
+  height: 112px !important;
+  min-height: 112px !important;
+  margin: 0 auto -22px auto !important;
+  overflow: visible !important;
+}
+.signature-stamp-img,
+.pdf-live-capture .signature-stamp-img,
+.pdf-export-page .signature-stamp-img {
+  left: 6px !important;
+  top: -2px !important;
+  width: 138px !important;
+  height: 130px !important;
+  max-width: 138px !important;
+  max-height: 130px !important;
+}
+.signature-image-wrap,
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  height: 98px !important;
+  min-height: 98px !important;
+  margin: 0 auto -14px auto !important;
+  overflow: visible !important;
+}
+.signature-image-wrap img,
+.ttd-img,
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  max-height: 92px !important;
+}
+.signature-name,
+.signature-nip,
+.pdf-live-capture .signature-name,
+.pdf-live-capture .signature-nip,
+.pdf-export-page .signature-name,
+.pdf-export-page .signature-nip {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.10 !important;
+}
+.tembusan-block,
+.pdf-live-capture .tembusan-block,
+.pdf-export-page .tembusan-block {
+  margin-top: 16px !important;
+}
