@@ -1835,11 +1835,15 @@ function letterhead(profile) {
 function signature(profile, row = {}) {
   const rowDataTtd = row?.ttd_data_url || '';
   const rowUrlTtd = row?.ttd_url || '';
+  const profileTtd = profile?.ttd_url || profile?.ttd_data_url || '';
 
-  // Kunci TTD pada snapshot surat.
-  // Jangan mengambil TTD dari profil di sini, agar surat lama tidak berubah saat ada upload TTD baru.
-  const ttd = rowDataTtd || rowUrlTtd || '';
-  const ttdName = row?.ttd_name || 'Tanda tangan';
+  // Prioritas TTD:
+  // 1. Snapshot TTD pada data surat.
+  // 2. TTD profil dari Supabase sebagai fallback.
+  // Fallback profil penting agar surat lama yang belum punya kolom TTD tetap menampilkan tanda tangan
+  // setelah cookies/site data browser dibersihkan.
+  const ttd = rowDataTtd || rowUrlTtd || profileTtd || '';
+  const ttdName = row?.ttd_name || profile?.ttd_name || 'Tanda tangan';
 
   return `
     <div class="signature-block" style="position: relative;">
