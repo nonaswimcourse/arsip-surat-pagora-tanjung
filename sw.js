@@ -1,9 +1,9 @@
-const CACHE_NAME = 'siap-tanjung-v20260626-word-gap-stamp-fix-1';
+const CACHE_NAME = 'siap-tanjung-v20260626-invitation-gap2-fix-1';
 const APP_SHELL = [
   './',
   './index.html',
-  './assets/style.css',
-  './assets/app.js',
+  './assets/style.css?v=20260626-invitation-gap2-fix-1',
+  './assets/app.js?v=20260626-invitation-gap2-fix-1',
   './assets/stempel-kkg-pjok.png',
   './logo.png',
   './assets/logo.png',
