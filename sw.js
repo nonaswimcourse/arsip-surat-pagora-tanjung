@@ -1,9 +1,10 @@
-const CACHE_NAME = 'siap-tanjung-v20260625-ttd-stempel-word-safe-1';
+const CACHE_NAME = 'siap-tanjung-v20260626-stempel-kkg-stabil-1';
 const APP_SHELL = [
   './',
   './index.html',
   './assets/style.css',
   './assets/app.js',
+  './assets/stempel-kkg-pjok.png',
   './logo.png',
   './assets/logo.png',
   './manifest.json',
