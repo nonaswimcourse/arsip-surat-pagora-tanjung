@@ -1,4 +1,4 @@
-const CACHE_NAME = 'siap-tanjung-v20260626-word-colon-left-fix-2';
+const CACHE_NAME = 'siap-tanjung-v20260626-logo-signature-match-fix-1';
 const APP_SHELL = [
   './',
   './index.html',
