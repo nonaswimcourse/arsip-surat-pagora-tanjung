@@ -2884,3 +2884,234 @@ img {
   object-fit: contain !important;
   object-position: center !important;
 }
+
+
+/* ==========================================================================
+   UI FIX: Samakan bar menu dan tombol topbar mobile
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+  .menu-list {
+    align-items: stretch;
+  }
+
+  .menu-item {
+    flex: 0 0 126px;
+    width: 126px;
+    min-width: 126px;
+    max-width: 126px;
+    height: 40px;
+    justify-content: center;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    line-height: 1;
+    box-sizing: border-box;
+  }
+
+  .menu-item span {
+    flex: 0 0 18px;
+    width: 18px;
+    min-width: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .topbar-actions .btn {
+    width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+  }
+}
+
+@media screen and (max-width: 520px) {
+  .topbar-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .menu-item {
+    flex-basis: 118px;
+    width: 118px;
+    min-width: 118px;
+    max-width: 118px;
+    font-size: 12.5px;
+  }
+}
+
+@media screen and (max-width: 360px) {
+  .menu-item {
+    flex-basis: 112px;
+    width: 112px;
+    min-width: 112px;
+    max-width: 112px;
+    font-size: 12px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .topbar-actions .btn {
+    font-size: 12px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+
+/* === FIX 20260626-WORD-SIGNATURE-GAP-STAMP-NOCROP === */
+.signature-block,
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  margin-top: 32px !important;
+}
+.signature-visual-wrap,
+.pdf-live-capture .signature-visual-wrap,
+.pdf-export-page .signature-visual-wrap {
+  height: 136px !important;
+  min-height: 136px !important;
+  margin: 0 auto -10px auto !important;
+  overflow: visible !important;
+}
+.signature-stamp-img,
+.pdf-live-capture .signature-stamp-img,
+.pdf-export-page .signature-stamp-img {
+  top: 0 !important;
+  width: 145px !important;
+  height: 138px !important;
+  max-width: 145px !important;
+  max-height: 138px !important;
+}
+.signature-image-wrap,
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  height: 118px !important;
+  min-height: 118px !important;
+  margin: 6px auto -10px auto !important;
+  overflow: visible !important;
+}
+.signature-image-wrap img,
+.ttd-img,
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  max-height: 104px !important;
+}
+
+/* === FIX 20260626-LAPTOP-TOPBAR-SIDE-BY-SIDE ===
+   Laptop/tablet landscape tetap menampilkan Muat Ulang dan Buat Surat sejajar.
+   Aturan lama hanya mengunci tampilan HP, sehingga pada lebar laptop tertentu
+   flex-wrap membuat dua tombol turun atas-bawah. */
+@media screen and (min-width: 769px) {
+  .topbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center !important;
+    column-gap: 14px !important;
+    row-gap: 10px !important;
+  }
+
+  .topbar > div:first-child {
+    min-width: 0 !important;
+  }
+
+  .topbar h1,
+  .topbar p {
+    overflow-wrap: anywhere;
+  }
+
+  .datetime-widget {
+    width: auto !important;
+    min-width: 150px !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .topbar-actions {
+    display: grid !important;
+    grid-template-columns: max-content max-content !important;
+    align-items: center !important;
+    justify-content: end !important;
+    gap: 10px !important;
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .topbar-actions .btn {
+    width: auto !important;
+    min-width: 126px !important;
+    max-width: none !important;
+    min-height: 46px !important;
+    padding: 11px 16px !important;
+    white-space: nowrap !important;
+  }
+
+  .menu-list .menu-item {
+    min-height: 44px !important;
+    height: 44px !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .menu-list .menu-item span {
+    flex: 0 0 24px !important;
+    width: 24px !important;
+    min-width: 24px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+@media screen and (min-width: 769px) and (max-width: 1040px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .datetime-widget {
+    grid-column: 1 / 2;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .topbar-actions {
+    grid-column: 2 / 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
+
+
+/* === FIX 20260626-INVITATION-GAP-ONE-ENTER ===
+   Jeda 1 enter pada undangan: setelah di Tempat dan setelah tabel Acara. */
+.doc-one-enter-gap {
+  height: 1.35em !important;
+  min-height: 1.35em !important;
+  line-height: 1.35em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  clear: both !important;
+}
+
+.pdf-live-capture .doc-one-enter-gap,
+.pdf-export-page .doc-one-enter-gap {
+  height: 1.35em !important;
+  min-height: 1.35em !important;
+  line-height: 1.35em !important;
+}
+
+
+/* === FIX 20260626-INVITATION-GAP2-ONE-ENTER ===
+   Jeda 1 enter setelah kalimat hadir pada sebelum tabel Hari/Tanggal/Waktu/Tempat/Acara. */
