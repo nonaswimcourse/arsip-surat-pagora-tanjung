@@ -2859,3 +2859,28 @@ img {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* === FIX 20260626-SIGNATURE-DOWN-PDF: jarak tanda tangan dari penutup surat lebih lega saat PDF === */
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  margin-top: 30px !important;
+}
+
+
+/* === FIX 20260626-LOGO-SAME-WORD-PDF: ukuran logo kop surat sama dengan Word === */
+.pdf-page .letterhead img,
+.pdf-page .letterhead-logo,
+.pdf-live-capture .letterhead img,
+.pdf-live-capture .letterhead-logo,
+.pdf-export-page .letterhead img,
+.pdf-export-page .letterhead-logo {
+  width: 1.95cm !important;
+  height: 2.24cm !important;
+  max-width: 1.95cm !important;
+  max-height: 2.24cm !important;
+  min-width: 1.95cm !important;
+  min-height: 2.24cm !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}

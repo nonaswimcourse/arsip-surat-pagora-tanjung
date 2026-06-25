@@ -10,13 +10,19 @@ const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
 
 // Optimasi PDF: mode cepat agar download tidak terasa seperti reload lama.
-const PDF_RENDER_SCALE = 3;
+const PDF_RENDER_SCALE = 2.25;
 const PDF_IMAGE_QUALITY = 1.0;
-const PDF_RENDER_DELAY_MS = 80;
-const PDF_IMAGE_TIMEOUT_MS = 8000;
+const PDF_RENDER_DELAY_MS = 50;
+const PDF_IMAGE_TIMEOUT_MS = 5000;
 const WORD_RENDER_SCALE = 2;
 const STAMPEL_IMAGE_URL = 'assets/stempel-kkg-pjok.png';
 const DEFAULT_SIGNATURE_RENDER_OPTIONS = Object.freeze({ showStamp: true, showTtd: true });
+
+// Ukuran logo khusus export Word mengikuti permintaan: lebar 1,95 cm dan tinggi 2,24 cm.
+const WORD_LOGO_WIDTH_CM = 1.95;
+const WORD_LOGO_HEIGHT_CM = 2.24;
+const WORD_LOGO_WIDTH_PX = 74;
+const WORD_LOGO_HEIGHT_PX = 85;
 
 const hasSupabaseSdk = typeof window !== 'undefined'
   && window.supabase
@@ -237,7 +243,7 @@ function downloadBlob(blob, filename) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 500);
+  window.setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 function printableHTML(content) {
@@ -1391,7 +1397,7 @@ async function saveDocumentAndPdf(event, typeKey) {
     }
 
     // Download PDF dibuat lokal saja. Upload Storage dibuat opsional agar tidak memperlambat tombol download.
-    const pdfResult = await createPdfFromDocument(saved, { download: true, upload: true });
+    const pdfResult = await createPdfFromDocument(saved, { download: true, upload: false });
     if (!pdfResult) {
       showToast('Data sudah tersimpan, tetapi PDF gagal dibuat. Periksa library html2canvas dan jsPDF.', 'warning');
       return;
@@ -1405,8 +1411,8 @@ async function saveDocumentAndPdf(event, typeKey) {
       ? `Data lokal tersimpan dan PDF berhasil diunduh. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
       : 'Data tersimpan dan PDF berhasil diunduh.');
 
-    // Refresh tabel tanpa menahan proses download dan tanpa membuat tombol terasa lama.
-    window.setTimeout(() => refreshCurrentPage().catch((error) => console.warn('Refresh setelah PDF gagal:', error)), 0);
+    // Tidak langsung refresh halaman setelah PDF dibuat. Ini mencegah proses download terasa seperti reload.
+    window.setTimeout(() => refreshCurrentPage().catch((error) => console.warn('Refresh daftar setelah PDF gagal:', error)), 1200);
   } finally {
     restoreButton(btn, originalText);
   }
@@ -1733,7 +1739,7 @@ async function downloadById(eventOrId, maybeId) {
     }
 
     // Tombol PDF hanya download. Tidak upload ke Supabase agar proses jauh lebih cepat.
-    const pdfResult = await createPdfFromDocument(row, { download: true, upload: true });
+    const pdfResult = await createPdfFromDocument(row, { download: true, upload: false });
     if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
   } finally {
     restoreButton(btn, originalText);
@@ -2606,9 +2612,9 @@ function wordDocumentStyles() {
        Karena itu kop surat Word memakai tabel 3 kolom: logo kiri, teks tengah, ruang kanan. */
     .word-letterhead-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 3px 0; }
     .word-letterhead-table td { border: none; vertical-align: middle; padding: 0; }
-    .word-logo-cell { width: 90px; text-align: left; }
-    .word-spacer-cell { width: 90px; }
-    .word-letterhead-logo { width: 85px; height: 85px; max-width: 85px; max-height: 85px; }
+    .word-logo-cell { width: 2.25cm; text-align: left; }
+    .word-spacer-cell { width: 2.25cm; }
+    .word-letterhead-logo { width: 1.95cm; height: 2.24cm; max-width: 1.95cm; max-height: 2.24cm; }
     .word-letterhead-title { text-align: center; }
     .word-letterhead-title h1 { font-family: "Times New Roman", serif; font-size: 12.5pt; line-height: 1.35; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase; text-align: center; }
     .word-letterhead-title p { font-family: "Times New Roman", serif; font-size: 8.5pt; line-height: 1.25; margin: 1px 0; font-style: italic; text-align: center; white-space: nowrap; }
@@ -2637,7 +2643,7 @@ function wordDocumentStyles() {
     .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
     .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 11pt; }
 
-    .word-signature-row { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 18px 0 0 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    .word-signature-row { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 32px 0 0 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     .word-signature-row td { border: none; padding: 0; vertical-align: top; }
     .word-signature-left { width: 55%; }
     .word-signature-cell { width: 45%; text-align: center; font-family: "Times New Roman", serif; font-size: 11pt; line-height: 1.15; }
@@ -2688,13 +2694,13 @@ function convertLetterheadForWord(clone) {
 
     const logoCell = document.createElement('td');
     logoCell.className = 'word-logo-cell';
-    logoCell.setAttribute('style', 'width:90px;text-align:left;vertical-align:middle;padding:0;border:none;');
+    logoCell.setAttribute('style', 'width:2.25cm;text-align:left;vertical-align:middle;padding:0;border:none;');
 
     if (logo) {
       logo.className = `${logo.className || ''} word-letterhead-logo`.trim();
-      logo.setAttribute('width', '85');
-      logo.setAttribute('height', '85');
-      logo.setAttribute('style', 'width:85px;height:85px;max-width:85px;max-height:85px;border:0;display:block;');
+      logo.setAttribute('width', String(WORD_LOGO_WIDTH_PX));
+      logo.setAttribute('height', String(WORD_LOGO_HEIGHT_PX));
+      logo.setAttribute('style', `width:${WORD_LOGO_WIDTH_CM}cm;height:${WORD_LOGO_HEIGHT_CM}cm;max-width:${WORD_LOGO_WIDTH_CM}cm;max-height:${WORD_LOGO_HEIGHT_CM}cm;border:0;display:block;object-fit:contain;`);
       logoCell.appendChild(logo);
     }
 
@@ -2714,7 +2720,7 @@ function convertLetterheadForWord(clone) {
 
     const spacerCell = document.createElement('td');
     spacerCell.className = 'word-spacer-cell';
-    spacerCell.setAttribute('style', 'width:90px;vertical-align:middle;padding:0;border:none;');
+    spacerCell.setAttribute('style', 'width:2.25cm;vertical-align:middle;padding:0;border:none;');
     spacerCell.innerHTML = '&nbsp;';
 
     tr.appendChild(logoCell);
@@ -2791,14 +2797,15 @@ async function convertSignatureVisualsForWord(root) {
       if (stampImg) {
         ctx.save();
         ctx.globalAlpha = 0.88;
-        // Posisi mengikuti tampilan Review: stempel berada di kiri dan sedikit menimpa area TTD.
-        drawImageContainToCanvas(ctx, stampImg, 0, 0, 295, 216);
+        // Disamakan dengan PDF/preview: stempel tidak terlalu jauh dari tanda tangan.
+        // Koordinat memakai kanvas 2x dari area Word 300 x 108 px.
+        drawImageContainToCanvas(ctx, stampImg, 34, -28, 290, 276);
         ctx.restore();
       }
 
       if (ttdImg) {
-        // TTD tetap berada di tengah area visual seperti pada Review.
-        drawImageContainToCanvas(ctx, ttdImg, 135, 18, 390, 170);
+        // TTD digeser lebih dekat ke stempel agar hasil Word mengikuti PDF.
+        drawImageContainToCanvas(ctx, ttdImg, 100, 20, 390, 170);
       }
 
       const img = document.createElement('img');
@@ -2826,7 +2833,7 @@ function convertSignatureBlocksForWord(clone) {
     table.setAttribute('cellspacing', '0');
     table.setAttribute('cellpadding', '0');
     table.setAttribute('border', '0');
-    table.setAttribute('style', 'width:100%;border-collapse:collapse;table-layout:fixed;margin:18px 0 0 0;mso-table-lspace:0pt;mso-table-rspace:0pt;');
+    table.setAttribute('style', 'width:100%;border-collapse:collapse;table-layout:fixed;margin:32px 0 0 0;mso-table-lspace:0pt;mso-table-rspace:0pt;');
 
     const tbody = document.createElement('tbody');
     const tr = document.createElement('tr');
