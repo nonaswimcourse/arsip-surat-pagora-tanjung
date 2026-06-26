@@ -2655,13 +2655,13 @@ function wordDocumentStyles() {
     .signature-block { width: 300px; text-align: center; page-break-inside: avoid; overflow: visible; position: relative; }
     .signature-block p { margin: 2px 0; line-height: 1.15; position: relative; z-index: 5; text-align: center; }
     .signature-visual-wrap { width: 300px; height: 132px; min-height: 132px; margin: 0 auto -70px auto; position: relative; overflow: visible; text-align: center; }
-    .word-signature-composite { width: 300px; height: 132px; max-width: 300px; max-height: 132px; display: block; margin: -2px auto 0 auto; border: 0; }
+    .word-signature-composite { width: 300px; height: 132px; max-width: 300px; max-height: 132px; display: block; margin: -2px auto 0 auto; border: 0; position: relative; z-index: 5; }
     .word-signature-blank { height: 132px; line-height: 132px; font-size: 1pt; }
     .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
     .signature-image-wrap { height: 98px; min-height: 98px; margin: 0 auto -14px auto; display: block; text-align: center; overflow: visible; position: relative; z-index: 4; }
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
-    .signature-name { font-weight: bold; text-decoration: underline; margin-top: 0; white-space: nowrap; }
-    .signature-nip { margin-top: 0; white-space: nowrap; }
+    .signature-name { font-weight: bold; text-decoration: underline; margin-top: -64px; white-space: nowrap; position: relative; z-index: 2; }
+    .signature-nip { margin-top: 0; white-space: nowrap; position: relative; z-index: 2; }
     .tembusan-block { clear: both; margin-top: 18px; text-align: left; font-size: 11pt; line-height: 1.2; page-break-inside: avoid; }
     .tembusan-title { margin: 0; padding: 0; line-height: 1.2; }
     .tembusan-list { margin: 0; padding: 0; line-height: 1.2; }
@@ -2827,17 +2827,91 @@ function loadCanvasImage(src) {
   });
 }
 
+function normalizeSignatureIdentityText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function fitCanvasFont(ctx, text, options = {}) {
+  const maxWidth = options.maxWidth || 540;
+  const minSize = options.minSize || 16;
+  const startSize = options.startSize || 24;
+  const weight = options.weight || 'normal';
+  const family = options.family || 'Times New Roman';
+  let size = startSize;
+
+  while (size > minSize) {
+    ctx.font = `${weight} ${size}px "${family}"`;
+    if (ctx.measureText(text).width <= maxWidth) break;
+    size -= 1;
+  }
+
+  return size;
+}
+
+function drawCenteredCanvasText(ctx, text, x, y, options = {}) {
+  const cleanText = normalizeSignatureIdentityText(text);
+  if (!cleanText) return;
+
+  const fontSize = fitCanvasFont(ctx, cleanText, options);
+  const weight = options.weight || 'normal';
+  const family = options.family || 'Times New Roman';
+  ctx.save();
+  ctx.fillStyle = options.color || '#000000';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `${weight} ${fontSize}px "${family}"`;
+  ctx.fillText(cleanText, x, y);
+
+  if (options.underline) {
+    const width = ctx.measureText(cleanText).width;
+    const underlineY = y + Math.max(2, Math.round(fontSize * 0.12));
+    ctx.beginPath();
+    ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.055));
+    ctx.moveTo(x - (width / 2), underlineY);
+    ctx.lineTo(x + (width / 2), underlineY);
+    ctx.strokeStyle = options.color || '#000000';
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawWordSignatureIdentity(ctx, nameText, nipText, canvasWidth) {
+  const centerX = canvasWidth / 2;
+
+  // Nama dan NIP digambar lebih naik dan berada di lapisan belakang.
+  // Setelah itu stempel dan tanda tangan digambar di atasnya.
+  drawCenteredCanvasText(ctx, nameText, centerX, 136, {
+    startSize: 25,
+    minSize: 17,
+    maxWidth: 540,
+    weight: 'bold',
+    underline: true
+  });
+
+  drawCenteredCanvasText(ctx, nipText, centerX, 164, {
+    startSize: 22,
+    minSize: 15,
+    maxWidth: 540,
+    weight: 'normal',
+    underline: false
+  });
+}
+
 async function convertSignatureVisualsForWord(root) {
   if (!root) return;
 
   const visualWraps = Array.from(root.querySelectorAll('.signature-visual-wrap'));
   for (const wrap of visualWraps) {
+    const block = wrap.closest('.signature-block');
     const stamp = wrap.querySelector('.signature-stamp-img');
     const ttd = wrap.querySelector('.ttd-img, .signature-image-wrap img');
     const stampSrc = stamp?.getAttribute('src') || '';
     const ttdSrc = ttd?.getAttribute('src') || '';
+    const nameText = normalizeSignatureIdentityText(block?.querySelector('.signature-name')?.textContent || '');
+    const nipText = normalizeSignatureIdentityText(block?.querySelector('.signature-nip')?.textContent || '');
 
-    if (!stampSrc && !ttdSrc) {
+    if (!stampSrc && !ttdSrc && !nameText && !nipText) {
       wrap.innerHTML = '<div class="word-signature-blank">&nbsp;</div>';
       wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -70px auto;text-align:center;overflow:visible;');
       continue;
@@ -2849,6 +2923,10 @@ async function convertSignatureVisualsForWord(root) {
       canvas.height = 264;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Identitas pejabat dibuat menjadi bagian dari visual Word.
+      // Urutannya sengaja lebih dulu agar nama dan NIP berada di belakang stempel/TTD.
+      drawWordSignatureIdentity(ctx, nameText, nipText, canvas.width);
 
       const [stampImg, ttdImg] = await Promise.all([
         loadCanvasImage(stampSrc).catch(() => null),
@@ -2871,15 +2949,23 @@ async function convertSignatureVisualsForWord(root) {
 
       const img = document.createElement('img');
       img.className = 'word-signature-composite';
-      img.alt = 'Stempel dan tanda tangan';
+      img.alt = 'Stempel, tanda tangan, nama, dan NIP';
       img.src = canvas.toDataURL('image/png');
       img.setAttribute('width', '300');
       img.setAttribute('height', '132');
-      img.setAttribute('style', 'display:block;width:300px;height:132px;max-width:300px;max-height:132px;margin:-2px auto 0 auto;border:0;background:transparent;');
+      img.setAttribute('style', 'display:block;width:300px;height:132px;max-width:300px;max-height:132px;margin:-2px auto 0 auto;border:0;background:transparent;position:relative;z-index:5;');
 
       wrap.innerHTML = '';
       wrap.appendChild(img);
       wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -70px auto;text-align:center;overflow:visible;');
+
+      // Cegah nama dan NIP tampil dobel di Word karena sudah masuk ke gambar komposit.
+      if (block && (nameText || nipText)) {
+        block.querySelectorAll('.signature-name, .signature-nip').forEach((node) => {
+          node.setAttribute('data-word-composite-hidden', 'true');
+          node.setAttribute('style', 'display:none;mso-hide:all;');
+        });
+      }
     } catch (error) {
       console.warn('Gagal mengubah visual tanda tangan untuk Word:', error);
     }
@@ -2913,7 +2999,22 @@ function convertSignatureBlocksForWord(clone) {
     block.removeAttribute('style');
     block.setAttribute('style', 'width:300px;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;margin:0;padding:0;');
     block.querySelectorAll('p').forEach((p) => {
+      if (p.getAttribute('data-word-composite-hidden') === 'true') {
+        p.setAttribute('style', 'display:none;mso-hide:all;');
+        return;
+      }
       p.setAttribute('style', 'margin:0 0 2px 0;line-height:1.15;text-align:center;');
+    });
+
+    // Fallback jika gambar komposit gagal dibuat: nama dan NIP tetap dinaikkan.
+    block.querySelectorAll('.signature-name').forEach((node) => {
+      if (node.getAttribute('data-word-composite-hidden') === 'true') return;
+      node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:-64px;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:2;text-align:center;');
+    });
+
+    block.querySelectorAll('.signature-nip').forEach((node) => {
+      if (node.getAttribute('data-word-composite-hidden') === 'true') return;
+      node.setAttribute('style', 'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:2;text-align:center;');
     });
 
     right.appendChild(block.cloneNode(true));
@@ -3007,14 +3108,14 @@ async function prepareWordHtml(root) {
   clone.querySelectorAll('.signature-name').forEach((node) => {
   node.setAttribute(
     'style',
-    'font-weight:bold;text-decoration:underline;margin-top:-52px;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:10;'
+    'font-weight:bold;text-decoration:underline;margin-top:-64px;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:2;'
   );
 });
 
 clone.querySelectorAll('.signature-nip').forEach((node) => {
   node.setAttribute(
     'style',
-    'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:10;'
+    'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:2;'
   );
 });
 
@@ -3066,6 +3167,30 @@ function wordSafeHtml(html) {
   return String(html || '')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/\scontenteditable="[^"]*"/gi, '');
+}
+
+
+function createOfficeWordBlob(fullHtml, documentData) {
+  const fileBaseName = slugify(documentData.nomor_surat || documentData.perihal || 'surat');
+
+  // Jika library html-docx-js tersedia, sistem otomatis membuat .docx.
+  // Jika belum tersedia, fallback .doc tetap bisa dibuka dan diedit di Microsoft Word modern.
+  if (typeof window !== 'undefined'
+    && window.htmlDocx
+    && typeof window.htmlDocx.asBlob === 'function') {
+    const docxBlob = window.htmlDocx.asBlob(fullHtml);
+    return {
+      fileName: `${fileBaseName}.docx`,
+      wordBlob: docxBlob,
+      format: 'docx'
+    };
+  }
+
+  return {
+    fileName: `${fileBaseName}.doc`,
+    wordBlob: new Blob(['﻿', fullHtml], { type: 'application/msword;charset=utf-8' }),
+    format: 'doc'
+  };
 }
 
 
@@ -3139,8 +3264,11 @@ function createWordBlobFromCanvas(canvas, documentData) {
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="ProgId" content="Word.Document">
+  <meta name="Generator" content="SIPAS Kantor">
   <title>${title}</title>
-  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/><w:Compatibility><w:UseFELayout/></w:Compatibility></w:WordDocument></xml><![endif]-->
   <style>
     @page WordSection1 { size: 21cm 29.7cm; margin: 0.25cm 0.25cm 0.25cm 0.25cm; }
     html, body { margin: 0; padding: 0; background: #ffffff; }
@@ -3151,9 +3279,7 @@ function createWordBlobFromCanvas(canvas, documentData) {
 <body><div class="WordSection1"><img class="preview-word-page" src="${imgData}" alt="${title}"></div></body>
 </html>`;
 
-  const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8' });
-  const fileName = `${slugify(documentData.nomor_surat || documentData.perihal || 'surat')}.doc`;
-  return { fileName, wordBlob: blob };
+  return createOfficeWordBlob(fullHtml, documentData);
 }
 
 async function createVisualWordFromElement(sourceElement, documentData, wordOptions) {
@@ -3234,21 +3360,23 @@ async function createWordFromDocument(data, options = { download: true }) {
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="ProgId" content="Word.Document">
+  <meta name="Generator" content="SIPAS Kantor">
   <title>${safe(documentData.nomor_surat || 'Dokumen Word')}</title>
-  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/><w:Compatibility><w:UseFELayout/></w:Compatibility></w:WordDocument></xml><![endif]-->
   <style>${wordDocumentStyles()}</style>
 </head>
 <body><div class="WordSection1">${htmlContent}</div></body>
 </html>`;
 
-    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8' });
-    const fileName = `${slugify(documentData.nomor_surat || documentData.perihal || 'surat')}.doc`;
+    const wordFile = createOfficeWordBlob(fullHtml, documentData);
 
     if (wordOptions.download) {
-      downloadBlob(blob, fileName);
+      downloadBlob(wordFile.wordBlob, wordFile.fileName);
     }
 
-    return { fileName, wordBlob: blob };
+    return wordFile;
   } catch (error) {
     console.error('Gagal membuat Word:', error);
     showToast('Gagal memproses file Word.', 'error');
