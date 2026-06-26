@@ -2654,13 +2654,13 @@ function wordDocumentStyles() {
     .word-signature-cell p { margin: 2px 0; line-height: 1.15; text-align: center; }
     .signature-block { width: 300px; text-align: center; page-break-inside: avoid; overflow: visible; position: relative; }
     .signature-block p { margin: 2px 0; line-height: 1.15; position: relative; z-index: 5; text-align: center; }
-    .signature-visual-wrap { width: 300px; height: 132px; min-height: 132px; margin: 0 auto -54px auto; position: relative; overflow: visible; text-align: center; }
+    .signature-visual-wrap { width: 300px; height: 132px; min-height: 132px; margin: 0 auto -70px auto; position: relative; overflow: visible; text-align: center; }
     .word-signature-composite { width: 300px; height: 132px; max-width: 300px; max-height: 132px; display: block; margin: -2px auto 0 auto; border: 0; }
     .word-signature-blank { height: 132px; line-height: 132px; font-size: 1pt; }
     .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
     .signature-image-wrap { height: 98px; min-height: 98px; margin: 0 auto -14px auto; display: block; text-align: center; overflow: visible; position: relative; z-index: 4; }
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
-    .signature-name { font-weight: bold; text-decoration: underline; margin-top: -18px; margin-bottom: 0; white-space: nowrap; }
+    .signature-name { font-weight: bold; text-decoration: underline; margin-top: -58px; margin-bottom: 0; white-space: nowrap; }
     .signature-nip { margin-top: 0; margin-bottom: 0; white-space: nowrap; }
     .tembusan-block { clear: both; margin-top: 18px; text-align: left; font-size: 11pt; line-height: 1.2; page-break-inside: avoid; }
     .tembusan-title { margin: 0; padding: 0; line-height: 1.2; }
@@ -2839,7 +2839,7 @@ async function convertSignatureVisualsForWord(root) {
 
     if (!stampSrc && !ttdSrc) {
       wrap.innerHTML = '<div class="word-signature-blank">&nbsp;</div>';
-      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -54px auto;text-align:center;overflow:visible;');
+      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -70px auto;text-align:center;overflow:visible;');
       continue;
     }
 
@@ -2879,7 +2879,7 @@ async function convertSignatureVisualsForWord(root) {
 
       wrap.innerHTML = '';
       wrap.appendChild(img);
-      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -54px auto;text-align:center;overflow:visible;');
+      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -70px auto;text-align:center;overflow:visible;');
     } catch (error) {
       console.warn('Gagal mengubah visual tanda tangan untuk Word:', error);
     }
@@ -2983,7 +2983,7 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
-    node.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -54px auto;position:relative;overflow:visible;');
+    node.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -70px auto;position:relative;overflow:visible;');
   });
 
   clone.querySelectorAll('.signature-stamp-img').forEach((img) => {
@@ -3007,7 +3007,7 @@ async function prepareWordHtml(root) {
   // KHUSUS WORD: naikkan nama ketua dan NIP pada hasil download Word saja.
   // Tidak mengubah Review/PDF karena yang diubah adalah clone di prepareWordHtml().
   clone.querySelectorAll('.signature-name').forEach((node) => {
-    node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:-18px;margin-bottom:0;white-space:nowrap;');
+    node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:-58px;margin-bottom:0;white-space:nowrap;');
   });
 
   clone.querySelectorAll('.signature-nip').forEach((node) => {
