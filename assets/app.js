@@ -2654,9 +2654,9 @@ function wordDocumentStyles() {
     .word-signature-cell p { margin: 2px 0; line-height: 1.15; text-align: center; }
     .signature-block { width: 300px; text-align: center; page-break-inside: avoid; overflow: visible; position: relative; }
     .signature-block p { margin: 2px 0; line-height: 1.15; position: relative; z-index: 5; text-align: center; }
-    .signature-visual-wrap { width: 300px; height: 112px; min-height: 112px; margin: 0 auto -22px auto; position: relative; overflow: visible; text-align: center; }
-    .word-signature-composite { width: 300px; height: 112px; max-width: 300px; max-height: 112px; display: block; margin: 0 auto; border: 0; }
-    .word-signature-blank { height: 112px; line-height: 112px; font-size: 1pt; }
+    .signature-visual-wrap { width: 300px; height: 132px; min-height: 132px; margin: 0 auto -42px auto; position: relative; overflow: visible; text-align: center; }
+    .word-signature-composite { width: 300px; height: 132px; max-width: 300px; max-height: 132px; display: block; margin: -2px auto 0 auto; border: 0; }
+    .word-signature-blank { height: 132px; line-height: 132px; font-size: 1pt; }
     .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
     .signature-image-wrap { height: 98px; min-height: 98px; margin: 0 auto -14px auto; display: block; text-align: center; overflow: visible; position: relative; z-index: 4; }
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
@@ -2839,14 +2839,14 @@ async function convertSignatureVisualsForWord(root) {
 
     if (!stampSrc && !ttdSrc) {
       wrap.innerHTML = '<div class="word-signature-blank">&nbsp;</div>';
-      wrap.setAttribute('style', 'width:300px;height:112px;min-height:112px;margin:0 auto -22px auto;text-align:center;overflow:visible;');
+      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -42px auto;text-align:center;overflow:visible;');
       continue;
     }
 
     try {
       const canvas = document.createElement('canvas');
       canvas.width = 600;
-      canvas.height = 224;
+      canvas.height = 264;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -2860,13 +2860,13 @@ async function convertSignatureVisualsForWord(root) {
         ctx.globalAlpha = 0.88;
         // Word memakai gambar gabungan supaya posisinya stabil.
         // Stempel dan TTD dibuat saling menimpa seperti tampilan Review/PDF.
-        drawImageContainToCanvasCropped(ctx, stampImg, 12, -4, 276, 260);
+        drawImageContainToCanvasCropped(ctx, stampImg, 12, 0, 276, 260);
         ctx.restore();
       }
 
       if (ttdImg) {
         // Crop margin transparan TTD, lalu geser ke kiri agar tidak berjauhan dari stempel.
-        drawImageContainToCanvasCropped(ctx, ttdImg, 20, 6, 560, 184);
+        drawImageContainToCanvasCropped(ctx, ttdImg, 20, 10, 560, 184);
       }
 
       const img = document.createElement('img');
@@ -2874,12 +2874,12 @@ async function convertSignatureVisualsForWord(root) {
       img.alt = 'Stempel dan tanda tangan';
       img.src = canvas.toDataURL('image/png');
       img.setAttribute('width', '300');
-      img.setAttribute('height', '112');
-      img.setAttribute('style', 'display:block;width:300px;height:112px;max-width:300px;max-height:112px;margin:0 auto;border:0;background:transparent;');
+      img.setAttribute('height', '132');
+      img.setAttribute('style', 'display:block;width:300px;height:132px;max-width:300px;max-height:132px;margin:-2px auto 0 auto;border:0;background:transparent;');
 
       wrap.innerHTML = '';
       wrap.appendChild(img);
-      wrap.setAttribute('style', 'width:300px;height:112px;min-height:112px;margin:0 auto -22px auto;text-align:center;overflow:visible;');
+      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -42px auto;text-align:center;overflow:visible;');
     } catch (error) {
       console.warn('Gagal mengubah visual tanda tangan untuk Word:', error);
     }
@@ -2983,7 +2983,7 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
-    node.setAttribute('style', 'width:300px;height:112px;min-height:112px;margin:0 auto -22px auto;position:relative;overflow:visible;');
+    node.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -42px auto;position:relative;overflow:visible;');
   });
 
   clone.querySelectorAll('.signature-stamp-img').forEach((img) => {
