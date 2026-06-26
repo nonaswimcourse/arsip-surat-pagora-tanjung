@@ -2660,8 +2660,8 @@ function wordDocumentStyles() {
     .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
     .signature-image-wrap { height: 98px; min-height: 98px; margin: 0 auto -14px auto; display: block; text-align: center; overflow: visible; position: relative; z-index: 4; }
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
-    .signature-name { font-weight: bold; text-decoration: underline; margin-top: 0; white-space: nowrap; }
-    .signature-nip { margin-top: 0; white-space: nowrap; }
+    .signature-name { font-weight: bold; text-decoration: underline; margin-top: -18px; margin-bottom: 0; white-space: nowrap; }
+    .signature-nip { margin-top: 0; margin-bottom: 0; white-space: nowrap; }
     .tembusan-block { clear: both; margin-top: 18px; text-align: left; font-size: 11pt; line-height: 1.2; page-break-inside: avoid; }
     .tembusan-title { margin: 0; padding: 0; line-height: 1.2; }
     .tembusan-list { margin: 0; padding: 0; line-height: 1.2; }
@@ -3004,8 +3004,10 @@ async function prepareWordHtml(root) {
     img.setAttribute('style', 'display:block;width:auto;max-width:280px;height:auto;max-height:92px;margin:0 auto;object-fit:contain;transform:none;background:transparent;');
   });
 
+  // KHUSUS WORD: naikkan nama ketua dan NIP pada hasil download Word saja.
+  // Tidak mengubah Review/PDF karena yang diubah adalah clone di prepareWordHtml().
   clone.querySelectorAll('.signature-name').forEach((node) => {
-    node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:-2px;margin-bottom:0;white-space:nowrap;');
+    node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:-18px;margin-bottom:0;white-space:nowrap;');
   });
 
   clone.querySelectorAll('.signature-nip').forEach((node) => {
