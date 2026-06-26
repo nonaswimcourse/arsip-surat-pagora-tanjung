@@ -3005,12 +3005,18 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-name').forEach((node) => {
-    node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:-2px;margin-bottom:0;white-space:nowrap;');
-  });
+  node.setAttribute(
+    'style',
+    'font-weight:bold;text-decoration:underline;margin-top:-52px;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:10;'
+  );
+});
 
-  clone.querySelectorAll('.signature-nip').forEach((node) => {
-    node.setAttribute('style', 'margin-top:0;margin-bottom:0;white-space:nowrap;');
-  });
+clone.querySelectorAll('.signature-nip').forEach((node) => {
+  node.setAttribute(
+    'style',
+    'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:10;'
+  );
+});
 
   clone.querySelectorAll('table.meta-table').forEach((table) => {
     // Khusus export Word: tabel Nomor/Lampiran/Sifat/Perihal dibuat fixed-width,
