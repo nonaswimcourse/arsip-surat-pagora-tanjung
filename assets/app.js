@@ -3062,9 +3062,9 @@ function normalizeSignatureImages(container) {
 
 function wordDocumentStyles() {
   return `
-    @page WordSection1 { size: 21cm 29.7cm; margin: 1.4cm 2cm 1cm 2cm; }
+    @page WordSection1 { size: 21cm 29.7cm; margin: .85cm 1.35cm .55cm 1.35cm; }
     html, body { margin: 0; padding: 0; background: #fff; }
-    body { font-family: "Times New Roman", serif; font-size: 11pt; color: #000; }
+    body { font-family: "Times New Roman", serif; font-size: 10.7pt; color: #000; line-height: 1.08; }
     .WordSection1 { page: WordSection1; width: 100%; margin: 0; padding: 0; }
     .pdf-page { width: 100%; min-height: 26.3cm; box-sizing: border-box; background: #fff; margin: 0; padding: 0; box-shadow: none; overflow: visible; }
     p { margin: 0; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }
@@ -3077,9 +3077,9 @@ function wordDocumentStyles() {
     .word-spacer-cell { width: 2.25cm; }
     .word-letterhead-logo { width: 1.95cm; height: 2.24cm; max-width: 1.95cm; max-height: 2.24cm; }
     .word-letterhead-title { text-align: center; }
-    .word-letterhead-title h1 { font-family: "Times New Roman", serif; font-size: 12.5pt; line-height: 1.35; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase; text-align: center; }
-    .word-letterhead-title p { font-family: "Times New Roman", serif; font-size: 8.5pt; line-height: 1.25; margin: 1px 0; font-style: italic; text-align: center; white-space: nowrap; }
-    .word-letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 8px 0 12px 0; }
+    .word-letterhead-title h1 { font-family: "Times New Roman", serif; font-size: 11.6pt; line-height: 1.16; margin: 0 0 2px 0; font-weight: bold; text-transform: uppercase; text-align: center; }
+    .word-letterhead-title p { font-family: "Times New Roman", serif; font-size: 8.1pt; line-height: 1.08; margin: 0; font-style: italic; text-align: center; white-space: nowrap; }
+    .word-letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 4px 0 5px 0; }
 
     .letterhead { width: 100%; }
     .letterhead img { width: 85px; height: 85px; max-width: 85px; max-height: 85px; }
@@ -3088,7 +3088,7 @@ function wordDocumentStyles() {
     .letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 8px 0 12px; }
 
     .template-title, .center-text, .small-title { text-align: center; }
-    .template-title { font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 10px 0 3px; }
+    .template-title { font-size: 11.8pt; font-weight: bold; text-decoration: underline; margin: 4px 0 2px; }
     .small-title { font-size: 11pt; margin: 3px 0; }
     .letter-meta-grid { width: 100%; margin: 8px 0 10px; }
     .letter-meta-grid > div { width: 100%; }
@@ -3100,8 +3100,8 @@ function wordDocumentStyles() {
     .recipient { margin: 8px 0 8px; }
     .recipient p { margin: 0 0 3px 0; line-height: 1.2; }
     .body-text { text-align: justify; margin-top: 8px; }
-    .doc-one-enter-gap { height: 13.2pt; line-height: 13.2pt; font-size: 1pt; margin: 0; padding: 0; mso-line-height-rule: exactly; }
-    .body-text p, .body-box p, .disposition-box p { margin: 0 0 6px; text-align: justify; line-height: 1.35; }
+    .doc-one-enter-gap { height: 7pt; line-height: 7pt; font-size: 1pt; margin: 0; padding: 0; mso-line-height-rule: exactly; }
+    .body-text p, .body-box p, .disposition-box p { margin: 0 0 2px; text-align: justify; line-height: 1.12; }
     .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
     .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 11pt; }
 
@@ -3122,13 +3122,13 @@ function wordDocumentStyles() {
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
     .signature-name { font-weight: bold; text-decoration: none; margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
     .signature-nip { margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
-    .tembusan-block { clear: both; margin-top: 18px; text-align: left; font-size: 11pt; line-height: 1.2; page-break-inside: avoid; }
-    .tembusan-title { margin: 0; padding: 0; line-height: 1.2; }
-    .tembusan-list { margin: 0; padding: 0; line-height: 1.2; }
-    .tembusan-item { margin: 0; padding: 0; line-height: 1.2; }
+    .tembusan-block { clear: both; margin-top: 2px; text-align: left; font-size: 10.4pt; line-height: 1.05; page-break-inside: auto; }
+    .tembusan-title { margin: 0; padding: 0; line-height: 1.05; }
+    .tembusan-list { margin: 0; padding: 0; line-height: 1.05; }
+    .tembusan-item { margin: 0; padding: 0; line-height: 1.05; }
 
     /* FIX 20260627-WORD-ONE-PAGE-OVERRIDE */
-    @page WordSection1 { size: 21cm 29.7cm; margin: 1.05cm 1.55cm .65cm 1.55cm; }
+    @page WordSection1 { size: 21cm 29.7cm; margin: .85cm 1.35cm .55cm 1.35cm; }
     .WordSection1 { page: WordSection1; width: 100%; margin: 0; padding: 0; }
     .pdf-page { width: 100%; min-height: auto; height: auto; max-height: none; padding: 0; margin: 0; overflow: visible; }
     .word-letterhead-table { margin: 0 0 1px 0; }
@@ -3181,10 +3181,10 @@ function wordDocumentStyles() {
     .word-signature-spacer { height: 7pt; line-height: 7pt; font-size: 1pt; mso-line-height-rule: exactly; }
     .signature-block { width: 264px; margin: 0; padding: 0; text-align: center; line-height: 1.02; page-break-inside: avoid; overflow: visible; position: relative; }
     .signature-block p { margin: 0; padding: 0; line-height: 1.02; text-align: center; }
-    .signature-visual-wrap { display: block; position: relative; width: 264px; height: 58px; min-height: 58px; margin: 0 auto -1px auto; padding: 0; overflow: visible; z-index: 4; }
-    .signature-stamp-img { position: absolute; left: 27px; top: -6px; width: 88px; height: auto; max-width: 88px; max-height: 84px; object-fit: contain; opacity: .92; z-index: 1; background: transparent; mso-wrap-style: none; }
-    .signature-image-wrap { width: 180px; height: 52px; min-height: 52px; margin: 0 auto; padding: 0; text-align: center; overflow: visible; position: relative; z-index: 4; left: -8px; top: 6px; }
-    .signature-image-wrap img, .ttd-img { display: block; width: auto; max-width: 176px; height: auto; max-height: 48px; margin: 0 auto; object-fit: contain; transform: none; background: transparent; border: 0; }
+    .signature-visual-wrap { display: block; position: relative; width: 258px; height: 54px; min-height: 54px; margin: 0 auto -2px auto; padding: 0; overflow: visible; z-index: 4; }
+    .signature-stamp-img { position: absolute; left: 24px; top: -9px; width: 90px; height: auto; max-width: 88px; max-height: 84px; object-fit: contain; opacity: .92; z-index: 1; background: transparent; mso-wrap-style: none; }
+    .signature-image-wrap { width: 178px; height: 50px; min-height: 50px; margin: 0 auto; padding: 0; text-align: center; overflow: visible; position: relative; z-index: 4; left: -8px; top: 6px; }
+    .signature-image-wrap img, .ttd-img { display: block; width: auto; max-width: 172px; height: auto; max-height: 46px; margin: 0 auto; object-fit: contain; transform: none; background: transparent; border: 0; }
     .signature-name, .signature-nip { margin: 0; padding: 0; line-height: 1.05; white-space: nowrap; text-align: center; position: relative; z-index: 1; }
 
   `;
@@ -3235,10 +3235,10 @@ function convertLetterheadForWord(clone) {
     if (textBlock) {
       textBlock.setAttribute('style', 'width:100%;text-align:center;margin:0;padding:0;');
       textBlock.querySelectorAll('h1').forEach((h1) => {
-        h1.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:12.5pt;line-height:1.35;margin:0 0 4px 0;font-weight:bold;text-transform:uppercase;text-align:center;');
+        h1.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:11.6pt;line-height:1.16;margin:0 0 2px 0;font-weight:bold;text-transform:uppercase;text-align:center;');
       });
       textBlock.querySelectorAll('p').forEach((p) => {
-        p.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:8.5pt;line-height:1.25;margin:1px 0;font-style:italic;text-align:center;white-space:nowrap;');
+        p.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:8.1pt;line-height:1.08;margin:0;font-style:italic;text-align:center;white-space:nowrap;');
       });
       titleCell.appendChild(textBlock);
     }
@@ -3259,7 +3259,7 @@ function convertLetterheadForWord(clone) {
   clone.querySelectorAll('.letter-line').forEach((line) => {
     const hr = document.createElement('hr');
     hr.className = 'word-letter-line';
-    hr.setAttribute('style', 'border:none;border-top:3px solid #000;height:0;margin:8px 0 12px 0;');
+    hr.setAttribute('style', 'border:none;border-top:3px solid #000;height:0;margin:4px 0 5px 0;');
     line.replaceWith(hr);
   });
 
@@ -3513,17 +3513,17 @@ function convertSignatureBlocksForWord(clone) {
     const right = document.createElement('td');
     right.className = 'word-signature-cell';
     right.setAttribute('width', '43%');
-    right.setAttribute('style', 'width:43%;border:none;padding:0;vertical-align:top;text-align:center;font-family:"Times New Roman",serif;font-size:10.8pt;line-height:1.02;');
+    right.setAttribute('style', 'width:43%;border:none;padding:0;vertical-align:top;text-align:center;font-family:"Times New Roman",serif;font-size:10.5pt;line-height:1.0;');
 
     block.removeAttribute('style');
-    block.setAttribute('style', 'width:264px;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;margin:0;padding:0;line-height:1.02;');
+    block.setAttribute('style', 'width:258px;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;margin:0;padding:0;line-height:1.0;');
     block.querySelectorAll('p').forEach((p) => {
       if (p.classList.contains('signature-empty-line')) {
         p.innerHTML = '&nbsp;';
         p.setAttribute('style', 'margin:0;padding:0;height:13pt;line-height:13pt;font-size:1pt;mso-line-height-rule:exactly;text-align:center;');
         return;
       }
-      p.setAttribute('style', 'margin:0;line-height:1.02;text-align:center;');
+      p.setAttribute('style', 'margin:0;line-height:1.0;text-align:center;');
     });
 
     // Fallback jika gambar komposit gagal dibuat: nama dan NIP tetap dinaikkan.
@@ -3545,7 +3545,7 @@ function convertSignatureBlocksForWord(clone) {
     const spacer = document.createElement('p');
     spacer.className = 'word-signature-spacer';
     spacer.innerHTML = '&nbsp;';
-    spacer.setAttribute('style', 'margin:0;padding:0;height:7pt;line-height:7pt;font-size:1pt;mso-line-height-rule:exactly;');
+    spacer.setAttribute('style', 'margin:0;padding:0;height:4pt;line-height:4pt;font-size:1pt;mso-line-height-rule:exactly;');
     block.replaceWith(spacer, table);
   });
 }
@@ -3565,11 +3565,11 @@ function normalizeWordParagraphs(clone) {
 
   clone.querySelectorAll('.doc-one-enter-gap').forEach((node) => {
     node.innerHTML = '&nbsp;';
-    node.setAttribute('style', 'height:8pt;line-height:8pt;font-size:1pt;margin:0;padding:0;mso-line-height-rule:exactly;');
+    node.setAttribute('style', 'height:5pt;line-height:5pt;font-size:1pt;margin:0;padding:0;mso-line-height-rule:exactly;');
   });
 
   clone.querySelectorAll('.body-text p, .body-box p, .disposition-box p').forEach((node) => {
-    node.setAttribute('style', 'margin:0 0 3px 0;text-align:justify;line-height:1.18;');
+    node.setAttribute('style', 'margin:0 0 2px 0;text-align:justify;line-height:1.08;');
   });
 
   // FIX 20260627-WORD-META-TOP-COMPACT: tabel Nomor/Lampiran/Sifat/Perihal jangan melebar, tetapi tabel Hari/Tanggal/Waktu/Tempat/Acara tetap rapi.
@@ -3582,33 +3582,33 @@ function normalizeWordParagraphs(clone) {
       const col = index % 3;
       if (col === 0) {
         td.setAttribute('width', '85');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:2.25cm;white-space:nowrap;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:2.25cm;white-space:nowrap;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 1) {
         td.setAttribute('width', '13');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 2) {
         td.setAttribute('width', '344');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:9.10cm;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:9.10cm;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
     });
   });
 
   clone.querySelectorAll('.tembusan-block').forEach((node) => {
-    node.setAttribute('style', 'clear:both;margin-top:6px;text-align:left;font-size:10.8pt;line-height:1.12;page-break-inside:avoid;');
+    node.setAttribute('style', 'clear:both;margin-top:2px;text-align:left;font-size:10.4pt;line-height:1.05;page-break-inside:auto;');
   });
 
   clone.querySelectorAll('.tembusan-title').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:1.2;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.05;text-align:left;');
   });
 
   clone.querySelectorAll('.tembusan-list').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:1.2;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.05;text-align:left;');
   });
 
   clone.querySelectorAll('.tembusan-item').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:1.2;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.05;text-align:left;');
   });
 }
 
@@ -3626,12 +3626,12 @@ async function prepareWordHtml(root) {
   // await convertSignatureVisualsForWord(clone);
 
   clone.querySelectorAll('.signature-block').forEach((node) => {
-    node.setAttribute('style', 'width:270px;margin-left:auto;margin-right:0;margin-top:0;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;line-height:1.05;');
+    node.setAttribute('style', 'width:258px;margin-left:auto;margin-right:0;margin-top:0;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;line-height:1.0;');
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
     // Word final: jangan 0x0 absolute, karena Microsoft Word bisa mengabaikan CSS lalu membuat stempel membesar.
-    node.setAttribute('style', 'display:block;position:relative;width:270px;height:68px;min-height:68px;margin:0 auto 3px auto;overflow:visible;z-index:4;');
+    node.setAttribute('style', 'display:block;position:relative;width:258px;height:54px;min-height:54px;margin:0 auto -2px auto;overflow:visible;z-index:4;');
   });
 
   clone.querySelectorAll('.word-signature-front-wrap').forEach((node) => {
@@ -3639,7 +3639,7 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-jabatan').forEach((node) => {
-    node.setAttribute('style', 'margin:0;line-height:1.05;text-align:center;position:relative;overflow:visible;');
+    node.setAttribute('style', 'margin:0;line-height:1.0;text-align:center;position:relative;overflow:visible;');
   });
 
   clone.querySelectorAll('.signature-empty-line').forEach((node) => {
@@ -3658,26 +3658,26 @@ async function prepareWordHtml(root) {
     img.removeAttribute('style');
     img.setAttribute('width', '76');
     img.setAttribute('height', '72');
-    img.setAttribute('style', 'position:absolute;left:32px;top:10px;width:60pt;height:57pt;max-width:60pt;max-height:57pt;object-fit:contain;opacity:.90;z-index:1;background:transparent;mso-wrap-style:none;');
+    img.setAttribute('style', 'position:absolute;left:24px;top:-9px;width:68pt;height:64pt;max-width:68pt;max-height:64pt;object-fit:contain;opacity:.92;z-index:10;background:transparent;mso-wrap-style:none;');
   });
 
   clone.querySelectorAll('.signature-image-wrap').forEach((node) => {
-    node.setAttribute('style', 'width:184px;height:60px;min-height:60px;margin:0 auto;text-align:center;overflow:visible;position:relative;z-index:4;left:-16px;top:0;');
+    node.setAttribute('style', 'width:178px;height:50px;min-height:50px;margin:0 auto;text-align:center;overflow:visible;position:relative;z-index:4;left:-8px;top:5px;');
   });
 
   clone.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
     img.removeAttribute('style');
     img.setAttribute('width', '184');
     img.setAttribute('height', '56');
-    img.setAttribute('style', 'display:block;width:auto;max-width:138pt;height:auto;max-height:42pt;margin:0 auto;object-fit:contain;transform:none;background:transparent;border:0;');
+    img.setAttribute('style', 'display:block;width:auto;max-width:129pt;height:auto;max-height:34pt;margin:0 auto;object-fit:contain;transform:none;background:transparent;border:0;');
   });
 
   clone.querySelectorAll('.signature-name').forEach((node) => {
-    node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin:0;padding:0;white-space:nowrap;line-height:1.05;position:relative;z-index:1;text-align:center;');
+    node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin:0;padding:0;white-space:nowrap;line-height:1.0;position:relative;z-index:1;text-align:center;');
   });
 
   clone.querySelectorAll('.signature-nip').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;white-space:nowrap;line-height:1.05;position:relative;z-index:1;text-align:center;');
+    node.setAttribute('style', 'margin:0;padding:0;white-space:nowrap;line-height:1.0;position:relative;z-index:1;text-align:center;');
   });
 
   clone.querySelectorAll('table.meta-table').forEach((table) => {
@@ -3701,21 +3701,21 @@ async function prepareWordHtml(root) {
       td.removeAttribute('style');
       if (col === 0) {
         td.setAttribute('width', '125');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:3.30cm;white-space:nowrap;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:3.30cm;white-space:nowrap;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 1) {
         td.setAttribute('width', '13');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 2) {
         td.setAttribute('width', '474');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:12.55cm;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:12.55cm;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
     });
   });
 
   clone.querySelectorAll('.body-text p, .body-box p, .disposition-box p').forEach((node) => {
-    node.setAttribute('style', 'margin:0 0 3px 0;text-align:justify;line-height:1.18;');
+    node.setAttribute('style', 'margin:0 0 2px 0;text-align:justify;line-height:1.08;');
   });
 
   // FIX 20260627-WORD-META-TOP-COMPACT: tabel Nomor/Lampiran/Sifat/Perihal jangan melebar, tetapi tabel Hari/Tanggal/Waktu/Tempat/Acara tetap rapi.
@@ -3728,15 +3728,15 @@ async function prepareWordHtml(root) {
       const col = index % 3;
       if (col === 0) {
         td.setAttribute('width', '85');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:2.25cm;white-space:nowrap;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:2.25cm;white-space:nowrap;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 1) {
         td.setAttribute('width', '13');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 2) {
         td.setAttribute('width', '344');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:9.10cm;line-height:1.12;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:9.10cm;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
     });
   });
@@ -3757,25 +3757,14 @@ function wordSafeHtml(html) {
 async function createOfficeWordBlob(fullHtml, documentData) {
   const fileBaseName = slugify(documentData.nomor_surat || documentData.perihal || 'surat');
 
-  // Muat library DOCX otomatis dari app.js supaya cukup upload app.js saja.
-  await ensureHtmlDocxLibrary();
-
-  if (typeof window !== 'undefined'
-    && window.htmlDocx
-    && typeof window.htmlDocx.asBlob === 'function') {
-    const docxBlob = window.htmlDocx.asBlob(fullHtml);
-    return {
-      fileName: `${fileBaseName}.docx`,
-      wordBlob: docxBlob,
-      format: 'docx'
-    };
-  }
-
+  // FINAL 20260627E:
+  // Word dikembalikan ke mode teks yang bisa diedit.
+  // Format .doc berbasis HTML dipakai agar struktur A4, tabel, kop, dan posisi tanda tangan lebih stabil di Microsoft Word.
+  // Ini bukan screenshot/canvas, sehingga teks surat, kop, nomor, isi, nama, NIP, dan tembusan tetap bisa diedit.
   return {
     fileName: `${fileBaseName}.doc`,
     wordBlob: new Blob(['﻿', fullHtml], { type: 'application/msword;charset=utf-8' }),
-    format: 'doc',
-    warning: 'DOCX library tidak berhasil dimuat, sehingga Word memakai fallback .doc.'
+    format: 'doc'
   };
 }
 
@@ -3905,19 +3894,69 @@ async function createWordFromDocument(data, options = { download: true }) {
   const wordOptions = { download: true, ...options };
   const documentData = getFinalDocumentRow(data);
 
-  // FINAL 20260627D:
-  // Word dibuat dari tampilan A4 yang sama dengan PDF/review.
-  // Ini mengunci layout menjadi 1 lembar dan mencegah tabel tanda tangan/tembusan pecah di Word.
-  // Catatan: isi Word menjadi visual satu halaman, sehingga posisi sama seperti PDF yang sudah rapi.
+  // FINAL 20260627E:
+  // Word dibuat sebagai teks HTML yang bisa diedit, bukan gambar screenshot.
+  // Struktur tetap mengikuti tampilan PDF/review: kop, tabel data, isi, tanda tangan, stempel, nama, NIP, dan tembusan.
+  const workerDiv = document.createElement('div');
+  workerDiv.style.position = 'absolute';
+  workerDiv.style.top = '-9999px';
+  workerDiv.style.left = '-9999px';
+  workerDiv.style.width = '210mm';
+  workerDiv.style.background = '#ffffff';
+  workerDiv.style.color = '#000000';
+
+  if (wordOptions.sourceElement && wordOptions.sourceElement.isConnected) {
+    workerDiv.appendChild(wordOptions.sourceElement.cloneNode(true));
+  } else {
+    workerDiv.innerHTML = buildDocumentHTML(documentData, wordOptions);
+  }
+
+  document.body.appendChild(workerDiv);
+
   try {
-    if (wordOptions.sourceElement && wordOptions.sourceElement.isConnected) {
-      return await createVisualWordFromElement(wordOptions.sourceElement, documentData, wordOptions);
+    const wordTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+
+    wordTarget.classList.remove('pdf-live-capture', 'pdf-export-page');
+    wordTarget.style.width = '';
+    wordTarget.style.height = '';
+    wordTarget.style.minHeight = '';
+    wordTarget.style.maxHeight = '';
+    wordTarget.style.overflow = '';
+    wordTarget.style.boxShadow = '';
+    wordTarget.style.margin = '';
+
+    await inlineImagesForPdf(wordTarget);
+    await waitForImages(wordTarget, PDF_IMAGE_TIMEOUT_MS);
+    await nextFrame();
+
+    const htmlContent = wordSafeHtml(await prepareWordHtml(wordTarget));
+    const fullHtml = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="ProgId" content="Word.Document">
+  <meta name="Generator" content="SIPAS Kantor">
+  <title>${safe(documentData.nomor_surat || 'Dokumen Word')}</title>
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/><w:Compatibility><w:UseFELayout/></w:Compatibility></w:WordDocument></xml><![endif]-->
+  <style>${wordDocumentStyles()}</style>
+</head>
+<body><div class="WordSection1">${htmlContent}</div></body>
+</html>`;
+
+    const wordFile = await createOfficeWordBlob(fullHtml, documentData);
+
+    if (wordOptions.download) {
+      downloadBlob(wordFile.wordBlob, wordFile.fileName);
     }
-    return await createVisualWordFromDocument(documentData, wordOptions);
+
+    return wordFile;
   } catch (error) {
-    console.error('Gagal membuat Word visual:', error);
-    showToast('Gagal memproses file Word.', 'error');
+    console.error('Gagal membuat Word teks:', error);
+    showToast('Gagal memproses file Word teks.', 'error');
     return null;
+  } finally {
+    if (workerDiv.parentNode) workerDiv.remove();
   }
 }
 
