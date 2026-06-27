@@ -1,9 +1,9 @@
-const CACHE_NAME = 'pagora-tanjung-word-review-fix-v2';
+const CACHE_NAME = 'pagora-tanjung-left-word-1page-v1';
 const APP_SHELL = [
   './',
   './index.html',
-  './assets/style.css?v=20260627-word-review-fix-2',
-  './assets/app.js?v=20260627-word-review-fix-2',
+  './assets/style.css?v=20260627-left-word-1page-signature-up',
+  './assets/app.js?v=20260627-left-word-1page-signature-up',
   './assets/stempel-kkg-pjok.png',
   './logo.png',
   './assets/logo.png',
