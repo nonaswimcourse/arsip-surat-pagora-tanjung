@@ -3484,3 +3484,415 @@ img {
     padding-right: 8px !important;
   }
 }
+
+/* === FIX 20260627-REVIEW-PDF-WORD-ONE-PAGE ===
+   Merapikan kolom teks samping pada Review/PDF dan menjaga surat tetap muat 1 halaman. */
+.pdf-page,
+.pdf-live-capture,
+.pdf-export-page {
+  width: 210mm !important;
+  height: 297mm !important;
+  min-height: 297mm !important;
+  max-height: 297mm !important;
+  padding: 13mm 18mm 8mm 18mm !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  font-family: "Times New Roman", serif !important;
+  font-size: 11pt !important;
+  line-height: 1.24 !important;
+}
+
+.pdf-page .letterhead,
+.pdf-live-capture .letterhead,
+.pdf-export-page .letterhead {
+  gap: 16px !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.pdf-page .letter-line,
+.pdf-live-capture .letter-line,
+.pdf-export-page .letter-line {
+  margin-top: 7px !important;
+  margin-bottom: 8px !important;
+}
+
+.pdf-page .letter-meta-grid,
+.pdf-live-capture .letter-meta-grid,
+.pdf-export-page .letter-meta-grid {
+  display: block !important;
+  grid-template-columns: none !important;
+  margin: 2px 0 4px 0 !important;
+  padding: 0 !important;
+}
+
+.pdf-page .meta-table,
+.pdf-live-capture .meta-table,
+.pdf-export-page .meta-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+  margin: 0 0 4px 0 !important;
+  padding: 0 !important;
+}
+
+.pdf-page .letter-meta-grid .meta-table,
+.pdf-live-capture .letter-meta-grid .meta-table,
+.pdf-export-page .letter-meta-grid .meta-table {
+  width: 12.7cm !important;
+  max-width: 12.7cm !important;
+}
+
+.pdf-page .meta-table td,
+.pdf-live-capture .meta-table td,
+.pdf-export-page .meta-table td {
+  padding: 0 2px 1px 0 !important;
+  vertical-align: top !important;
+  font-size: 11pt !important;
+  line-height: 1.14 !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
+
+.pdf-page .meta-table td:nth-child(1),
+.pdf-live-capture .meta-table td:nth-child(1),
+.pdf-export-page .meta-table td:nth-child(1) {
+  width: 3.45cm !important;
+  min-width: 3.45cm !important;
+  max-width: 3.45cm !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+}
+
+.pdf-page .letter-meta-grid .meta-table td:nth-child(1),
+.pdf-live-capture .letter-meta-grid .meta-table td:nth-child(1),
+.pdf-export-page .letter-meta-grid .meta-table td:nth-child(1) {
+  width: 2.35cm !important;
+  min-width: 2.35cm !important;
+  max-width: 2.35cm !important;
+}
+
+.pdf-page .meta-table td:nth-child(2),
+.pdf-live-capture .meta-table td:nth-child(2),
+.pdf-export-page .meta-table td:nth-child(2) {
+  width: .35cm !important;
+  min-width: .35cm !important;
+  max-width: .35cm !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.pdf-page .meta-table td:nth-child(3),
+.pdf-live-capture .meta-table td:nth-child(3),
+.pdf-export-page .meta-table td:nth-child(3) {
+  width: auto !important;
+  text-align: left !important;
+  padding-left: 2px !important;
+}
+
+.pdf-page .recipient,
+.pdf-live-capture .recipient,
+.pdf-export-page .recipient {
+  margin: 4px 0 5px 0 !important;
+}
+
+.pdf-page .recipient p,
+.pdf-live-capture .recipient p,
+.pdf-export-page .recipient p {
+  margin: 0 0 2px 0 !important;
+  line-height: 1.16 !important;
+}
+
+.pdf-page .body-text,
+.pdf-live-capture .body-text,
+.pdf-export-page .body-text {
+  margin-top: 4px !important;
+  text-align: justify !important;
+}
+
+.pdf-page .body-text p,
+.pdf-page .body-box p,
+.pdf-page .disposition-box p,
+.pdf-live-capture .body-text p,
+.pdf-live-capture .body-box p,
+.pdf-live-capture .disposition-box p,
+.pdf-export-page .body-text p,
+.pdf-export-page .body-box p,
+.pdf-export-page .disposition-box p {
+  margin: 0 0 3px 0 !important;
+  line-height: 1.18 !important;
+  text-align: justify !important;
+}
+
+.pdf-page .doc-one-enter-gap,
+.pdf-live-capture .doc-one-enter-gap,
+.pdf-export-page .doc-one-enter-gap {
+  height: 8pt !important;
+  min-height: 8pt !important;
+  line-height: 8pt !important;
+}
+
+.pdf-page .signature-block,
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  width: 295px !important;
+  margin: 7px 0 0 auto !important;
+  padding: 0 !important;
+  text-align: center !important;
+  line-height: 1.08 !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+  overflow: visible !important;
+}
+
+.pdf-page .signature-block p,
+.pdf-live-capture .signature-block p,
+.pdf-export-page .signature-block p {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.08 !important;
+  text-align: center !important;
+}
+
+.pdf-page .signature-visual-wrap,
+.pdf-live-capture .signature-visual-wrap,
+.pdf-export-page .signature-visual-wrap {
+  display: block !important;
+  position: relative !important;
+  width: 295px !important;
+  height: 88px !important;
+  min-height: 88px !important;
+  margin: 0 auto -8px auto !important;
+  overflow: visible !important;
+}
+
+.pdf-page .signature-stamp-img,
+.pdf-live-capture .signature-stamp-img,
+.pdf-export-page .signature-stamp-img {
+  position: absolute !important;
+  left: 18px !important;
+  top: -3px !important;
+  width: 118px !important;
+  height: auto !important;
+  max-width: 118px !important;
+  max-height: 104px !important;
+  object-fit: contain !important;
+  opacity: .90 !important;
+  z-index: 22 !important;
+}
+
+.pdf-page .signature-image-wrap,
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 220px !important;
+  height: 78px !important;
+  min-height: 78px !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  left: 18px !important;
+  top: 0 !important;
+  overflow: visible !important;
+}
+
+.pdf-page .signature-image-wrap img,
+.pdf-page .ttd-img,
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  display: block !important;
+  width: auto !important;
+  max-width: 210px !important;
+  height: auto !important;
+  max-height: 74px !important;
+  object-fit: contain !important;
+  transform: none !important;
+  margin: 0 auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.pdf-page .signature-name,
+.pdf-page .signature-nip,
+.pdf-live-capture .signature-name,
+.pdf-live-capture .signature-nip,
+.pdf-export-page .signature-name,
+.pdf-export-page .signature-nip {
+  white-space: nowrap !important;
+  line-height: 1.08 !important;
+  margin: 0 !important;
+}
+
+.pdf-page .tembusan-block,
+.pdf-live-capture .tembusan-block,
+.pdf-export-page .tembusan-block {
+  margin-top: 8px !important;
+  line-height: 1.15 !important;
+  font-size: 11pt !important;
+  text-align: left !important;
+}
+
+@media print {
+  .pdf-page,
+  .pdf-live-capture,
+  .pdf-export-page {
+    padding: 13mm 18mm 8mm 18mm !important;
+  }
+}
+
+/* === FIX 20260627-RECIPIENT-DATE-DOWN-STAMP-SMALL ===
+   Kepada Yth. dan tanggal tanda tangan turun 2 enter. Stempel diperkecil agar Word tetap 1 lembar. */
+.pdf-page .recipient,
+.pdf-live-capture .recipient,
+.pdf-export-page .recipient {
+  margin-top: 20pt !important;
+  margin-bottom: 5px !important;
+}
+
+.pdf-page .signature-block,
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  margin-top: 20pt !important;
+}
+
+.pdf-page .signature-date,
+.pdf-live-capture .signature-date,
+.pdf-export-page .signature-date {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.pdf-page .signature-stamp-img,
+.pdf-live-capture .signature-stamp-img,
+.pdf-export-page .signature-stamp-img {
+  width: 104px !important;
+  max-width: 104px !important;
+  max-height: 98px !important;
+  left: 22px !important;
+  top: 1px !important;
+}
+
+.pdf-page .signature-visual-wrap,
+.pdf-live-capture .signature-visual-wrap,
+.pdf-export-page .signature-visual-wrap {
+  height: 82px !important;
+  min-height: 82px !important;
+  margin-bottom: -7px !important;
+}
+
+/* === FIX 20260627-SIGNATURE-OVERLAP-NAME-CLEAR ===
+   TTD ditempelkan ke stempel. Nama/NIP diberi jarak aman dari stempel. */
+.pdf-page .signature-block,
+.pdf-live-capture .signature-block,
+.pdf-export-page .signature-block {
+  width: 295px !important;
+  margin: 20pt 0 0 auto !important;
+  padding: 0 !important;
+  text-align: center !important;
+  position: relative !important;
+  overflow: visible !important;
+  line-height: 1.06 !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.pdf-page .signature-block p,
+.pdf-live-capture .signature-block p,
+.pdf-export-page .signature-block p {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.06 !important;
+  text-align: center !important;
+}
+
+.pdf-page .signature-visual-wrap,
+.pdf-live-capture .signature-visual-wrap,
+.pdf-export-page .signature-visual-wrap {
+  display: block !important;
+  position: relative !important;
+  width: 295px !important;
+  height: 92px !important;
+  min-height: 92px !important;
+  margin: 0 auto 3px auto !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  z-index: 20 !important;
+}
+
+.pdf-page .signature-stamp-img,
+.pdf-live-capture .signature-stamp-img,
+.pdf-export-page .signature-stamp-img {
+  position: absolute !important;
+  left: 34px !important;
+  top: 7px !important;
+  width: 96px !important;
+  height: auto !important;
+  max-width: 96px !important;
+  max-height: 90px !important;
+  object-fit: contain !important;
+  opacity: .90 !important;
+  transform: none !important;
+  z-index: 22 !important;
+}
+
+.pdf-page .signature-image-wrap,
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 220px !important;
+  height: 78px !important;
+  min-height: 78px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  position: relative !important;
+  left: -18px !important;
+  top: 2px !important;
+  overflow: visible !important;
+  background: transparent !important;
+  z-index: 24 !important;
+}
+
+.pdf-page .signature-image-wrap img,
+.pdf-page .ttd-img,
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  display: block !important;
+  width: auto !important;
+  max-width: 218px !important;
+  height: auto !important;
+  max-height: 74px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  margin: 0 auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.pdf-page .signature-name,
+.pdf-page .signature-nip,
+.pdf-live-capture .signature-name,
+.pdf-live-capture .signature-nip,
+.pdf-export-page .signature-name,
+.pdf-export-page .signature-nip {
+  white-space: nowrap !important;
+  line-height: 1.08 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
+  z-index: 30 !important;
+}
+
