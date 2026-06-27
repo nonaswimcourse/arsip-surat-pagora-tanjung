@@ -2654,9 +2654,9 @@ function wordDocumentStyles() {
     .word-signature-cell p { margin: 2px 0; line-height: 1.15; text-align: center; }
     .signature-block { width: 300px; text-align: center; page-break-inside: avoid; overflow: visible; position: relative; }
     .signature-block p { margin: 2px 0; line-height: 1.15; position: relative; z-index: 5; text-align: center; }
-    .signature-visual-wrap { width: 300px; height: 96px; min-height: 96px; margin: 0 auto 0 auto; position: relative; overflow: visible; text-align: center; z-index: 999; }
-    .word-signature-composite { width: 300px; height: 132px; max-width: 300px; max-height: 132px; display: block; margin: -6px auto 0 auto; border: 0; position: relative; z-index: 999; }
-    .word-signature-blank { height: 132px; line-height: 132px; font-size: 1pt; }
+    .signature-visual-wrap { width: 300px; height: 126px; min-height: 126px; margin: 0 auto 0 auto; position: relative; overflow: visible; text-align: center; z-index: 9999; }
+    .word-signature-composite { width: 300px; height: 132px; max-width: 300px; max-height: 132px; display: block; margin: -2px auto -18px auto; border: 0; position: relative; z-index: 9999; mso-wrap-style: square; mso-position-horizontal: center; mso-position-horizontal-relative: text; }
+    .word-signature-blank { height: 126px; line-height: 126px; font-size: 1pt; }
     .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
     .signature-image-wrap { height: 98px; min-height: 98px; margin: 0 auto -14px auto; display: block; text-align: center; overflow: visible; position: relative; z-index: 4; }
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
@@ -2913,7 +2913,7 @@ async function convertSignatureVisualsForWord(root) {
 
     if (!stampSrc && !ttdSrc && !nameText && !nipText) {
       wrap.innerHTML = '<div class="word-signature-blank">&nbsp;</div>';
-      wrap.setAttribute('style', 'width:300px;height:96px;min-height:96px;margin:0 auto 0 auto;text-align:center;overflow:visible;position:relative;z-index:999;');
+      wrap.setAttribute('style', 'width:300px;height:126px;min-height:126px;margin:0 auto 0 auto;text-align:center;overflow:visible;position:relative;z-index:9999;');
       continue;
     }
 
@@ -2924,7 +2924,7 @@ async function convertSignatureVisualsForWord(root) {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Revisi v6: Word hanya menggabungkan stempel dan tanda tangan. Nama dan NIP tetap teks. Ruang stempel dibuat sekitar 4 enter dan stempel bring forward.
+      // Revisi v8: area setelah jabatan dibuat ±4 enter. Stempel/TTD berada di middle center, square/front-like, dan bring forward.
       // Nama dan NIP tetap menjadi teks sesuai inputan profil/form.
       const [stampImg, ttdImg] = await Promise.all([
         loadCanvasImage(stampSrc).catch(() => null),
@@ -2932,15 +2932,15 @@ async function convertSignatureVisualsForWord(root) {
       ]);
 
       if (ttdImg) {
-        // Crop margin transparan TTD, lalu geser ke kiri agar tidak berjauhan dari stempel.
-        drawImageContainToCanvasCropped(ctx, ttdImg, 20, 10, 560, 184);
+        // TTD diletakkan di tengah-kanan area tanda tangan.
+        drawImageContainToCanvasCropped(ctx, ttdImg, 150, 10, 430, 184);
       }
 
       if (stampImg) {
         ctx.save();
         ctx.globalAlpha = 0.88;
-        // Revisi v7: stempel digambar terakhir agar bring forward.
-        drawImageContainToCanvasCropped(ctx, stampImg, 12, 0, 276, 260);
+        // Revisi v8: stempel berada di middle center dan digambar terakhir agar bring forward.
+        drawImageContainToCanvasCropped(ctx, stampImg, 150, 0, 300, 260);
         ctx.restore();
       }
 
@@ -2950,11 +2950,11 @@ async function convertSignatureVisualsForWord(root) {
       img.src = canvas.toDataURL('image/png');
       img.setAttribute('width', '300');
       img.setAttribute('height', '132');
-      img.setAttribute('style', 'display:block;width:300px;height:132px;max-width:300px;max-height:132px;margin:-6px auto 0 auto;border:0;background:transparent;position:relative;z-index:999;');
+      img.setAttribute('style', 'display:block;width:300px;height:132px;max-width:300px;max-height:132px;margin:-2px auto -18px auto;border:0;background:transparent;position:relative;z-index:9999;mso-wrap-style:square;mso-position-horizontal:center;mso-position-horizontal-relative:text;');
 
       wrap.innerHTML = '';
       wrap.appendChild(img);
-      wrap.setAttribute('style', 'width:300px;height:96px;min-height:96px;margin:0 auto 0 auto;text-align:center;overflow:visible;position:relative;z-index:999;');
+      wrap.setAttribute('style', 'width:300px;height:126px;min-height:126px;margin:0 auto 0 auto;text-align:center;overflow:visible;position:relative;z-index:9999;');
 
       // Nama dan NIP dibiarkan sebagai teks Word, bukan gambar.
     } catch (error) {
@@ -3069,7 +3069,7 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
-    node.setAttribute('style', 'width:300px;height:96px;min-height:96px;margin:0 auto 0 auto;position:relative;overflow:visible;z-index:999;');
+    node.setAttribute('style', 'width:300px;height:126px;min-height:126px;margin:0 auto 0 auto;position:relative;overflow:visible;z-index:9999;');
   });
 
   clone.querySelectorAll('.signature-stamp-img').forEach((img) => {
