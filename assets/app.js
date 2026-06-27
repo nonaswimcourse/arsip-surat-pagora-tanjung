@@ -2654,7 +2654,7 @@ function wordDocumentStyles() {
     .word-signature-cell p { margin: 2px 0; line-height: 1.15; text-align: center; }
     .signature-block { width: 300px; text-align: center; page-break-inside: avoid; overflow: visible; position: relative; }
     .signature-block p { margin: 2px 0; line-height: 1.15; position: relative; z-index: 5; text-align: center; }
-    .signature-visual-wrap { width: 300px; height: 132px; min-height: 132px; margin: 0 auto -58px auto; position: relative; overflow: visible; text-align: center; }
+    .signature-visual-wrap { width: 300px; height: 132px; min-height: 132px; margin: 0 auto -62px auto; position: relative; overflow: visible; text-align: center; }
     .word-signature-composite { width: 300px; height: 132px; max-width: 300px; max-height: 132px; display: block; margin: -2px auto 0 auto; border: 0; position: relative; z-index: 5; }
     .word-signature-blank { height: 132px; line-height: 132px; font-size: 1pt; }
     .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
@@ -2881,17 +2881,17 @@ function drawWordSignatureIdentity(ctx, nameText, nipText, canvasWidth) {
 
   // Nama dan NIP digambar lebih naik dan tetap berada di lapisan belakang.
   // Setelah itu stempel dan tanda tangan digambar di atasnya.
-  drawCenteredCanvasText(ctx, nameText, centerX, 152, {
-    startSize: 25,
-    minSize: 17,
+  drawCenteredCanvasText(ctx, nameText, centerX, 166, {
+    startSize: 24,
+    minSize: 16,
     maxWidth: 540,
     weight: 'bold',
     underline: true
   });
 
-  drawCenteredCanvasText(ctx, nipText, centerX, 180, {
-    startSize: 22,
-    minSize: 15,
+  drawCenteredCanvasText(ctx, nipText, centerX, 192, {
+    startSize: 21,
+    minSize: 14,
     maxWidth: 540,
     weight: 'normal',
     underline: false
@@ -2913,7 +2913,7 @@ async function convertSignatureVisualsForWord(root) {
 
     if (!stampSrc && !ttdSrc && !nameText && !nipText) {
       wrap.innerHTML = '<div class="word-signature-blank">&nbsp;</div>';
-      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -58px auto;text-align:center;overflow:visible;');
+      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -62px auto;text-align:center;overflow:visible;');
       continue;
     }
 
@@ -2957,7 +2957,7 @@ async function convertSignatureVisualsForWord(root) {
 
       wrap.innerHTML = '';
       wrap.appendChild(img);
-      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -58px auto;text-align:center;overflow:visible;');
+      wrap.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -62px auto;text-align:center;overflow:visible;');
 
       // Cegah nama dan NIP tampil dobel di Word karena sudah masuk ke gambar komposit.
       if (block && (nameText || nipText)) {
@@ -3084,7 +3084,7 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
-    node.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -58px auto;position:relative;overflow:visible;');
+    node.setAttribute('style', 'width:300px;height:132px;min-height:132px;margin:0 auto -62px auto;position:relative;overflow:visible;');
   });
 
   clone.querySelectorAll('.signature-stamp-img').forEach((img) => {
