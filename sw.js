@@ -1,9 +1,9 @@
-const CACHE_NAME = 'pagora-tanjung-word-signature-close-v1';
+const CACHE_NAME = 'pagora-tanjung-signature-overlap-clear-v1';
 const APP_SHELL = [
   './',
   './index.html',
-  './assets/style.css?v=20260626-word-signature-close-1',
-  './assets/app.js?v=20260626-word-signature-close-1',
+  './assets/style.css?v=20260627-signature-overlap-clear-1',
+  './assets/app.js?v=20260627-signature-overlap-clear-1',
   './assets/stempel-kkg-pjok.png',
   './logo.png',
   './assets/logo.png',
