@@ -2151,6 +2151,7 @@ function signature(profile, row = {}, options = {}) {
       <p class="signature-empty-line">&nbsp;</p>
       <p class="signature-empty-line">&nbsp;</p>
       <p class="signature-empty-line">&nbsp;</p>
+      <p class="signature-empty-line">&nbsp;</p>
 
       <p class="signature-name"><strong>${safe(profile.kepala_nama)}</strong></p>
       <p class="signature-nip">NIP. ${safe(profile.kepala_nip)}</p>
@@ -2660,13 +2661,13 @@ function wordDocumentStyles() {
     .signature-block { width: 300px; text-align: center; page-break-inside: avoid; overflow: visible; margin: 0 auto; padding: 0; position: relative; }
     .signature-block p { margin: 0 0 2px 0; line-height: 1.15; text-align: center; }
     .signature-empty-line { height: 13pt; line-height: 13pt; font-size: 1pt; margin: 0; padding: 0; }
-    .signature-visual-wrap { position: absolute; width: 0; height: 0; overflow: visible; z-index: 9999; }
-    .word-signature-composite { position: absolute; width: 300px; height: 132px; max-width: 300px; max-height: 132px; display: block; margin-left: 0; margin-top: 8pt; border: 0; background: transparent; z-index: 251659264; mso-wrap-style: none; mso-position-horizontal: center; mso-position-horizontal-relative: text; mso-position-vertical: absolute; mso-position-vertical-relative: paragraph; }
+    .signature-visual-wrap { position: absolute; width: 0; height: 0; overflow: visible; z-index: 251659264; }
+    .word-signature-composite { position: absolute; display: block; width: 192pt; height: 84.45pt; max-width: 192pt; max-height: 84.45pt; margin-left: -62pt; margin-top: 54pt; border: 0; background: transparent; z-index: 251659264; mso-wrap-style: none; mso-position-horizontal: absolute; mso-position-horizontal-relative: text; mso-position-vertical: absolute; mso-position-vertical-relative: paragraph; }
     .word-signature-blank { height: 126px; line-height: 126px; font-size: 1pt; }
     .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
     .signature-image-wrap { position: relative; z-index: 1000; width: 0; height: 0; overflow: visible; }
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
-    .signature-name { font-weight: bold; text-decoration: underline; margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
+    .signature-name { font-weight: bold; text-decoration: none; margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
     .signature-nip { margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
     .tembusan-block { clear: both; margin-top: 18px; text-align: left; font-size: 11pt; line-height: 1.2; page-break-inside: avoid; }
     .tembusan-title { margin: 0; padding: 0; line-height: 1.2; }
@@ -2928,7 +2929,7 @@ async function convertSignatureVisualsForWord(root) {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Revisi v10: mengikuti hasil Word edit user. Gambar floating pada paragraf jabatan, 4 enter, nama/NIP tetap teks.
+      // Revisi v11: posisi mengikuti edit(2).docx. Gambar floating front, 4 enter, nama/NIP teks, nama tanpa underline.
       // Nama dan NIP tetap menjadi teks sesuai inputan profil/form.
       const [stampImg, ttdImg] = await Promise.all([
         loadCanvasImage(stampSrc).catch(() => null),
@@ -2952,9 +2953,9 @@ async function convertSignatureVisualsForWord(root) {
       img.className = 'word-signature-composite';
       img.alt = 'Stempel dan tanda tangan';
       img.src = canvas.toDataURL('image/png');
-      img.setAttribute('width', '300');
-      img.setAttribute('height', '132');
-      img.setAttribute('style', 'position:absolute;display:block;width:300px;height:132px;max-width:300px;max-height:132px;margin-left:0;margin-top:8pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:center;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;');
+      img.setAttribute('width', '256');
+      img.setAttribute('height', '113');
+      img.setAttribute('style', 'position:absolute;display:block;width:192pt;height:84.45pt;max-width:192pt;max-height:84.45pt;margin-left:-62pt;margin-top:54pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;');
 
       wrap.innerHTML = '';
       wrap.appendChild(img);
@@ -3004,11 +3005,11 @@ function convertSignatureBlocksForWord(clone) {
 
     // Fallback jika gambar komposit gagal dibuat: nama dan NIP tetap dinaikkan.
     block.querySelectorAll('.signature-name').forEach((node) => {
-node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:1;text-align:center;');
+      node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;text-align:center;position:relative;z-index:1;');
     });
 
     block.querySelectorAll('.signature-nip').forEach((node) => {
-node.setAttribute('style', 'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:1;text-align:center;');
+      node.setAttribute('style', 'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;text-align:center;position:relative;z-index:1;');
     });
 
     right.appendChild(block.cloneNode(true));
@@ -3078,7 +3079,7 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
-    node.setAttribute('style', 'position:absolute;width:0;height:0;overflow:visible;z-index:9999;');
+    node.setAttribute('style', 'position:absolute;width:0;height:0;overflow:visible;z-index:251659264;');
   });
 
   clone.querySelectorAll('.signature-jabatan').forEach((node) => {
@@ -3088,6 +3089,13 @@ async function prepareWordHtml(root) {
   clone.querySelectorAll('.signature-empty-line').forEach((node) => {
     node.innerHTML = '&nbsp;';
     node.setAttribute('style', 'margin:0;padding:0;height:13pt;line-height:13pt;font-size:1pt;mso-line-height-rule:exactly;text-align:center;');
+  });
+
+  clone.querySelectorAll('.word-signature-composite').forEach((img) => {
+    img.removeAttribute('style');
+    img.setAttribute('width', '256');
+    img.setAttribute('height', '113');
+    img.setAttribute('style', 'position:absolute;display:block;width:192pt;height:84.45pt;max-width:192pt;max-height:84.45pt;margin-left:-62pt;margin-top:54pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;');
   });
 
   clone.querySelectorAll('.signature-stamp-img').forEach((img) => {
@@ -3109,7 +3117,7 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-name').forEach((node) => {
-    node.setAttribute('style', 'font-weight:bold;text-decoration:underline;margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:1;text-align:center;');
+    node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:1;text-align:center;');
   });
 
   clone.querySelectorAll('.signature-nip').forEach((node) => {
