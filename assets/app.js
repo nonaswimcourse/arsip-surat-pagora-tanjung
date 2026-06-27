@@ -8,7 +8,7 @@ const LOCAL_SESSION_KEY = 'sipas_kantor_session';
 const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
-const APP_PATCH_NOTE = 'professional-opening-spacing-20260627m';
+const APP_PATCH_NOTE = 'signature-left-transparent-20260627n';
 
 // Optimasi PDF: mode cepat agar download tidak terasa seperti reload lama.
 const PDF_RENDER_SCALE = 2.25;
@@ -571,7 +571,7 @@ function installExportLayoutFixCss() {
       width: 220px !important;
       height: 76px !important;
       min-height: 76px !important;
-      left: 28px !important;
+      left: -18px !important;
       top: 10px !important;
       z-index: 45 !important;
     }
@@ -597,6 +597,22 @@ function installExportLayoutFixCss() {
     .pdf-live-capture .signature-block,
     .pdf-export-page .signature-block {
       margin: 62pt 0 0 auto !important;
+    }
+    /* FIX 20260627N - PDF/Review: TTD digeser ke kiri dan gambar TTD dipaksa tanpa kotak latar. */
+    .pdf-page .signature-image-wrap,
+    .pdf-live-capture .signature-image-wrap,
+    .pdf-export-page .signature-image-wrap {
+      left: -18px !important;
+      background: transparent !important;
+    }
+    .pdf-page .signature-image-wrap img,
+    .pdf-page .ttd-img,
+    .pdf-live-capture .signature-image-wrap img,
+    .pdf-live-capture .ttd-img,
+    .pdf-export-page .signature-image-wrap img,
+    .pdf-export-page .ttd-img {
+      background: transparent !important;
+      mix-blend-mode: normal !important;
     }
   `;
   document.head.appendChild(style);
@@ -1551,6 +1567,102 @@ function fileToDataUrl(file) {
   });
 }
 
+
+function loadImageFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Gambar tanda tangan gagal dibaca.'));
+    img.src = dataUrl;
+  });
+}
+
+function dataUrlToBlob(dataUrl) {
+  const parts = String(dataUrl || '').split(',');
+  const meta = parts[0] || '';
+  const body = parts[1] || '';
+  const mimeMatch = meta.match(/data:([^;]+);base64/i);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const binary = atob(body);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+async function makeSignatureDataUrlTransparent(dataUrl) {
+  const src = String(dataUrl || '');
+  if (!src.startsWith('data:image/')) return src;
+
+  try {
+    const image = await loadImageFromDataUrl(src);
+    const width = Math.max(1, image.naturalWidth || image.width || 1);
+    const height = Math.max(1, image.naturalHeight || image.height || 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return src;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(image, 0, 0, width, height);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const pixels = imageData.data;
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+      const a = pixels[i + 3];
+      if (a === 0) continue;
+
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const brightness = (r + g + b) / 3;
+      const lowSaturation = (max - min) <= 30;
+
+      // Hilangkan latar putih/abu muda kertas hasil scan/foto.
+      if ((r >= 245 && g >= 245 && b >= 245) || (brightness >= 232 && lowSaturation)) {
+        pixels[i + 3] = 0;
+      } else if (brightness >= 218 && (max - min) <= 18) {
+        // Pinggir anti-alias latar dibuat sangat tipis agar tidak membentuk kotak putih di PDF.
+        pixels[i + 3] = Math.min(a, 28);
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.warn('Otomatis transparansi TTD gagal, memakai gambar asli:', error);
+    return src;
+  }
+}
+
+async function makeSignatureFileTransparent(file) {
+  if (!file) return file;
+  try {
+    const transparentDataUrl = await makeSignatureDataUrlTransparent(await fileToDataUrl(file));
+    const blob = dataUrlToBlob(transparentDataUrl);
+    const baseName = String(file.name || 'tanda-tangan').replace(/\.[^/.]+$/, '') || 'tanda-tangan';
+    return new File([blob], `${baseName}-transparent.png`, { type: 'image/png', lastModified: Date.now() });
+  } catch (error) {
+    console.warn('File TTD transparan gagal dibuat, memakai file asli:', error);
+    return file;
+  }
+}
+
+async function applyAutoTransparentSignatureImages(container) {
+  const images = Array.from(container?.querySelectorAll?.('.signature-image-wrap img, img.ttd-img') || []);
+  for (const img of images) {
+    const src = img.getAttribute('src') || img.src || '';
+    if (!src.startsWith('data:image/')) continue;
+    const transparentSrc = await makeSignatureDataUrlTransparent(src);
+    if (transparentSrc && transparentSrc !== src) {
+      img.setAttribute('src', transparentSrc);
+      img.src = transparentSrc;
+    }
+  }
+}
+
 async function uploadAttachmentToSupabase(file, folder, ownerId) {
   if (!file) return null;
   if (!supabaseClient) throw new Error('Supabase belum aktif, file belum bisa diunggah.');
@@ -1709,7 +1821,7 @@ async function attachUploadedFiles(form, row) {
   // TTD wajib dibaca menjadi base64 lebih dulu. Ini membuat preview, arsip, edit, dan PDF
   // tetap menampilkan tanda tangan walaupun upload Supabase gagal atau tabel belum punya kolom TTD.
   if (signatureFile) {
-    const localDataUrl = await fileToDataUrl(signatureFile);
+    const localDataUrl = await makeSignatureDataUrlTransparent(await fileToDataUrl(signatureFile));
     nextRow.ttd_data_url = localDataUrl;
     nextRow.ttd_url = localDataUrl;
     nextRow.ttd_path = '';
@@ -1733,11 +1845,12 @@ async function attachUploadedFiles(form, row) {
     }
 
     if (signatureFile) {
-      const uploaded = await uploadAttachmentToSupabase(signatureFile, 'tanda-tangan', nextRow.id);
+      const signatureUploadFile = await makeSignatureFileTransparent(signatureFile);
+      const uploaded = await uploadAttachmentToSupabase(signatureUploadFile, 'tanda-tangan', nextRow.id);
 
       nextRow.ttd_path = uploaded.path || '';
       nextRow.ttd_url = uploaded.url || nextRow.ttd_data_url;
-      nextRow.ttd_name = uploaded.name || signatureFile.name || 'Tanda tangan';
+      nextRow.ttd_name = signatureFile.name || uploaded.name || 'Tanda tangan';
 
       // TTD berhasil diunggah ke Storage, tetapi tetap hanya melekat pada surat ini.
       // Profil/global tidak ikut berubah.
@@ -2118,7 +2231,7 @@ async function previewForm(typeKey, formId = 'documentForm') {
   if (signatureFile) {
     if (!validateUploadFile(signatureFile, { imageOnly: true })) return;
     try {
-      const dataUrl = await fileToDataUrl(signatureFile);
+      const dataUrl = await makeSignatureDataUrlTransparent(await fileToDataUrl(signatureFile));
       row = {
         ...row,
         ttd_data_url: dataUrl,
@@ -2542,7 +2655,7 @@ async function saveProfile(event) {
     };
 
     if (ttdFile) {
-      const uploaded = await uploadProfileSignatureFile(ttdFile);
+      const uploaded = await uploadProfileSignatureFile(await makeSignatureFileTransparent(ttdFile));
 
       if (!uploaded || !uploaded.path || !uploaded.url) {
         showToast(lastProfileSignatureUploadError || 'Tanda tangan gagal diupload ke Supabase Storage.', 'error');
@@ -2553,7 +2666,7 @@ async function saveProfile(event) {
         ttd_data_url: '',
         ttd_url: uploaded.url,
         ttd_path: uploaded.path,
-        ttd_name: uploaded.name || ttdFile.name || 'Tanda tangan'
+        ttd_name: ttdFile.name || uploaded.name || 'Tanda tangan'
       };
     }
 
@@ -3939,6 +4052,8 @@ async function canvasFromA4Element(sourceElement, useLiveClone = false) {
 
   try {
     await inlineImagesForPdf(captureTarget);
+    await applyAutoTransparentSignatureImages(captureTarget);
+    await waitForImages(captureTarget, PDF_IMAGE_TIMEOUT_MS);
     normalizeSignatureImages(captureTarget);
     await nextFrame();
     await wait(PDF_RENDER_DELAY_MS);
@@ -4258,6 +4373,8 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
     captureTarget.style.boxSizing = 'border-box';
 
     await inlineImagesForPdf(captureTarget);
+    await applyAutoTransparentSignatureImages(captureTarget);
+    await waitForImages(captureTarget, PDF_IMAGE_TIMEOUT_MS);
     normalizeSignatureImages(captureTarget);
     await nextFrame();
     await wait(PDF_RENDER_DELAY_MS);

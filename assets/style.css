@@ -3918,3 +3918,21 @@ img {
   z-index: 30 !important;
 }
 
+
+
+/* === FIX 20260627N-PDF-TTD-LEFT-TRANSPARENT === */
+.pdf-page .signature-image-wrap,
+.pdf-live-capture .signature-image-wrap,
+.pdf-export-page .signature-image-wrap {
+  left: -18px !important;
+  background: transparent !important;
+}
+.pdf-page .signature-image-wrap img,
+.pdf-page .ttd-img,
+.pdf-live-capture .signature-image-wrap img,
+.pdf-live-capture .ttd-img,
+.pdf-export-page .signature-image-wrap img,
+.pdf-export-page .ttd-img {
+  background: transparent !important;
+  mix-blend-mode: normal !important;
+}
