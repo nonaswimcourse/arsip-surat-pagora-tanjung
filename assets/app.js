@@ -8,7 +8,7 @@ const LOCAL_SESSION_KEY = 'sipas_kantor_session';
 const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
-const APP_PATCH_NOTE = 'nomor-acara-word-signature-normal-1page-20260627';
+const APP_PATCH_NOTE = 'docx-review-pdf-stamp-stable-20260627';
 
 // Optimasi PDF: mode cepat agar download tidak terasa seperti reload lama.
 const PDF_RENDER_SCALE = 2.25;
@@ -85,46 +85,17 @@ function installExportLayoutFixCss() {
       box-sizing: border-box !important;
     }
     .letter-meta-grid { margin-top: 2px !important; margin-bottom: 2px !important; }
-    .meta-table {
-      margin: 0 0 3px 0 !important;
-      border-collapse: collapse !important;
-      border-spacing: 0 !important;
-      table-layout: fixed !important;
-      width: 12.05cm !important;
-      mso-table-lspace: 0pt !important;
-      mso-table-rspace: 0pt !important;
-    }
-    .meta-table col.meta-label-col { width: 2.75cm !important; }
-    .meta-table col.meta-colon-col { width: .35cm !important; }
-    .meta-table col.meta-value-col { width: 8.95cm !important; }
-    .meta-table td { padding: 0 !important; line-height: 1.12 !important; vertical-align: top !important; }
-    .meta-table td.meta-label, .meta-table td:first-child { width: 2.75cm !important; white-space: nowrap !important; text-align: left !important; }
-    .meta-table td.meta-colon, .meta-table td:nth-child(2) { width: .35cm !important; text-align: center !important; }
-    .meta-table td.meta-value, .meta-table td:nth-child(3) { width: 8.95cm !important; text-align: left !important; }
-    .meta-row-nomor .meta-value,
-    .meta-row-nomor-surat .meta-value {
-      white-space: nowrap !important;
-      word-break: keep-all !important;
-      overflow-wrap: normal !important;
-      letter-spacing: 0 !important;
-    }
-    .meta-row-acara .meta-value {
-      white-space: normal !important;
-      word-break: normal !important;
-      overflow-wrap: break-word !important;
-      hyphens: none !important;
-      line-height: 1.16 !important;
-    }
+    .meta-table { margin: 0 0 2px 0 !important; }
+    .meta-table td { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.06 !important; }
     .recipient { margin-top: 3px !important; margin-bottom: 3px !important; }
     .body-text { margin-top: 3px !important; }
     .body-text p, .body-box p, .disposition-box p { margin-bottom: 3px !important; line-height: 1.20 !important; }
-    .body-text p:last-child { margin-bottom: 9px !important; }
     .doc-one-enter-gap { height: 7pt !important; line-height: 7pt !important; }
     .signature-block,
     .pdf-live-capture .signature-block,
     .pdf-export-page .signature-block {
       width: 300px !important;
-      margin: 12px 0 0 auto !important;
+      margin: 6px 0 0 auto !important;
       padding: 0 !important;
       text-align: center !important;
       position: relative !important;
@@ -2373,29 +2344,11 @@ function signature(profile, row = {}, options = {}) {
     ` : ''}
   `;
 }
-function metaKeyClass(label) {
-  return String(label || '')
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'item';
-}
-
 function metaTable(rows) {
-  const visibleRows = rows.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '');
   return `
-    <table class="meta-table" cellspacing="0" cellpadding="0" border="0">
-      <colgroup>
-        <col class="meta-label-col">
-        <col class="meta-colon-col">
-        <col class="meta-value-col">
-      </colgroup>
-      ${visibleRows.map(([label, value]) => {
-        const key = metaKeyClass(label);
-        return `
-        <tr class="meta-row meta-row-${key}"><td class="meta-label meta-label-${key}">${safe(label)}</td><td class="meta-colon">:</td><td class="meta-value meta-value-${key}">${safe(value || '-')}</td></tr>`;
-      }).join('')}
+    <table class="meta-table">
+      ${rows.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '').map(([label, value]) => `
+        <tr><td>${safe(label)}</td><td>:</td><td>${safe(value || '-')}</td></tr>`).join('')}
     </table>`;
 }
 
@@ -2834,73 +2787,70 @@ function normalizeSignatureImages(container) {
 
 function wordDocumentStyles() {
   return `
-    @page WordSection1 { size: 21cm 29.7cm; margin: 0.88cm 1.55cm 0.30cm 1.55cm; }
+    @page WordSection1 { size: 21cm 29.7cm; margin: 1.4cm 2cm 1cm 2cm; }
     html, body { margin: 0; padding: 0; background: #fff; }
-    body { font-family: "Times New Roman", serif; font-size: 10.8pt; color: #000; }
+    body { font-family: "Times New Roman", serif; font-size: 11pt; color: #000; }
     .WordSection1 { page: WordSection1; width: 100%; margin: 0; padding: 0; }
-    .pdf-page { width: 100%; min-height: auto; box-sizing: border-box; background: #fff; margin: 0; padding: 0; box-shadow: none; overflow: visible; }
-    p { margin: 0; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; mso-line-height-rule: exactly; }
+    .pdf-page { width: 100%; min-height: 26.3cm; box-sizing: border-box; background: #fff; margin: 0; padding: 0; box-shadow: none; overflow: visible; }
+    p { margin: 0; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }
 
     /* Word tidak stabil membaca display:flex, grid, dan absolute pada kop surat.
        Karena itu kop surat Word memakai tabel 3 kolom: logo kiri, teks tengah, ruang kanan. */
-    .word-letterhead-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 2px 0; }
+    .word-letterhead-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 3px 0; }
     .word-letterhead-table td { border: none; vertical-align: middle; padding: 0; }
     .word-logo-cell { width: 2.25cm; text-align: left; }
     .word-spacer-cell { width: 2.25cm; }
     .word-letterhead-logo { width: 1.95cm; height: 2.24cm; max-width: 1.95cm; max-height: 2.24cm; }
     .word-letterhead-title { text-align: center; }
-    .word-letterhead-title h1 { font-family: "Times New Roman", serif; font-size: 11.8pt; line-height: 1.16; margin: 0 0 1px 0; font-weight: bold; text-transform: uppercase; text-align: center; }
-    .word-letterhead-title p { font-family: "Times New Roman", serif; font-size: 8pt; line-height: 1.05; margin: 0; font-style: italic; text-align: center; white-space: nowrap; }
-    .word-letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 3px 0 5px 0; }
+    .word-letterhead-title h1 { font-family: "Times New Roman", serif; font-size: 12.5pt; line-height: 1.35; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase; text-align: center; }
+    .word-letterhead-title p { font-family: "Times New Roman", serif; font-size: 8.5pt; line-height: 1.25; margin: 1px 0; font-style: italic; text-align: center; white-space: nowrap; }
+    .word-letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 8px 0 12px 0; }
 
     .letterhead { width: 100%; }
     .letterhead img { width: 85px; height: 85px; max-width: 85px; max-height: 85px; }
-    .letterhead h1 { font-size: 12pt; margin: 0 0 2px; font-weight: bold; text-transform: uppercase; line-height: 1.22; text-align: center; }
-    .letterhead p { font-size: 8.2pt; margin: 0; font-style: italic; text-align: center; line-height:1.12; }
-    .letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 3px 0 5px; }
+    .letterhead h1 { font-size: 12.5pt; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; line-height: 1.35; text-align: center; }
+    .letterhead p { font-size: 8.5pt; margin: 1px 0; font-style: italic; text-align: center; }
+    .letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 8px 0 12px; }
 
     .template-title, .center-text, .small-title { text-align: center; }
-    .template-title { font-size: 12.5pt; font-weight: bold; text-decoration: underline; margin: 6px 0 2px; }
-    .small-title { font-size: 11pt; margin: 1px 0; }
-    .letter-meta-grid { width: 100%; margin: 4px 0 4px; }
+    .template-title { font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 10px 0 3px; }
+    .small-title { font-size: 11pt; margin: 3px 0; }
+    .letter-meta-grid { width: 100%; margin: 8px 0 10px; }
     .letter-meta-grid > div { width: 100%; }
-    table.meta-table { border-collapse: collapse; width: 10cm; margin: 0 0 2px 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed; }
-    table.meta-table td { font-size: 10.8pt; vertical-align: top; padding: 0; line-height: 1.06; mso-padding-alt: 0cm 0cm 0cm 0cm; }
-    table.meta-table td:first-child { width: 2.65cm; white-space: nowrap; text-align:left; }
-    table.meta-table td:nth-child(2) { width: .25cm; text-align: center; }
-    table.meta-table td:nth-child(3) { width: 7.10cm; text-align:left; }
-    table.meta-table tr.meta-row-nomor td.meta-value,
-    table.meta-table tr.meta-row-nomor-surat td.meta-value { white-space: nowrap; word-break: keep-all; overflow-wrap: normal; }
-    table.meta-table tr.meta-row-acara td.meta-value { white-space: normal; word-break: normal; overflow-wrap: break-word; hyphens: none; }
-    .recipient { margin: 3px 0 3px; }
-    .recipient p { margin: 0; line-height: 1.12; }
-    .body-text { text-align: justify; margin-top: 3px; }
-    .doc-one-enter-gap { height: 3pt; line-height: 3pt; font-size: 1pt; margin: 0; padding: 0; mso-line-height-rule: exactly; }
-    .body-text p, .body-box p, .disposition-box p { margin: 0; text-align: justify; line-height: 1.15; mso-margin-bottom-alt:0; }
-    .body-box, .disposition-box { border: 1px solid #000; padding: 5px 8px; margin: 5px 0; }
-    .body-box h3, .disposition-box h3 { margin: 0 0 2px; font-size: 11pt; }
+    table.meta-table { border-collapse: collapse; width: 10cm; margin: 0 0 8px 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed; }
+    table.meta-table td { font-size: 11pt; vertical-align: top; padding: 0; line-height: 1.18; mso-padding-alt: 0cm 0cm 0cm 0cm; }
+    table.meta-table td:first-child { width: 1.70cm; white-space: nowrap; }
+    table.meta-table td:nth-child(2) { width: .35cm; text-align: center; }
+    table.meta-table td:nth-child(3) { width: 7.95cm; }
+    .recipient { margin: 8px 0 8px; }
+    .recipient p { margin: 0 0 3px 0; line-height: 1.2; }
+    .body-text { text-align: justify; margin-top: 8px; }
+    .doc-one-enter-gap { height: 13.2pt; line-height: 13.2pt; font-size: 1pt; margin: 0; padding: 0; mso-line-height-rule: exactly; }
+    .body-text p, .body-box p, .disposition-box p { margin: 0 0 6px; text-align: justify; line-height: 1.35; }
+    .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
+    .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 11pt; }
 
-    .word-signature-row { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; page-break-inside: avoid; }
+    .word-signature-row { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     .word-signature-row td { border: none; padding: 0; vertical-align: top; }
     .word-signature-left { width: 55%; }
-    .word-signature-cell { width: 45%; text-align: center; font-family: "Times New Roman", serif; font-size: 10.8pt; line-height: 1.00; padding-top: 0; }
-    .word-signature-cell p { margin: 0; line-height: 1.00; text-align: center; }
-    .signature-block { width: 286px; text-align: center; page-break-inside: avoid; overflow: visible; margin: 0 auto; padding: 0; position: relative; }
-    .signature-block p { margin: 0; line-height: 1.00; text-align: center; }
-    .signature-empty-line { height: 6pt; line-height: 6pt; font-size: 1pt; margin: 0; padding: 0; }
-    .signature-visual-wrap { display:block; width:286px; height:72px; min-height:72px; margin:0 auto -24pt auto; overflow:visible; text-align:center; position:relative; z-index:4; }
-    .word-signature-front-wrap { display:block; width:286px; height:72px; margin:0 auto -24pt auto; overflow:visible; text-align:center; }
-    .word-signature-composite { display:block; width:200pt; height:70pt; max-width:200pt; max-height:70pt; margin:0 auto; border:0; background:transparent; }
-    .word-signature-blank { height: 82px; line-height: 82px; font-size: 1pt; }
-    .signature-stamp-img { position:absolute; left:2px; top:-6px; width:154px; height:146px; max-width:154px; max-height:146px; object-fit:contain; opacity:.90; z-index:1; }
-    .signature-image-wrap { display:block; position:relative; z-index:4; width:286px; height:72px; min-height:72px; margin:0 auto -24pt auto; overflow:visible; text-align:center; }
-    .signature-image-wrap img, .ttd-img { width:auto; max-width:260px; height:auto; max-height:88px; display:block; margin:0 auto; object-fit:contain; transform:none; }
-    .signature-name { font-weight: bold; text-decoration: none; margin-top: -16pt; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
-    .signature-nip { margin-top: -2pt; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
-    .tembusan-block { clear: both; margin-top: 0; text-align: left; font-size: 9.6pt; line-height: 0.98; page-break-inside: avoid; }
-    .tembusan-title { margin: 0; padding: 0; line-height: 1.00; }
-    .tembusan-list { margin: 0; padding: 0; line-height: 1.00; }
-    .tembusan-item { margin: 0; padding: 0; line-height: 1.00; }
+    .word-signature-cell { width: 45%; text-align: center; font-family: "Times New Roman", serif; font-size: 11pt; line-height: 1.15; padding-top: 0; }
+    .word-signature-cell p { margin: 2px 0; line-height: 1.15; text-align: center; }
+    .signature-block { width: 300px; text-align: center; page-break-inside: avoid; overflow: visible; margin: 0 auto; padding: 0; position: relative; }
+    .signature-block p { margin: 0 0 2px 0; line-height: 1.15; text-align: center; }
+    .signature-empty-line { height: 13pt; line-height: 13pt; font-size: 1pt; margin: 0; padding: 0; }
+    .signature-visual-wrap { position: absolute; width: 0; height: 0; overflow: visible; z-index: 251659264; }
+    .word-signature-front-wrap { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; z-index: 251659264; mso-wrap-style: none; }
+    .word-signature-composite { position: absolute; display: block; width: 192pt; height: 84.45pt; max-width: 192pt; max-height: 84.45pt; margin-left: -62pt; margin-top: 54pt; border: 0; background: transparent; z-index: 251659264; mso-wrap-style: none; mso-position-horizontal: absolute; mso-position-horizontal-relative: text; mso-position-vertical: absolute; mso-position-vertical-relative: paragraph; }
+    .word-signature-blank { height: 126px; line-height: 126px; font-size: 1pt; }
+    .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
+    .signature-image-wrap { position: relative; z-index: 1000; width: 0; height: 0; overflow: visible; }
+    .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
+    .signature-name { font-weight: bold; text-decoration: none; margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
+    .signature-nip { margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
+    .tembusan-block { clear: both; margin-top: 18px; text-align: left; font-size: 11pt; line-height: 1.2; page-break-inside: avoid; }
+    .tembusan-title { margin: 0; padding: 0; line-height: 1.2; }
+    .tembusan-list { margin: 0; padding: 0; line-height: 1.2; }
+    .tembusan-item { margin: 0; padding: 0; line-height: 1.2; }
   `;
 }
 
@@ -2926,7 +2876,7 @@ function convertLetterheadForWord(clone) {
     table.setAttribute('cellspacing', '0');
     table.setAttribute('cellpadding', '0');
     table.setAttribute('border', '0');
-    table.setAttribute('style', 'width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 2px 0;');
+    table.setAttribute('style', 'width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 3px 0;');
 
     const tbody = document.createElement('tbody');
     const tr = document.createElement('tr');
@@ -2949,10 +2899,10 @@ function convertLetterheadForWord(clone) {
     if (textBlock) {
       textBlock.setAttribute('style', 'width:100%;text-align:center;margin:0;padding:0;');
       textBlock.querySelectorAll('h1').forEach((h1) => {
-        h1.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:11.8pt;line-height:1.16;margin:0 0 1px 0;font-weight:bold;text-transform:uppercase;text-align:center;');
+        h1.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:12.5pt;line-height:1.35;margin:0 0 4px 0;font-weight:bold;text-transform:uppercase;text-align:center;');
       });
       textBlock.querySelectorAll('p').forEach((p) => {
-        p.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:8pt;line-height:1.05;margin:0;font-style:italic;text-align:center;white-space:nowrap;');
+        p.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:8.5pt;line-height:1.25;margin:1px 0;font-style:italic;text-align:center;white-space:nowrap;');
       });
       titleCell.appendChild(textBlock);
     }
@@ -2973,7 +2923,7 @@ function convertLetterheadForWord(clone) {
   clone.querySelectorAll('.letter-line').forEach((line) => {
     const hr = document.createElement('hr');
     hr.className = 'word-letter-line';
-    hr.setAttribute('style', 'border:none;border-top:3px solid #000;height:0;margin:5px 0 7px 0;');
+    hr.setAttribute('style', 'border:none;border-top:3px solid #000;height:0;margin:8px 0 12px 0;');
     line.replaceWith(hr);
   });
 
@@ -3205,56 +3155,6 @@ async function convertSignatureVisualsForWord(root) {
   }
 }
 
-
-async function convertSignatureVisualsInlineForWord(root) {
-  if (!root) return;
-
-  const visualWraps = Array.from(root.querySelectorAll('.signature-visual-wrap'));
-  for (const wrap of visualWraps) {
-    const stamp = wrap.querySelector('.signature-stamp-img');
-    const ttd = wrap.querySelector('.ttd-img, .signature-image-wrap img');
-    const stampSrc = stamp?.getAttribute('src') || '';
-    const ttdSrc = ttd?.getAttribute('src') || '';
-
-    wrap.setAttribute('style', 'display:block;width:286px;height:72px;min-height:72px;margin:0 auto -24pt auto;overflow:visible;text-align:center;position:relative;z-index:4;');
-
-    if (!stampSrc && !ttdSrc) {
-      wrap.innerHTML = '<span style="display:block;width:286px;height:54px;line-height:54px;font-size:1pt;mso-line-height-rule:exactly;">&nbsp;</span>';
-      continue;
-    }
-
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = 600;
-      canvas.height = 210;
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const [stampImg, ttdImg] = await Promise.all([
-        loadCanvasImage(stampSrc).catch(() => null),
-        loadCanvasImage(ttdSrc).catch(() => null)
-      ]);
-
-      if (ttdImg) {
-        drawImageContainToCanvasCropped(ctx, ttdImg, 150, 12, 390, 132);
-      }
-
-      if (stampImg) {
-        ctx.save();
-        ctx.globalAlpha = 0.90;
-        // Stempel dibuat lebih normal: berada di kiri-tengah dan menimpa area tanda tangan tanpa terpotong.
-        drawImageContainToCanvasCropped(ctx, stampImg, 22, 0, 230, 196);
-        ctx.restore();
-      }
-
-      const compositeSrc = canvas.toDataURL('image/png');
-      wrap.innerHTML = `<img class="word-signature-composite" alt="Stempel dan tanda tangan" src="${compositeSrc}" width="267" height="93" style="display:block;width:200pt;height:70pt;max-width:200pt;max-height:70pt;margin:0 auto;border:0;background:transparent;">`;
-    } catch (error) {
-      console.warn('Gagal menyiapkan stempel/TTD khusus Word:', error);
-    }
-  }
-}
-
 function convertSignatureBlocksForWord(clone) {
   clone.querySelectorAll('.signature-block').forEach((block) => {
     const table = document.createElement('table');
@@ -3263,7 +3163,7 @@ function convertSignatureBlocksForWord(clone) {
     table.setAttribute('cellspacing', '0');
     table.setAttribute('cellpadding', '0');
     table.setAttribute('border', '0');
-    table.setAttribute('style', 'width:100%;border-collapse:collapse;table-layout:fixed;margin:0;mso-table-lspace:0pt;mso-table-rspace:0pt;page-break-inside:avoid;');
+    table.setAttribute('style', 'width:100%;border-collapse:collapse;table-layout:fixed;margin:0;mso-table-lspace:0pt;mso-table-rspace:0pt;');
 
     const tbody = document.createElement('tbody');
     const tr = document.createElement('tr');
@@ -3277,26 +3177,26 @@ function convertSignatureBlocksForWord(clone) {
     const right = document.createElement('td');
     right.className = 'word-signature-cell';
     right.setAttribute('width', '45%');
-    right.setAttribute('style', 'width:45%;border:none;padding:0;vertical-align:top;text-align:center;font-family:"Times New Roman",serif;font-size:10.6pt;line-height:0.98;');
+    right.setAttribute('style', 'width:45%;border:none;padding:0;vertical-align:top;text-align:center;font-family:"Times New Roman",serif;font-size:11pt;line-height:1.15;');
 
     block.removeAttribute('style');
-    block.setAttribute('style', 'width:286px;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;margin:-2pt 0 0 0;padding:0;');
+    block.setAttribute('style', 'width:300px;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;margin:0;padding:0;');
     block.querySelectorAll('p').forEach((p) => {
       if (p.classList.contains('signature-empty-line')) {
         p.innerHTML = '&nbsp;';
-        p.setAttribute('style', 'margin:0;padding:0;height:1pt;line-height:1pt;font-size:1pt;mso-line-height-rule:exactly;text-align:center;');
+        p.setAttribute('style', 'margin:0;padding:0;height:13pt;line-height:13pt;font-size:1pt;mso-line-height-rule:exactly;text-align:center;');
         return;
       }
-      p.setAttribute('style', 'margin:0;line-height:0.98;text-align:center;');
+      p.setAttribute('style', 'margin:0 0 2px 0;line-height:1.15;text-align:center;');
     });
 
     // Fallback jika gambar komposit gagal dibuat: nama dan NIP tetap dinaikkan.
     block.querySelectorAll('.signature-name').forEach((node) => {
-      node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin-top:-16pt;margin-bottom:0;white-space:nowrap;line-height:0.98;text-align:center;position:relative;z-index:1;');
+      node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;text-align:center;position:relative;z-index:1;');
     });
 
     block.querySelectorAll('.signature-nip').forEach((node) => {
-      node.setAttribute('style', 'margin-top:-2pt;margin-bottom:0;white-space:nowrap;line-height:0.98;text-align:center;position:relative;z-index:1;');
+      node.setAttribute('style', 'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;text-align:center;position:relative;z-index:1;');
     });
 
     right.appendChild(block.cloneNode(true));
@@ -3309,43 +3209,43 @@ function convertSignatureBlocksForWord(clone) {
     const spacer = document.createElement('p');
     spacer.className = 'word-signature-spacer';
     spacer.innerHTML = '&nbsp;';
-    spacer.setAttribute('style', 'margin:0;padding:0;height:0;line-height:0;font-size:1pt;mso-line-height-rule:exactly;');
+    spacer.setAttribute('style', 'margin:0;padding:0;height:24pt;line-height:24pt;font-size:1pt;mso-line-height-rule:exactly;');
     block.replaceWith(spacer, table);
   });
 }
 
 function normalizeWordParagraphs(clone) {
   clone.querySelectorAll('.recipient p').forEach((node) => {
-    node.setAttribute('style', 'margin:0;line-height:1.12;');
+    node.setAttribute('style', 'margin:0 0 3px 0;line-height:1.2;');
   });
 
   clone.querySelectorAll('.body-text').forEach((node) => {
-    node.setAttribute('style', 'text-align:justify;margin-top:3px;');
+    node.setAttribute('style', 'text-align:justify;margin-top:8px;');
   });
 
   clone.querySelectorAll('.doc-one-enter-gap').forEach((node) => {
     node.innerHTML = '&nbsp;';
-    node.setAttribute('style', 'height:3pt;line-height:3pt;font-size:1pt;margin:0;padding:0;mso-line-height-rule:exactly;');
+    node.setAttribute('style', 'height:13.2pt;line-height:13.2pt;font-size:1pt;margin:0;padding:0;mso-line-height-rule:exactly;');
   });
 
   clone.querySelectorAll('.body-text p, .body-box p, .disposition-box p').forEach((node) => {
-    node.setAttribute('style', 'margin:0;text-align:justify;line-height:1.15;mso-margin-bottom-alt:0;');
+    node.setAttribute('style', 'margin:0 0 6px 0;text-align:justify;line-height:1.35;');
   });
 
   clone.querySelectorAll('.tembusan-block').forEach((node) => {
-    node.setAttribute('style', 'clear:both;margin-top:0;text-align:left;font-size:9.6pt;line-height:0.98;page-break-inside:avoid;');
+    node.setAttribute('style', 'clear:both;margin-top:16px;text-align:left;font-size:11pt;line-height:1.2;page-break-inside:avoid;');
   });
 
   clone.querySelectorAll('.tembusan-title').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:0.98;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.2;text-align:left;');
   });
 
   clone.querySelectorAll('.tembusan-list').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:0.98;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.2;text-align:left;');
   });
 
   clone.querySelectorAll('.tembusan-item').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:0.98;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.2;text-align:left;');
   });
 }
 
@@ -3359,19 +3259,19 @@ async function prepareWordHtml(root) {
   });
 
   convertLetterheadForWord(clone);
-  // Khusus Word: gabungkan stempel dan TTD ke area visual tetap. Preview/PDF tidak ikut berubah.
-  await convertSignatureVisualsInlineForWord(clone);
+  // Struktur tanda tangan dibuat stabil sebagai HTML biasa agar preview, PDF, dan Word tidak merusak stempel.
+  // await convertSignatureVisualsForWord(clone);
 
   clone.querySelectorAll('.signature-block').forEach((node) => {
-    node.setAttribute('style', 'width:286px;margin-left:auto;margin-right:0;margin-top:0;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;');
+    node.setAttribute('style', 'width:300px;margin-left:auto;margin-right:0;margin-top:0;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;');
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
-    node.setAttribute('style', 'display:block;width:286px;height:72px;min-height:72px;margin:0 auto -24pt auto;overflow:visible;text-align:center;position:relative;z-index:4;');
+    node.setAttribute('style', 'position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:251659264;mso-wrap-style:none;');
   });
 
   clone.querySelectorAll('.word-signature-front-wrap').forEach((node) => {
-    node.setAttribute('style', 'display:block;width:286px;height:72px;min-height:72px;margin:0 auto -24pt auto;overflow:visible;text-align:center;position:relative;z-index:4;');
+    node.setAttribute('style', 'position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:251659264;mso-wrap-style:none;');
   });
 
   clone.querySelectorAll('.signature-jabatan').forEach((node) => {
@@ -3380,40 +3280,40 @@ async function prepareWordHtml(root) {
 
   clone.querySelectorAll('.signature-empty-line').forEach((node) => {
     node.innerHTML = '&nbsp;';
-    node.setAttribute('style', 'margin:0;padding:0;height:6pt;line-height:6pt;font-size:1pt;mso-line-height-rule:exactly;text-align:center;');
+    node.setAttribute('style', 'margin:0;padding:0;height:13pt;line-height:13pt;font-size:1pt;mso-line-height-rule:exactly;text-align:center;');
   });
 
   clone.querySelectorAll('.word-signature-composite').forEach((img) => {
     img.removeAttribute('style');
-    img.setAttribute('width', '267');
-    img.setAttribute('height', '93');
-    img.setAttribute('style', 'display:block;width:200pt;height:70pt;max-width:200pt;max-height:70pt;margin:0 auto;border:0;background:transparent;');
+    img.setAttribute('width', '256');
+    img.setAttribute('height', '113');
+    img.setAttribute('style', 'position:absolute;display:block;width:192pt;height:84.45pt;max-width:192pt;max-height:84.45pt;margin-left:-62pt;margin-top:54pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;');
   });
 
   clone.querySelectorAll('.signature-stamp-img').forEach((img) => {
     img.removeAttribute('style');
     img.removeAttribute('width');
     img.removeAttribute('height');
-    img.setAttribute('style', 'position:absolute;left:2px;top:-6px;width:154px;height:146px;max-width:154px;max-height:146px;object-fit:contain;opacity:.90;z-index:1;background:transparent;');
+    img.setAttribute('style', 'position:absolute;left:6px;top:-2px;width:138px;height:130px;max-width:138px;max-height:130px;object-fit:contain;opacity:.88;z-index:1;background:transparent;');
   });
 
   clone.querySelectorAll('.signature-image-wrap').forEach((node) => {
-    node.setAttribute('style', 'display:block;width:286px;height:72px;min-height:72px;margin:0 auto -24pt auto;text-align:center;overflow:visible;position:relative;z-index:4;left:0;');
+    node.setAttribute('style', 'height:98px;min-height:98px;margin:0 auto -14px auto;text-align:center;overflow:visible;position:relative;z-index:4;left:0;');
   });
 
   clone.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
     img.removeAttribute('style');
     img.removeAttribute('width');
     img.removeAttribute('height');
-    img.setAttribute('style', 'display:block;width:auto;max-width:250px;height:auto;max-height:72px;margin:0 auto;object-fit:contain;transform:none;background:transparent;');
+    img.setAttribute('style', 'display:block;width:auto;max-width:280px;height:auto;max-height:92px;margin:0 auto;object-fit:contain;transform:none;background:transparent;');
   });
 
   clone.querySelectorAll('.signature-name').forEach((node) => {
-    node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin-top:-16pt;margin-bottom:0;white-space:nowrap;line-height:0.98;position:relative;z-index:1;text-align:center;');
+    node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:1;text-align:center;');
   });
 
   clone.querySelectorAll('.signature-nip').forEach((node) => {
-    node.setAttribute('style', 'margin-top:-2pt;margin-bottom:0;white-space:nowrap;line-height:0.98;position:relative;z-index:1;text-align:center;');
+    node.setAttribute('style', 'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;position:relative;z-index:1;text-align:center;');
   });
 
   clone.querySelectorAll('table.meta-table').forEach((table) => {
@@ -3423,35 +3323,35 @@ async function prepareWordHtml(root) {
     table.setAttribute('cellpadding', '0');
     table.setAttribute('border', '0');
     table.setAttribute('width', '378');
-    table.setAttribute('style', 'border-collapse:collapse;width:10cm;margin:0 0 2px 0;mso-table-lspace:0pt;mso-table-rspace:0pt;table-layout:fixed;');
+    table.setAttribute('style', 'border-collapse:collapse;width:10cm;margin:0 0 8px 0;mso-table-lspace:0pt;mso-table-rspace:0pt;table-layout:fixed;');
 
     let colgroup = table.querySelector('colgroup');
     if (!colgroup) {
       colgroup = document.createElement('colgroup');
       table.insertBefore(colgroup, table.firstChild);
     }
-    colgroup.innerHTML = '<col style="width:2.65cm"><col style="width:.25cm"><col style="width:7.10cm">';
+    colgroup.innerHTML = '<col style="width:1.70cm"><col style="width:.35cm"><col style="width:7.95cm">';
 
     table.querySelectorAll('td').forEach((td, index) => {
       const col = index % 3;
       td.removeAttribute('style');
       if (col === 0) {
-        td.setAttribute('width', '100');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:2.65cm;white-space:nowrap;line-height:1.06;text-align:left;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('width', '64');
+        td.setAttribute('style', 'font-size:11pt;vertical-align:top;padding:0;width:1.70cm;white-space:nowrap;line-height:1.18;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 1) {
-        td.setAttribute('width', '9');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:.25cm;text-align:center;line-height:1.06;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('width', '13');
+        td.setAttribute('style', 'font-size:11pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.18;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 2) {
-        td.setAttribute('width', '269');
-        td.setAttribute('style', 'font-size:10.8pt;vertical-align:top;padding:0;width:7.10cm;line-height:1.06;text-align:left;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('width', '301');
+        td.setAttribute('style', 'font-size:11pt;vertical-align:top;padding:0;width:7.95cm;line-height:1.18;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
     });
   });
 
   clone.querySelectorAll('.body-text p, .body-box p, .disposition-box p').forEach((node) => {
-    node.setAttribute('style', 'margin:0;text-align:justify;line-height:1.15;mso-margin-bottom-alt:0;');
+    node.setAttribute('style', 'margin:0 0 6px 0;text-align:justify;line-height:1.35;');
   });
 
   convertSignatureBlocksForWord(clone);
