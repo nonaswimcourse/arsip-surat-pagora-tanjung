@@ -1,9 +1,9 @@
-const CACHE_NAME = 'pagora-tanjung-nomor-acara-word-signature-v1';
+const CACHE_NAME = 'pagora-tanjung-word-signature-close-v1';
 const APP_SHELL = [
   './',
   './index.html',
-  './assets/style.css?v=20260627-nomor-acara-word-signature-normal',
-  './assets/app.js?v=20260627-nomor-acara-word-signature-normal',
+  './assets/style.css?v=20260626-word-signature-close-1',
+  './assets/app.js?v=20260626-word-signature-close-1',
   './assets/stempel-kkg-pjok.png',
   './logo.png',
   './assets/logo.png',
