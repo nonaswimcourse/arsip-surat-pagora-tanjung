@@ -8,7 +8,7 @@ const LOCAL_SESSION_KEY = 'sipas_kantor_session';
 const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
-const APP_PATCH_NOTE = 'word-adapted-from-perfect-pdf-one-page-20260627d';
+const APP_PATCH_NOTE = 'pdf-review-signature-down-4enter-20260627l';
 
 // Optimasi PDF: mode cepat agar download tidak terasa seperti reload lama.
 const PDF_RENDER_SCALE = 2.25;
@@ -108,7 +108,7 @@ function installExportLayoutFixCss() {
     .pdf-export-page .signature-block p {
       margin: 0 !important;
       padding: 0 !important;
-      line-height: 1.08 !important;
+      line-height: 1.02 !important;
       text-align: center !important;
       position: relative !important;
       z-index: 10 !important;
@@ -234,7 +234,7 @@ function installExportLayoutFixCss() {
       padding: 0 2px 1px 0 !important;
       vertical-align: top !important;
       font-size: 11pt !important;
-      line-height: 1.14 !important;
+      line-height: 1.03 !important;
       word-break: normal !important;
       overflow-wrap: break-word !important;
     }
@@ -270,7 +270,7 @@ function installExportLayoutFixCss() {
     .pdf-live-capture .body-text p, .pdf-live-capture .body-box p, .pdf-live-capture .disposition-box p,
     .pdf-export-page .body-text p, .pdf-export-page .body-box p, .pdf-export-page .disposition-box p {
       margin: 0 0 3px 0 !important;
-      line-height: 1.18 !important;
+      line-height: 1.04 !important;
       text-align: justify !important;
     }
     .pdf-page .doc-one-enter-gap, .pdf-live-capture .doc-one-enter-gap, .pdf-export-page .doc-one-enter-gap {
@@ -283,7 +283,7 @@ function installExportLayoutFixCss() {
       margin: 7px 0 0 auto !important;
       padding: 0 !important;
       text-align: center !important;
-      line-height: 1.08 !important;
+      line-height: 1.02 !important;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
       overflow: visible !important;
@@ -291,7 +291,7 @@ function installExportLayoutFixCss() {
     .pdf-page .signature-block p, .pdf-live-capture .signature-block p, .pdf-export-page .signature-block p {
       margin: 0 !important;
       padding: 0 !important;
-      line-height: 1.08 !important;
+      line-height: 1.02 !important;
       text-align: center !important;
     }
     .pdf-page .signature-visual-wrap, .pdf-live-capture .signature-visual-wrap, .pdf-export-page .signature-visual-wrap {
@@ -346,7 +346,7 @@ function installExportLayoutFixCss() {
     .pdf-live-capture .signature-name, .pdf-live-capture .signature-nip,
     .pdf-export-page .signature-name, .pdf-export-page .signature-nip {
       white-space: nowrap !important;
-      line-height: 1.08 !important;
+      line-height: 1.02 !important;
       margin: 0 !important;
     }
     .pdf-page .tembusan-block, .pdf-live-capture .tembusan-block, .pdf-export-page .tembusan-block {
@@ -407,9 +407,9 @@ function installExportLayoutFixCss() {
       display: block !important;
       position: relative !important;
       width: 295px !important;
-      height: 94px !important;
-      min-height: 94px !important;
-      margin: 0 auto -8px auto !important;
+      height: 96px !important;
+      min-height: 96px !important;
+      margin: 0 auto -14px auto !important;
       padding: 0 !important;
       overflow: visible !important;
       background: transparent !important;
@@ -417,16 +417,16 @@ function installExportLayoutFixCss() {
     }
     .pdf-page .signature-stamp-img, .pdf-live-capture .signature-stamp-img, .pdf-export-page .signature-stamp-img {
       position: absolute !important;
-      left: 24px !important;
-      top: -3px !important;
-      width: 112px !important;
+      left: 34px !important;
+      top: -18px !important;
+      width: 122px !important;
       height: auto !important;
-      max-width: 112px !important;
-      max-height: 108px !important;
+      max-width: 122px !important;
+      max-height: 118px !important;
       object-fit: contain !important;
       opacity: .92 !important;
       transform: none !important;
-      z-index: 26 !important;
+      z-index: 30 !important;
     }
     .pdf-page .signature-image-wrap, .pdf-live-capture .signature-image-wrap, .pdf-export-page .signature-image-wrap {
       display: flex !important;
@@ -438,8 +438,8 @@ function installExportLayoutFixCss() {
       margin: 0 auto !important;
       padding: 0 !important;
       position: relative !important;
-      left: -2px !important;
-      top: 11px !important;
+      left: 8px !important;
+      top: 10px !important;
       overflow: visible !important;
       background: transparent !important;
       z-index: 24 !important;
@@ -471,6 +471,119 @@ function installExportLayoutFixCss() {
       position: relative !important;
       top: -1px !important;
       z-index: 30 !important;
+    }
+
+    /* === FIX 20260627-GAP-STAMP-OVERLAP === */
+    .pdf-page .gap-before-activity, .pdf-live-capture .gap-before-activity, .pdf-export-page .gap-before-activity,
+    .pdf-page .gap-after-activity, .pdf-live-capture .gap-after-activity, .pdf-export-page .gap-after-activity {
+      height: 9pt !important;
+      line-height: 9pt !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+
+
+    /* === FIX 20260627H-TEMBUSAN-PROFESSIONAL-DOWN ===
+       Tembusan dibuat turun seperti surat resmi, dengan tetap menjaga A4 satu halaman. */
+    .pdf-page .tembusan-block,
+    .pdf-live-capture .tembusan-block,
+    .pdf-export-page .tembusan-block {
+      clear: both !important;
+      margin-top: 54pt !important;
+      line-height: 1.10 !important;
+      font-size: 11.5pt !important;
+      text-align: left !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .pdf-page .tembusan-title,
+    .pdf-page .tembusan-list,
+    .pdf-page .tembusan-item,
+    .pdf-live-capture .tembusan-title,
+    .pdf-live-capture .tembusan-list,
+    .pdf-live-capture .tembusan-item,
+    .pdf-export-page .tembusan-title,
+    .pdf-export-page .tembusan-list,
+    .pdf-export-page .tembusan-item {
+      line-height: 1.10 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+
+    /* === FIX 20260627I-FINAL-BOTTOM-TEMBUSAN-OFFICIAL-STAMP ===
+       Tembusan ditempatkan di area bawah kertas. Stempel resmi di kiri dan menimpa TTD serta sedikit menyentuh nama. */
+    .pdf-page, .pdf-live-capture, .pdf-export-page {
+      position: relative !important;
+    }
+    .pdf-page .tembusan-block,
+    .pdf-live-capture .tembusan-block,
+    .pdf-export-page .tembusan-block {
+      position: absolute !important;
+      left: 18mm !important;
+      right: 18mm !important;
+      bottom: 10mm !important;
+      margin-top: 0 !important;
+      padding: 0 !important;
+      line-height: 1.10 !important;
+      font-size: 11.5pt !important;
+      text-align: left !important;
+      z-index: 5 !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .pdf-page .signature-visual-wrap,
+    .pdf-live-capture .signature-visual-wrap,
+    .pdf-export-page .signature-visual-wrap {
+      height: 96px !important;
+      min-height: 96px !important;
+      margin: 0 auto -22px auto !important;
+      z-index: 50 !important;
+    }
+    .pdf-page .signature-stamp-img,
+    .pdf-live-capture .signature-stamp-img,
+    .pdf-export-page .signature-stamp-img {
+      left: 28px !important;
+      top: -12px !important;
+      width: 126px !important;
+      max-width: 126px !important;
+      max-height: 120px !important;
+      opacity: .92 !important;
+      z-index: 65 !important;
+    }
+    .pdf-page .signature-image-wrap,
+    .pdf-live-capture .signature-image-wrap,
+    .pdf-export-page .signature-image-wrap {
+      width: 220px !important;
+      height: 76px !important;
+      min-height: 76px !important;
+      left: 28px !important;
+      top: 10px !important;
+      z-index: 45 !important;
+    }
+    .pdf-page .signature-image-wrap img, .pdf-page .ttd-img,
+    .pdf-live-capture .signature-image-wrap img, .pdf-live-capture .ttd-img,
+    .pdf-export-page .signature-image-wrap img, .pdf-export-page .ttd-img {
+      max-width: 205px !important;
+      max-height: 68px !important;
+    }
+    .pdf-page .signature-name, .pdf-page .signature-nip,
+    .pdf-live-capture .signature-name, .pdf-live-capture .signature-nip,
+    .pdf-export-page .signature-name, .pdf-export-page .signature-nip {
+      position: relative !important;
+      z-index: 20 !important;
+      line-height: 1.03 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+
+    /* FIX 20260627L - PDF/Review saja: blok tanggal, stempel, tanda tangan, nama, dan NIP diturunkan sekitar 4 enter. Struktur lain tidak diubah. */
+    .pdf-page .signature-block,
+    .pdf-live-capture .signature-block,
+    .pdf-export-page .signature-block {
+      margin: 62pt 0 0 auto !important;
     }
   `;
   document.head.appendChild(style);
@@ -2767,9 +2880,9 @@ function buildInvitationTemplate(row, profile, type, signatureOptions = DEFAULT_
       <div class="body-text">
         <p>Dengan hormat,</p>
         <p>Sehubungan dengan kegiatan <strong>${safe(row.penerima || row.acara)}</strong>, kami mengundang Bapak/Ibu untuk hadir pada:</p>
-        <div class="doc-one-enter-gap"></div>
+        <div class="doc-one-enter-gap gap-before-activity"></div>
         ${buildActivityMeta(row)}
-        <div class="doc-one-enter-gap"></div>
+        <div class="doc-one-enter-gap gap-after-activity"></div>
         ${paragraphText(row.isi_surat)}
         <p>Demikian undangan ini disampaikan. Atas perhatian dan kehadirannya, kami ucapkan terima kasih.</p>
       </div>
@@ -3062,11 +3175,11 @@ function normalizeSignatureImages(container) {
 
 function wordDocumentStyles() {
   return `
-    @page WordSection1 { size: 21cm 29.7cm; margin: .85cm 1.35cm .55cm 1.35cm; }
+    @page WordSection1 { size: 21cm 29.7cm; margin: .50cm 1.12cm .35cm 1.12cm; }
     html, body { margin: 0; padding: 0; background: #fff; }
-    body { font-family: "Times New Roman", serif; font-size: 10.7pt; color: #000; line-height: 1.08; }
+    body { font-family: "Times New Roman", serif; font-size: 12pt; color: #000; line-height: 1.03; }
     .WordSection1 { page: WordSection1; width: 100%; margin: 0; padding: 0; }
-    .pdf-page { width: 100%; min-height: 26.3cm; box-sizing: border-box; background: #fff; margin: 0; padding: 0; box-shadow: none; overflow: visible; }
+    .pdf-page { width: 100%; min-height: 26.7cm; box-sizing: border-box; background: #fff; margin: 0; padding: 0; box-shadow: none; overflow: visible; }
     p { margin: 0; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }
 
     /* Word tidak stabil membaca display:flex, grid, dan absolute pada kop surat.
@@ -3077,23 +3190,23 @@ function wordDocumentStyles() {
     .word-spacer-cell { width: 2.25cm; }
     .word-letterhead-logo { width: 1.95cm; height: 2.24cm; max-width: 1.95cm; max-height: 2.24cm; }
     .word-letterhead-title { text-align: center; }
-    .word-letterhead-title h1 { font-family: "Times New Roman", serif; font-size: 11.6pt; line-height: 1.16; margin: 0 0 2px 0; font-weight: bold; text-transform: uppercase; text-align: center; }
-    .word-letterhead-title p { font-family: "Times New Roman", serif; font-size: 8.1pt; line-height: 1.08; margin: 0; font-style: italic; text-align: center; white-space: nowrap; }
+    .word-letterhead-title h1 { font-family: "Times New Roman", serif; font-size: 14pt; line-height: 1.04; margin: 0 0 2px 0; font-weight: bold; text-transform: uppercase; text-align: center; }
+    .word-letterhead-title p { font-family: "Times New Roman", serif; font-size: 9pt; line-height: 1.02; margin: 0; font-style: italic; text-align: center; white-space: nowrap; }
     .word-letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 4px 0 5px 0; }
 
     .letterhead { width: 100%; }
     .letterhead img { width: 85px; height: 85px; max-width: 85px; max-height: 85px; }
-    .letterhead h1 { font-size: 12.5pt; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; line-height: 1.35; text-align: center; }
-    .letterhead p { font-size: 8.5pt; margin: 1px 0; font-style: italic; text-align: center; }
+    .letterhead h1 { font-size: 14pt; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; line-height: 1.35; text-align: center; }
+    .letterhead p { font-size: 9pt; margin: 1px 0; font-style: italic; text-align: center; }
     .letter-line { border: none; border-top: 3px solid #000; height: 0; margin: 8px 0 12px; }
 
     .template-title, .center-text, .small-title { text-align: center; }
-    .template-title { font-size: 11.8pt; font-weight: bold; text-decoration: underline; margin: 4px 0 2px; }
-    .small-title { font-size: 11pt; margin: 3px 0; }
+    .template-title { font-size: 12pt; font-weight: bold; text-decoration: underline; margin: 4px 0 2px; }
+    .small-title { font-size: 12pt; margin: 3px 0; }
     .letter-meta-grid { width: 100%; margin: 8px 0 10px; }
     .letter-meta-grid > div { width: 100%; }
     table.meta-table { border-collapse: collapse; width: 10cm; margin: 0 0 8px 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed; }
-    table.meta-table td { font-size: 11pt; vertical-align: top; padding: 0; line-height: 1.18; mso-padding-alt: 0cm 0cm 0cm 0cm; }
+    table.meta-table td { font-size: 12pt; vertical-align: top; padding: 0; line-height: 1.04; mso-padding-alt: 0cm 0cm 0cm 0cm; }
     table.meta-table td:first-child { width: 1.70cm; white-space: nowrap; }
     table.meta-table td:nth-child(2) { width: .35cm; text-align: center; }
     table.meta-table td:nth-child(3) { width: 7.95cm; }
@@ -3101,14 +3214,14 @@ function wordDocumentStyles() {
     .recipient p { margin: 0 0 3px 0; line-height: 1.2; }
     .body-text { text-align: justify; margin-top: 8px; }
     .doc-one-enter-gap { height: 7pt; line-height: 7pt; font-size: 1pt; margin: 0; padding: 0; mso-line-height-rule: exactly; }
-    .body-text p, .body-box p, .disposition-box p { margin: 0 0 2px; text-align: justify; line-height: 1.12; }
+    .body-text p, .body-box p, .disposition-box p { margin: 0 0 2px; text-align: justify; line-height: 1.03; }
     .body-box, .disposition-box { border: 1px solid #000; padding: 8px 10px; margin: 10px 0; }
-    .body-box h3, .disposition-box h3 { margin: 0 0 6px; font-size: 11pt; }
+    .body-box h3, .disposition-box h3 { margin: 0 0 5px; font-size: 12pt; }
 
     .word-signature-row { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     .word-signature-row td { border: none; padding: 0; vertical-align: top; }
     .word-signature-left { width: 55%; }
-    .word-signature-cell { width: 45%; text-align: center; font-family: "Times New Roman", serif; font-size: 11pt; line-height: 1.15; padding-top: 0; }
+    .word-signature-cell { width: 45%; text-align: center; font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.15; padding-top: 0; }
     .word-signature-cell p { margin: 2px 0; line-height: 1.15; text-align: center; }
     .signature-block { width: 300px; text-align: center; page-break-inside: avoid; overflow: visible; margin: 0 auto; padding: 0; position: relative; }
     .signature-block p { margin: 0 0 2px 0; line-height: 1.15; text-align: center; }
@@ -3122,21 +3235,21 @@ function wordDocumentStyles() {
     .signature-image-wrap img, .ttd-img { width: auto; max-width: 280px; height: auto; max-height: 92px; display: block; margin: 0 auto; object-fit: contain; transform: none; }
     .signature-name { font-weight: bold; text-decoration: none; margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
     .signature-nip { margin-top: 0; margin-bottom: 0; white-space: nowrap; position: relative; z-index: 1; }
-    .tembusan-block { clear: both; margin-top: 2px; text-align: left; font-size: 10.4pt; line-height: 1.05; page-break-inside: auto; }
-    .tembusan-title { margin: 0; padding: 0; line-height: 1.05; }
-    .tembusan-list { margin: 0; padding: 0; line-height: 1.05; }
-    .tembusan-item { margin: 0; padding: 0; line-height: 1.05; }
+    .tembusan-block { clear: both; margin-top: 54pt; text-align: left; font-size: 12pt; line-height: 1.08; page-break-inside: avoid; }
+    .tembusan-title { margin: 0; padding: 0; line-height: 1.08; }
+    .tembusan-list { margin: 0; padding: 0; line-height: 1.08; }
+    .tembusan-item { margin: 0; padding: 0; line-height: 1.08; }
 
     /* FIX 20260627-WORD-ONE-PAGE-OVERRIDE */
-    @page WordSection1 { size: 21cm 29.7cm; margin: .85cm 1.35cm .55cm 1.35cm; }
+    @page WordSection1 { size: 21cm 29.7cm; margin: .50cm 1.12cm .35cm 1.12cm; }
     .WordSection1 { page: WordSection1; width: 100%; margin: 0; padding: 0; }
     .pdf-page { width: 100%; min-height: auto; height: auto; max-height: none; padding: 0; margin: 0; overflow: visible; }
     .word-letterhead-table { margin: 0 0 1px 0; }
-    .word-letter-line { margin: 5px 0 6px 0; }
+    .word-letter-line { margin: 3px 0 4px 0; }
     .template-title { margin: 6px 0 2px 0; font-size: 12pt; }
-    .letter-meta-grid { display: block; margin: 2px 0 4px 0; }
+    .letter-meta-grid { display: block; margin: 1px 0 3px 0; }
     table.meta-table { width: 16.2cm; margin: 0 0 4px 0; table-layout: fixed; border-collapse: collapse; }
-    table.meta-table td { padding: 0; line-height: 1.12; font-size: 10.8pt; vertical-align: top; }
+    table.meta-table td { padding: 0; line-height: 1.03; font-size: 12pt; vertical-align: top; }
     table.meta-table td:first-child { width: 3.30cm; white-space: nowrap; }
     table.meta-table td:nth-child(2) { width: .35cm; text-align: center; }
     table.meta-table td:nth-child(3) { width: 12.55cm; }
@@ -3145,27 +3258,27 @@ function wordDocumentStyles() {
     .letter-meta-grid table.meta-table td:nth-child(2) { width: .35cm; }
     .letter-meta-grid table.meta-table td:nth-child(3) { width: 9.10cm; }
     .recipient { margin: 3px 0 4px 0; }
-    .recipient p { margin: 0 0 2px 0; line-height: 1.14; }
+    .recipient p { margin: 0 0 2px 0; line-height: 1.03; }
     .body-text { margin-top: 3px; text-align: justify; }
-    .body-text p, .body-box p, .disposition-box p { margin: 0 0 3px 0; line-height: 1.18; text-align: justify; }
-    .doc-one-enter-gap { height: 8pt; line-height: 8pt; font-size: 1pt; mso-line-height-rule: exactly; }
-    .word-signature-cell { width: 43%; line-height: 1.08; }
+    .body-text p, .body-box p, .disposition-box p { margin: 0 0 1.5px 0; line-height: 1.04; text-align: justify; }
+    .doc-one-enter-gap { height: 5pt; line-height: 8pt; font-size: 1pt; mso-line-height-rule: exactly; }
+    .word-signature-cell { width: 43%; line-height: 1.02; }
     .word-signature-left { width: 57%; }
-    .signature-block { width: 285px; margin: 0; padding: 0; line-height: 1.08; page-break-inside: avoid; overflow: visible; }
-    .signature-block p { margin: 0; line-height: 1.08; text-align: center; }
+    .signature-block { width: 285px; margin: 0; padding: 0; line-height: 1.02; page-break-inside: avoid; overflow: visible; }
+    .signature-block p { margin: 0; line-height: 1.02; text-align: center; }
     .signature-visual-wrap { display: block; height: 80px; min-height: 80px; margin: 0 auto -9px auto; overflow: visible; position: relative; }
     .signature-stamp-img { left: 18px; top: -4px; width: 112px; height: auto; max-width: 112px; max-height: 98px; }
     .signature-image-wrap { width: 205px; height: 72px; min-height: 72px; margin: 0 auto; left: 18px; top: 0; position: relative; overflow: visible; }
     .signature-image-wrap img, .ttd-img { max-width: 198px; max-height: 68px; width: auto; height: auto; object-fit: contain; }
     .signature-name, .signature-nip { margin: 0; line-height: 1.05; white-space: nowrap; }
-    .tembusan-block { clear: both; margin-top: 3px; line-height: 1.08; font-size: 10.6pt; page-break-inside: auto; }
+    .tembusan-block { clear: both; margin-top: 54pt; line-height: 1.08; font-size: 12pt; page-break-inside: avoid; }
     .tembusan-title, .tembusan-list, .tembusan-item { line-height: 1.08; margin: 0; padding: 0; }
 
 
 
     /* FIX 20260627-WORD-RECIPIENT-DATE-DOWN-STAMP-SMALL */
-    .recipient { margin: 20pt 0 4px 0; }
-    .recipient p { margin: 0 0 2px 0; line-height: 1.14; }
+    .recipient { margin: 12pt 0 3px 0; }
+    .recipient p { margin: 0 0 2px 0; line-height: 1.03; }
     .word-signature-spacer { height: 20pt; line-height: 20pt; font-size: 1pt; mso-line-height-rule: exactly; }
     .signature-block { width: 270px; line-height: 1.05; page-break-inside: avoid; }
     .signature-block p { margin: 0; line-height: 1.05; text-align: center; }
@@ -3178,14 +3291,28 @@ function wordDocumentStyles() {
 
 
     /* FIX 20260627-WORD-SIGNATURE-OVERLAP-NAME-CLEAR */
-    .word-signature-spacer { height: 7pt; line-height: 7pt; font-size: 1pt; mso-line-height-rule: exactly; }
-    .signature-block { width: 264px; margin: 0; padding: 0; text-align: center; line-height: 1.02; page-break-inside: avoid; overflow: visible; position: relative; }
+    .word-signature-spacer { height: 18pt; line-height: 18pt; font-size: 1pt; mso-line-height-rule: exactly; }
+    .signature-block { width: 276px; margin: 0; padding: 0; text-align: center; line-height: 1.02; page-break-inside: avoid; overflow: visible; position: relative; }
     .signature-block p { margin: 0; padding: 0; line-height: 1.02; text-align: center; }
-    .signature-visual-wrap { display: block; position: relative; width: 258px; height: 54px; min-height: 54px; margin: 0 auto -2px auto; padding: 0; overflow: visible; z-index: 4; }
-    .signature-stamp-img { position: absolute; left: 24px; top: -9px; width: 90px; height: auto; max-width: 88px; max-height: 84px; object-fit: contain; opacity: .92; z-index: 1; background: transparent; mso-wrap-style: none; }
-    .signature-image-wrap { width: 178px; height: 50px; min-height: 50px; margin: 0 auto; padding: 0; text-align: center; overflow: visible; position: relative; z-index: 4; left: -8px; top: 6px; }
-    .signature-image-wrap img, .ttd-img { display: block; width: auto; max-width: 172px; height: auto; max-height: 46px; margin: 0 auto; object-fit: contain; transform: none; background: transparent; border: 0; }
+    .signature-visual-wrap { display: block; position: relative; width: 276px; height: 70px; min-height: 70px; margin: 0 auto -10px auto; padding: 0; overflow: visible; z-index: 4; }
+    .signature-stamp-img { position: absolute; left: 44px; top: -18px; width: 110px; height: auto; max-width: 110px; max-height: 106px; object-fit: contain; opacity: .92; z-index: 10; background: transparent; mso-wrap-style: none; }
+    .signature-image-wrap { width: 196px; height: 68px; min-height: 68px; margin: 0 auto; padding: 0; text-align: center; overflow: visible; position: relative; z-index: 4; left: 2px; top: 8px; }
+    .signature-image-wrap img, .ttd-img { display: block; width: auto; max-width: 190px; height: auto; max-height: 62px; margin: 0 auto; object-fit: contain; transform: none; background: transparent; border: 0; }
     .signature-name, .signature-nip { margin: 0; padding: 0; line-height: 1.05; white-space: nowrap; text-align: center; position: relative; z-index: 1; }
+
+    /* FINAL 20260627I - Word editable mengikuti struktur PDF, tembusan bawah, stempel resmi overlap */
+    .WordSection1 { position: relative; min-height: 29.05cm; }
+    .pdf-page { position: relative; min-height: 29.05cm; height: 29.05cm; overflow: visible; }
+    .tembusan-block { position: absolute; left: 0; right: 0; bottom: 1.05cm; clear: both; margin-top: 0; text-align: left; font-size: 12pt; line-height: 1.06; page-break-inside: avoid; }
+    .tembusan-title, .tembusan-list, .tembusan-item { line-height: 1.06; margin: 0; padding: 0; }
+    .word-signature-spacer { height: 11pt; line-height: 11pt; font-size: 1pt; mso-line-height-rule: exactly; }
+    .signature-block { width: 7.7cm; margin-left: 10.45cm; margin-right: 0; margin-top: 0; padding: 0; text-align: center; line-height: 1.0; page-break-inside: avoid; overflow: visible; position: relative; }
+    .signature-block p { margin: 0; padding: 0; line-height: 1.0; text-align: center; }
+    .signature-visual-wrap { display: block; position: relative; width: 7.7cm; height: 90px; min-height: 90px; margin: 0 auto -30px auto; padding: 0; overflow: visible; z-index: 50; }
+    .signature-stamp-img { position: absolute; left: 18px; top: 2px; width: 118px; height: auto; max-width: 118px; max-height: 112px; object-fit: contain; opacity: .92; z-index: 65; background: transparent; mso-wrap-style: none; }
+    .signature-image-wrap { width: 188px; height: 62px; min-height: 62px; margin: 0 auto; padding: 0; text-align: center; overflow: visible; position: relative; z-index: 45; left: 64px; top: 30px; }
+    .signature-image-wrap img, .ttd-img { display: block; width: auto; max-width: 184px; height: auto; max-height: 56px; margin: 0 auto; object-fit: contain; transform: none; background: transparent; border: 0; }
+    .signature-name, .signature-nip { margin: 0; padding: 0; line-height: 1.0; white-space: nowrap; text-align: center; position: relative; z-index: 20; }
 
   `;
 }
@@ -3235,10 +3362,10 @@ function convertLetterheadForWord(clone) {
     if (textBlock) {
       textBlock.setAttribute('style', 'width:100%;text-align:center;margin:0;padding:0;');
       textBlock.querySelectorAll('h1').forEach((h1) => {
-        h1.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:11.6pt;line-height:1.16;margin:0 0 2px 0;font-weight:bold;text-transform:uppercase;text-align:center;');
+        h1.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:14pt;line-height:1.04;margin:0 0 1px 0;font-weight:bold;text-transform:uppercase;text-align:center;');
       });
       textBlock.querySelectorAll('p').forEach((p) => {
-        p.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:8.1pt;line-height:1.08;margin:0;font-style:italic;text-align:center;white-space:nowrap;');
+        p.setAttribute('style', 'font-family:"Times New Roman",serif;font-size:9pt;line-height:1.02;margin:0;font-style:italic;text-align:center;white-space:nowrap;');
       });
       titleCell.appendChild(textBlock);
     }
@@ -3439,7 +3566,7 @@ async function convertSignatureVisualsForWord(root) {
     try {
       const canvas = document.createElement('canvas');
       canvas.width = 600;
-      canvas.height = 250;
+      canvas.height = 300;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -3452,14 +3579,14 @@ async function convertSignatureVisualsForWord(root) {
 
       if (ttdImg) {
         // TTD berada di kanan stempel seperti hasil Word edit.
-        drawImageContainToCanvasCropped(ctx, ttdImg, 150, 34, 408, 132);
+        drawImageContainToCanvasCropped(ctx, ttdImg, 208, 96, 322, 116);
       }
 
       if (stampImg) {
         ctx.save();
         ctx.globalAlpha = 0.88;
         // Stempel digambar terakhir agar bring forward.
-        drawImageContainToCanvasCropped(ctx, stampImg, 20, 0, 250, 220);
+        drawImageContainToCanvasCropped(ctx, stampImg, 14, 12, 250, 236);
         ctx.restore();
       }
 
@@ -3473,11 +3600,11 @@ async function convertSignatureVisualsForWord(root) {
       // Fallback <img> tetap disediakan untuk aplikasi non-Word.
       floating.innerHTML = `<!--[if gte mso 9]>
 <v:shape id="WordSignatureFront_${Date.now()}" type="#_x0000_t75" filled="f" stroked="f" o:allowoverlap="t"
-  style="position:absolute;left:0;top:0;width:186pt;height:86.4pt;margin-left:-56pt;margin-top:58pt;z-index:251659264;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;mso-wrap-style:none;">
+  style="position:absolute;left:0;top:0;width:188pt;height:92pt;margin-left:-58pt;margin-top:46pt;z-index:251659264;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;mso-wrap-style:none;">
   <v:imagedata src="${compositeSrc}" o:title="Stempel dan tanda tangan"/>
   <w10:wrap type="none"/>
 </v:shape>
-<![endif]--><!--[if !mso]><!--><img class="word-signature-composite" alt="Stempel dan tanda tangan" src="${compositeSrc}" width="248" height="115" style="position:absolute;display:block;width:178pt;height:82pt;max-width:178pt;max-height:82pt;margin-left:-54pt;margin-top:46pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;"><!--<![endif]-->`;
+<![endif]--><!--[if !mso]><!--><img class="word-signature-composite" alt="Stempel dan tanda tangan" src="${compositeSrc}" width="250" height="122" style="position:absolute;display:block;width:188pt;height:92pt;max-width:188pt;max-height:92pt;margin-left:-58pt;margin-top:46pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;"><!--<![endif]-->`;
 
       wrap.innerHTML = '';
       wrap.appendChild(floating);
@@ -3493,60 +3620,31 @@ async function convertSignatureVisualsForWord(root) {
 
 function convertSignatureBlocksForWord(clone) {
   clone.querySelectorAll('.signature-block').forEach((block) => {
-    const table = document.createElement('table');
-    table.className = 'word-signature-row';
-    table.setAttribute('width', '100%');
-    table.setAttribute('cellspacing', '0');
-    table.setAttribute('cellpadding', '0');
-    table.setAttribute('border', '0');
-    table.setAttribute('style', 'width:100%;border-collapse:collapse;table-layout:fixed;margin:0;mso-table-lspace:0pt;mso-table-rspace:0pt;');
-
-    const tbody = document.createElement('tbody');
-    const tr = document.createElement('tr');
-
-    const left = document.createElement('td');
-    left.className = 'word-signature-left';
-    left.setAttribute('width', '57%');
-    left.setAttribute('style', 'width:57%;border:none;padding:0;vertical-align:top;');
-    left.innerHTML = '&nbsp;';
-
-    const right = document.createElement('td');
-    right.className = 'word-signature-cell';
-    right.setAttribute('width', '43%');
-    right.setAttribute('style', 'width:43%;border:none;padding:0;vertical-align:top;text-align:center;font-family:"Times New Roman",serif;font-size:10.5pt;line-height:1.0;');
-
     block.removeAttribute('style');
-    block.setAttribute('style', 'width:258px;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;margin:0;padding:0;line-height:1.0;');
+    block.setAttribute('style', 'width:7.7cm;margin-left:10.45cm;margin-right:0;margin-top:0;text-align:center;page-break-inside:avoid;break-inside:avoid;overflow:visible;position:relative;padding:0;line-height:1.0;');
+
     block.querySelectorAll('p').forEach((p) => {
       if (p.classList.contains('signature-empty-line')) {
         p.innerHTML = '&nbsp;';
-        p.setAttribute('style', 'margin:0;padding:0;height:13pt;line-height:13pt;font-size:1pt;mso-line-height-rule:exactly;text-align:center;');
+        p.setAttribute('style', 'margin:0;padding:0;height:10pt;line-height:10pt;font-size:1pt;mso-line-height-rule:exactly;text-align:center;');
         return;
       }
       p.setAttribute('style', 'margin:0;line-height:1.0;text-align:center;');
     });
 
-    // Fallback jika gambar komposit gagal dibuat: nama dan NIP tetap dinaikkan.
     block.querySelectorAll('.signature-name').forEach((node) => {
-      node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;text-align:center;position:relative;z-index:1;');
+      node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.02;text-align:center;position:relative;z-index:20;font-size:12pt;');
     });
 
     block.querySelectorAll('.signature-nip').forEach((node) => {
-      node.setAttribute('style', 'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.1;text-align:center;position:relative;z-index:1;');
+      node.setAttribute('style', 'margin-top:0;margin-bottom:0;white-space:nowrap;line-height:1.02;text-align:center;position:relative;z-index:20;font-size:12pt;');
     });
 
-    right.appendChild(block.cloneNode(true));
-    tr.appendChild(left);
-    tr.appendChild(right);
-    tbody.appendChild(tr);
-    table.appendChild(tbody);
-
-    // Spacer 3 baris khusus Word agar teks tempat/tanggal tidak mepet ke kalimat penutup.
     const spacer = document.createElement('p');
     spacer.className = 'word-signature-spacer';
     spacer.innerHTML = '&nbsp;';
-    spacer.setAttribute('style', 'margin:0;padding:0;height:4pt;line-height:4pt;font-size:1pt;mso-line-height-rule:exactly;');
-    block.replaceWith(spacer, table);
+    spacer.setAttribute('style', 'margin:0;padding:0;height:11pt;line-height:11pt;font-size:1pt;mso-line-height-rule:exactly;');
+    block.parentNode.insertBefore(spacer, block);
   });
 }
 
@@ -3556,7 +3654,7 @@ function normalizeWordParagraphs(clone) {
     node.setAttribute('style', 'margin:20pt 0 4px 0;');
   });
   clone.querySelectorAll('.recipient p').forEach((node) => {
-    node.setAttribute('style', 'margin:0 0 2px 0;line-height:1.14;');
+    node.setAttribute('style', 'margin:0 0 2px 0;line-height:1.03;');
   });
 
   clone.querySelectorAll('.body-text').forEach((node) => {
@@ -3565,11 +3663,11 @@ function normalizeWordParagraphs(clone) {
 
   clone.querySelectorAll('.doc-one-enter-gap').forEach((node) => {
     node.innerHTML = '&nbsp;';
-    node.setAttribute('style', 'height:5pt;line-height:5pt;font-size:1pt;margin:0;padding:0;mso-line-height-rule:exactly;');
+    node.setAttribute('style', 'height:8pt;line-height:8pt;font-size:1pt;margin:0;padding:0;mso-line-height-rule:exactly;');
   });
 
   clone.querySelectorAll('.body-text p, .body-box p, .disposition-box p').forEach((node) => {
-    node.setAttribute('style', 'margin:0 0 2px 0;text-align:justify;line-height:1.08;');
+    node.setAttribute('style', 'margin:0 0 2px 0;text-align:justify;line-height:1.02;');
   });
 
   // FIX 20260627-WORD-META-TOP-COMPACT: tabel Nomor/Lampiran/Sifat/Perihal jangan melebar, tetapi tabel Hari/Tanggal/Waktu/Tempat/Acara tetap rapi.
@@ -3582,38 +3680,42 @@ function normalizeWordParagraphs(clone) {
       const col = index % 3;
       if (col === 0) {
         td.setAttribute('width', '85');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:2.25cm;white-space:nowrap;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:2.25cm;white-space:nowrap;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 1) {
         td.setAttribute('width', '13');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 2) {
         td.setAttribute('width', '344');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:9.10cm;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:9.10cm;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
     });
   });
 
   clone.querySelectorAll('.tembusan-block').forEach((node) => {
-    node.setAttribute('style', 'clear:both;margin-top:2px;text-align:left;font-size:10.4pt;line-height:1.05;page-break-inside:auto;');
+    node.setAttribute('style', 'position:absolute;left:0;right:0;bottom:1.05cm;clear:both;margin-top:0;text-align:left;font-size:12pt;line-height:1.06;page-break-inside:avoid;');
   });
 
   clone.querySelectorAll('.tembusan-title').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:1.05;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.06;text-align:left;');
   });
 
   clone.querySelectorAll('.tembusan-list').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:1.05;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.06;text-align:left;');
   });
 
   clone.querySelectorAll('.tembusan-item').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;line-height:1.05;text-align:left;');
+    node.setAttribute('style', 'margin:0;padding:0;line-height:1.06;text-align:left;');
   });
 }
 
 async function prepareWordHtml(root) {
   const clone = root.cloneNode(true);
+
+  clone.querySelectorAll('.pdf-page').forEach((node) => {
+    node.setAttribute('style', 'position:relative;width:100%;min-height:29.05cm;height:29.05cm;box-sizing:border-box;background:#fff;margin:0;padding:0;box-shadow:none;overflow:visible;');
+  });
 
   clone.querySelectorAll('[contenteditable], [crossorigin], [referrerpolicy]').forEach((node) => {
     node.removeAttribute('contenteditable');
@@ -3626,12 +3728,12 @@ async function prepareWordHtml(root) {
   // await convertSignatureVisualsForWord(clone);
 
   clone.querySelectorAll('.signature-block').forEach((node) => {
-    node.setAttribute('style', 'width:258px;margin-left:auto;margin-right:0;margin-top:0;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;line-height:1.0;');
+    node.setAttribute('style', 'width:7.7cm;margin-left:10.45cm;margin-right:0;margin-top:0;text-align:center;page-break-inside:avoid;overflow:visible;position:relative;line-height:1.0;');
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
     // Word final: jangan 0x0 absolute, karena Microsoft Word bisa mengabaikan CSS lalu membuat stempel membesar.
-    node.setAttribute('style', 'display:block;position:relative;width:258px;height:54px;min-height:54px;margin:0 auto -2px auto;overflow:visible;z-index:4;');
+    node.setAttribute('style', 'display:block;position:relative;width:7.7cm;height:90px;min-height:90px;margin:0 auto -30px auto;overflow:visible;z-index:50;');
   });
 
   clone.querySelectorAll('.word-signature-front-wrap').forEach((node) => {
@@ -3649,35 +3751,35 @@ async function prepareWordHtml(root) {
 
   clone.querySelectorAll('.word-signature-composite').forEach((img) => {
     img.removeAttribute('style');
-    img.setAttribute('width', '256');
-    img.setAttribute('height', '113');
-    img.setAttribute('style', 'position:absolute;display:block;width:178pt;height:82pt;max-width:178pt;max-height:82pt;margin-left:-54pt;margin-top:46pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;');
+    img.setAttribute('width', '240');
+    img.setAttribute('height', '120');
+    img.setAttribute('style', 'position:absolute;display:block;width:180pt;height:90pt;max-width:180pt;max-height:90pt;margin-left:-55pt;margin-top:52pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;');
   });
 
   clone.querySelectorAll('.signature-stamp-img').forEach((img) => {
     img.removeAttribute('style');
-    img.setAttribute('width', '76');
-    img.setAttribute('height', '72');
-    img.setAttribute('style', 'position:absolute;left:24px;top:-9px;width:68pt;height:64pt;max-width:68pt;max-height:64pt;object-fit:contain;opacity:.92;z-index:10;background:transparent;mso-wrap-style:none;');
+    img.setAttribute('width', '118');
+    img.setAttribute('height', '112');
+    img.setAttribute('style', 'position:absolute;left:18px;top:2px;width:88pt;height:auto;max-width:88pt;max-height:84pt;object-fit:contain;opacity:.92;z-index:65;background:transparent;mso-wrap-style:none;');
   });
 
   clone.querySelectorAll('.signature-image-wrap').forEach((node) => {
-    node.setAttribute('style', 'width:178px;height:50px;min-height:50px;margin:0 auto;text-align:center;overflow:visible;position:relative;z-index:4;left:-8px;top:5px;');
+    node.setAttribute('style', 'width:188px;height:62px;min-height:62px;margin:0 auto;text-align:center;overflow:visible;position:relative;z-index:45;left:64px;top:30px;');
   });
 
   clone.querySelectorAll('.signature-image-wrap img, img.ttd-img').forEach((img) => {
     img.removeAttribute('style');
     img.setAttribute('width', '184');
     img.setAttribute('height', '56');
-    img.setAttribute('style', 'display:block;width:auto;max-width:129pt;height:auto;max-height:34pt;margin:0 auto;object-fit:contain;transform:none;background:transparent;border:0;');
+    img.setAttribute('style', 'display:block;width:auto;max-width:138pt;height:auto;max-height:42pt;margin:0 auto;object-fit:contain;transform:none;background:transparent;border:0;');
   });
 
   clone.querySelectorAll('.signature-name').forEach((node) => {
-    node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin:0;padding:0;white-space:nowrap;line-height:1.0;position:relative;z-index:1;text-align:center;');
+    node.setAttribute('style', 'font-weight:bold;text-decoration:none;margin:0;padding:0;white-space:nowrap;line-height:1.0;position:relative;z-index:20;text-align:center;');
   });
 
   clone.querySelectorAll('.signature-nip').forEach((node) => {
-    node.setAttribute('style', 'margin:0;padding:0;white-space:nowrap;line-height:1.0;position:relative;z-index:1;text-align:center;');
+    node.setAttribute('style', 'margin:0;padding:0;white-space:nowrap;line-height:1.0;position:relative;z-index:20;text-align:center;');
   });
 
   clone.querySelectorAll('table.meta-table').forEach((table) => {
@@ -3701,21 +3803,21 @@ async function prepareWordHtml(root) {
       td.removeAttribute('style');
       if (col === 0) {
         td.setAttribute('width', '125');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:3.30cm;white-space:nowrap;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:3.30cm;white-space:nowrap;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 1) {
         td.setAttribute('width', '13');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 2) {
         td.setAttribute('width', '474');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:12.55cm;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:12.55cm;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
     });
   });
 
   clone.querySelectorAll('.body-text p, .body-box p, .disposition-box p').forEach((node) => {
-    node.setAttribute('style', 'margin:0 0 2px 0;text-align:justify;line-height:1.08;');
+    node.setAttribute('style', 'margin:0 0 2px 0;text-align:justify;line-height:1.02;');
   });
 
   // FIX 20260627-WORD-META-TOP-COMPACT: tabel Nomor/Lampiran/Sifat/Perihal jangan melebar, tetapi tabel Hari/Tanggal/Waktu/Tempat/Acara tetap rapi.
@@ -3728,15 +3830,15 @@ async function prepareWordHtml(root) {
       const col = index % 3;
       if (col === 0) {
         td.setAttribute('width', '85');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:2.25cm;white-space:nowrap;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:2.25cm;white-space:nowrap;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 1) {
         td.setAttribute('width', '13');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:.35cm;text-align:center;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
       if (col === 2) {
         td.setAttribute('width', '344');
-        td.setAttribute('style', 'font-size:10.5pt;vertical-align:top;padding:0;width:9.10cm;line-height:1.08;mso-padding-alt:0cm 0cm 0cm 0cm;');
+        td.setAttribute('style', 'font-size:12pt;vertical-align:top;padding:0;width:9.10cm;line-height:1.02;mso-padding-alt:0cm 0cm 0cm 0cm;');
       }
     });
   });
@@ -3894,7 +3996,7 @@ async function createWordFromDocument(data, options = { download: true }) {
   const wordOptions = { download: true, ...options };
   const documentData = getFinalDocumentRow(data);
 
-  // FINAL 20260627E:
+  // FINAL 20260627H:
   // Word dibuat sebagai teks HTML yang bisa diedit, bukan gambar screenshot.
   // Struktur tetap mengikuti tampilan PDF/review: kop, tabel data, isi, tanda tangan, stempel, nama, NIP, dan tembusan.
   const workerDiv = document.createElement('div');
