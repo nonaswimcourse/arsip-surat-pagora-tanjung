@@ -2662,6 +2662,7 @@ function wordDocumentStyles() {
     .signature-block p { margin: 0 0 2px 0; line-height: 1.15; text-align: center; }
     .signature-empty-line { height: 13pt; line-height: 13pt; font-size: 1pt; margin: 0; padding: 0; }
     .signature-visual-wrap { position: absolute; width: 0; height: 0; overflow: visible; z-index: 251659264; }
+    .word-signature-front-wrap { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; z-index: 251659264; mso-wrap-style: none; }
     .word-signature-composite { position: absolute; display: block; width: 192pt; height: 84.45pt; max-width: 192pt; max-height: 84.45pt; margin-left: -62pt; margin-top: 54pt; border: 0; background: transparent; z-index: 251659264; mso-wrap-style: none; mso-position-horizontal: absolute; mso-position-horizontal-relative: text; mso-position-vertical: absolute; mso-position-vertical-relative: paragraph; }
     .word-signature-blank { height: 126px; line-height: 126px; font-size: 1pt; }
     .signature-stamp-img { position: absolute; left: 6px; top: -2px; width: 138px; height: 130px; max-width: 138px; max-height: 130px; object-fit: contain; opacity: .88; z-index: 1; }
@@ -2949,17 +2950,26 @@ async function convertSignatureVisualsForWord(root) {
         ctx.restore();
       }
 
-      const img = document.createElement('img');
-      img.className = 'word-signature-composite';
-      img.alt = 'Stempel dan tanda tangan';
-      img.src = canvas.toDataURL('image/png');
-      img.setAttribute('width', '256');
-      img.setAttribute('height', '113');
-      img.setAttribute('style', 'position:absolute;display:block;width:192pt;height:84.45pt;max-width:192pt;max-height:84.45pt;margin-left:-62pt;margin-top:54pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;');
+      const compositeSrc = canvas.toDataURL('image/png');
+      const floating = document.createElement('span');
+      floating.className = 'word-signature-front-wrap';
+      floating.setAttribute('style', 'position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:251659264;mso-wrap-style:none;');
+
+      // Objek Word dibuat sebagai VML floating shape agar saat dibuka di Microsoft Word
+      // statusnya setara dengan Wrap Text: In Front of Text dan layer paling depan.
+      // Fallback <img> tetap disediakan untuk aplikasi non-Word.
+      floating.innerHTML = `<!--[if gte mso 9]>
+<v:shape id="WordSignatureFront_${Date.now()}" type="#_x0000_t75" filled="f" stroked="f" o:allowoverlap="t"
+  style="position:absolute;left:0;top:0;width:192pt;height:84.45pt;margin-left:-62pt;margin-top:54pt;z-index:251659264;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;mso-wrap-style:none;">
+  <v:imagedata src="${compositeSrc}" o:title="Stempel dan tanda tangan"/>
+  <w10:wrap type="none"/>
+</v:shape>
+<![endif]--><!--[if !mso]><!--><img class="word-signature-composite" alt="Stempel dan tanda tangan" src="${compositeSrc}" width="256" height="113" style="position:absolute;display:block;width:192pt;height:84.45pt;max-width:192pt;max-height:84.45pt;margin-left:-62pt;margin-top:54pt;border:0;background:transparent;z-index:251659264;mso-wrap-style:none;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:paragraph;"><!--<![endif]-->`;
 
       wrap.innerHTML = '';
-      wrap.appendChild(img);
-      wrap.setAttribute('style', 'width:300px;height:126px;min-height:126px;margin:0 auto 0 auto;text-align:center;overflow:visible;position:relative;z-index:9999;');
+      wrap.appendChild(floating);
+      wrap.setAttribute('style', 'position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:251659264;mso-wrap-style:none;');
+      if (block && wrap.parentNode !== block) block.appendChild(wrap);
 
       // Nama dan NIP dibiarkan sebagai teks Word, bukan gambar.
     } catch (error) {
@@ -3079,7 +3089,11 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.signature-visual-wrap').forEach((node) => {
-    node.setAttribute('style', 'position:absolute;width:0;height:0;overflow:visible;z-index:251659264;');
+    node.setAttribute('style', 'position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:251659264;mso-wrap-style:none;');
+  });
+
+  clone.querySelectorAll('.word-signature-front-wrap').forEach((node) => {
+    node.setAttribute('style', 'position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:251659264;mso-wrap-style:none;');
   });
 
   clone.querySelectorAll('.signature-jabatan').forEach((node) => {
@@ -3266,7 +3280,7 @@ function createWordBlobFromCanvas(canvas, documentData) {
   const imgData = canvas.toDataURL('image/png');
   const title = safe(documentData.nomor_surat || 'Dokumen Word');
   const fullHtml = `<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -3362,7 +3376,7 @@ async function createWordFromDocument(data, options = { download: true }) {
 
     const htmlContent = wordSafeHtml(await prepareWordHtml(wordTarget));
     const fullHtml = `<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
