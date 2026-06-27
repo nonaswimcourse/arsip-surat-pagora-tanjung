@@ -8,7 +8,7 @@ const LOCAL_SESSION_KEY = 'sipas_kantor_session';
 const LOCAL_DOC_KEY = 'sipas_kantor_documents';
 const LOCAL_PROFILE_KEY = 'sipas_kantor_profile';
 const LOCAL_DELETED_KEY = 'sipas_kantor_deleted_ids';
-const APP_PATCH_NOTE = 'pdf-review-signature-down-4enter-20260627l';
+const APP_PATCH_NOTE = 'professional-opening-spacing-20260627m';
 
 // Optimasi PDF: mode cepat agar download tidak terasa seperti reload lama.
 const PDF_RENDER_SCALE = 2.25;
@@ -88,8 +88,10 @@ function installExportLayoutFixCss() {
     .meta-table { margin: 0 0 2px 0 !important; }
     .meta-table td { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.06 !important; }
     .recipient { margin-top: 3px !important; margin-bottom: 3px !important; }
-    .body-text { margin-top: 3px !important; }
-    .body-text p, .body-box p, .disposition-box p { margin-bottom: 3px !important; line-height: 1.20 !important; }
+    .body-text { margin-top: 6px !important; }
+    .body-text p, .body-box p, .disposition-box p { margin-bottom: 4px !important; line-height: 1.18 !important; }
+    .body-text p.salutation { margin-bottom: 8pt !important; }
+    .body-text p.opening-paragraph { margin-bottom: 4px !important; }
     .doc-one-enter-gap { height: 7pt !important; line-height: 7pt !important; }
     .signature-block,
     .pdf-live-capture .signature-block,
@@ -265,13 +267,24 @@ function installExportLayoutFixCss() {
     }
     .pdf-page .recipient, .pdf-live-capture .recipient, .pdf-export-page .recipient { margin: 4px 0 5px 0 !important; }
     .pdf-page .recipient p, .pdf-live-capture .recipient p, .pdf-export-page .recipient p { margin: 0 0 2px 0 !important; line-height: 1.16 !important; }
-    .pdf-page .body-text, .pdf-live-capture .body-text, .pdf-export-page .body-text { margin-top: 4px !important; text-align: justify !important; }
+    .pdf-page .body-text, .pdf-live-capture .body-text, .pdf-export-page .body-text { margin-top: 6px !important; text-align: justify !important; }
     .pdf-page .body-text p, .pdf-page .body-box p, .pdf-page .disposition-box p,
     .pdf-live-capture .body-text p, .pdf-live-capture .body-box p, .pdf-live-capture .disposition-box p,
     .pdf-export-page .body-text p, .pdf-export-page .body-box p, .pdf-export-page .disposition-box p {
-      margin: 0 0 3px 0 !important;
-      line-height: 1.04 !important;
+      margin: 0 0 4px 0 !important;
+      line-height: 1.16 !important;
       text-align: justify !important;
+    }
+    .pdf-page .body-text p.salutation,
+    .pdf-live-capture .body-text p.salutation,
+    .pdf-export-page .body-text p.salutation {
+      margin-bottom: 8pt !important;
+      line-height: 1.16 !important;
+    }
+    .pdf-page .body-text p.opening-paragraph,
+    .pdf-live-capture .body-text p.opening-paragraph,
+    .pdf-export-page .body-text p.opening-paragraph {
+      margin-bottom: 4px !important;
     }
     .pdf-page .doc-one-enter-gap, .pdf-live-capture .doc-one-enter-gap, .pdf-export-page .doc-one-enter-gap {
       height: 8pt !important;
@@ -2809,7 +2822,7 @@ function buildOutgoingTemplate(row, profile, type, signatureOptions = DEFAULT_SI
         <p>${safe(row.alamat_tujuan || '')}</p>
       </div>
       ${buildActivityMeta(row)}
-      <div class="body-text"><p>Dengan hormat,</p>${paragraphText(row.isi_surat)}</div>
+      <div class="body-text"><p class="salutation">Dengan hormat,</p>${paragraphText(row.isi_surat)}</div>
       ${signature(profile, row, signatureOptions)}
     </article>`;
 }
@@ -2878,8 +2891,8 @@ function buildInvitationTemplate(row, profile, type, signatureOptions = DEFAULT_
       </div>
       <div class="doc-one-enter-gap"></div>
       <div class="body-text">
-        <p>Dengan hormat,</p>
-        <p>Sehubungan dengan kegiatan <strong>${safe(row.penerima || row.acara)}</strong>, kami mengundang Bapak/Ibu untuk hadir pada:</p>
+        <p class="salutation">Dengan hormat,</p>
+        <p class="opening-paragraph">Sehubungan dengan kegiatan <strong>${safe(row.penerima || row.acara)}</strong>, kami mengundang Bapak/Ibu untuk hadir pada:</p>
         <div class="doc-one-enter-gap gap-before-activity"></div>
         ${buildActivityMeta(row)}
         <div class="doc-one-enter-gap gap-after-activity"></div>
@@ -3259,8 +3272,10 @@ function wordDocumentStyles() {
     .letter-meta-grid table.meta-table td:nth-child(3) { width: 9.10cm; }
     .recipient { margin: 3px 0 4px 0; }
     .recipient p { margin: 0 0 2px 0; line-height: 1.03; }
-    .body-text { margin-top: 3px; text-align: justify; }
-    .body-text p, .body-box p, .disposition-box p { margin: 0 0 1.5px 0; line-height: 1.04; text-align: justify; }
+    .body-text { margin-top: 5px; text-align: justify; }
+    .body-text p, .body-box p, .disposition-box p { margin: 0 0 3px 0; line-height: 1.10; text-align: justify; }
+    .body-text p.salutation { margin-bottom: 8pt; }
+    .body-text p.opening-paragraph { margin-bottom: 3px; }
     .doc-one-enter-gap { height: 5pt; line-height: 8pt; font-size: 1pt; mso-line-height-rule: exactly; }
     .word-signature-cell { width: 43%; line-height: 1.02; }
     .word-signature-left { width: 57%; }
@@ -3667,7 +3682,15 @@ function normalizeWordParagraphs(clone) {
   });
 
   clone.querySelectorAll('.body-text p, .body-box p, .disposition-box p').forEach((node) => {
-    node.setAttribute('style', 'margin:0 0 2px 0;text-align:justify;line-height:1.02;');
+    if (node.classList.contains('salutation')) {
+      node.setAttribute('style', 'margin:0 0 8pt 0;text-align:justify;line-height:1.12;');
+      return;
+    }
+    if (node.classList.contains('opening-paragraph')) {
+      node.setAttribute('style', 'margin:0 0 3px 0;text-align:justify;line-height:1.10;');
+      return;
+    }
+    node.setAttribute('style', 'margin:0 0 3px 0;text-align:justify;line-height:1.10;');
   });
 
   // FIX 20260627-WORD-META-TOP-COMPACT: tabel Nomor/Lampiran/Sifat/Perihal jangan melebar, tetapi tabel Hari/Tanggal/Waktu/Tempat/Acara tetap rapi.
@@ -3817,7 +3840,15 @@ async function prepareWordHtml(root) {
   });
 
   clone.querySelectorAll('.body-text p, .body-box p, .disposition-box p').forEach((node) => {
-    node.setAttribute('style', 'margin:0 0 2px 0;text-align:justify;line-height:1.02;');
+    if (node.classList.contains('salutation')) {
+      node.setAttribute('style', 'margin:0 0 8pt 0;text-align:justify;line-height:1.12;');
+      return;
+    }
+    if (node.classList.contains('opening-paragraph')) {
+      node.setAttribute('style', 'margin:0 0 3px 0;text-align:justify;line-height:1.10;');
+      return;
+    }
+    node.setAttribute('style', 'margin:0 0 3px 0;text-align:justify;line-height:1.10;');
   });
 
   // FIX 20260627-WORD-META-TOP-COMPACT: tabel Nomor/Lampiran/Sifat/Perihal jangan melebar, tetapi tabel Hari/Tanggal/Waktu/Tempat/Acara tetap rapi.

@@ -1010,11 +1010,20 @@ textarea {
 
 .body-text {
   text-align: justify;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .body-text p {
-  margin: 0 0 6px;               /* Memperpendek jarak antar paragraf */
+  margin: 0 0 6px;
+  line-height: 1.35;
+}
+
+.body-text p.salutation {
+  margin-bottom: 11px;
+}
+
+.body-text p.opening-paragraph {
+  margin-bottom: 6px;
 }
 
 .body-box,
@@ -3609,7 +3618,7 @@ img {
 .pdf-page .body-text,
 .pdf-live-capture .body-text,
 .pdf-export-page .body-text {
-  margin-top: 4px !important;
+  margin-top: 6px !important;
   text-align: justify !important;
 }
 
@@ -3622,9 +3631,22 @@ img {
 .pdf-export-page .body-text p,
 .pdf-export-page .body-box p,
 .pdf-export-page .disposition-box p {
-  margin: 0 0 3px 0 !important;
+  margin: 0 0 4px 0 !important;
   line-height: 1.18 !important;
   text-align: justify !important;
+}
+
+.pdf-page .body-text p.salutation,
+.pdf-live-capture .body-text p.salutation,
+.pdf-export-page .body-text p.salutation {
+  margin-bottom: 8pt !important;
+  line-height: 1.18 !important;
+}
+
+.pdf-page .body-text p.opening-paragraph,
+.pdf-live-capture .body-text p.opening-paragraph,
+.pdf-export-page .body-text p.opening-paragraph {
+  margin-bottom: 4px !important;
 }
 
 .pdf-page .doc-one-enter-gap,
