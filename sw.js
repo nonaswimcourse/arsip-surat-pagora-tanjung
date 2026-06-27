@@ -1,9 +1,9 @@
-const CACHE_NAME = 'pagora-tanjung-professional-opening-spacing-v1';
+const CACHE_NAME = 'pagora-tanjung-signature-left-transparent-v1';
 const APP_SHELL = [
   './',
   './index.html',
-  './assets/style.css?v=20260627-professional-opening-spacing-1',
-  './assets/app.js?v=20260627-professional-opening-spacing-1',
+  './assets/style.css?v=20260627-signature-left-transparent-1',
+  './assets/app.js?v=20260627-signature-left-transparent-1',
   './assets/stempel-kkg-pjok.png',
   './logo.png',
   './assets/logo.png',
@@ -67,4 +67,4 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// professional-opening-spacing-20260627m
+// signature-left-transparent-20260627n
