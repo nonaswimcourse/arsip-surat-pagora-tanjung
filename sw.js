@@ -1,9 +1,9 @@
-const CACHE_NAME = 'pagora-tanjung-tembusan-bottom-official-stamp-v1';
+const CACHE_NAME = 'pagora-tanjung-professional-opening-spacing-v1';
 const APP_SHELL = [
   './',
   './index.html',
-  './assets/style.css?v=20260627-tembusan-bottom-official-stamp-1',
-  './assets/app.js?v=20260627-tembusan-bottom-official-stamp-1',
+  './assets/style.css?v=20260627-professional-opening-spacing-1',
+  './assets/app.js?v=20260627-professional-opening-spacing-1',
   './assets/stempel-kkg-pjok.png',
   './logo.png',
   './assets/logo.png',
@@ -67,4 +67,4 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// pdf-review-signature-down-4enter-20260627l
+// professional-opening-spacing-20260627m
