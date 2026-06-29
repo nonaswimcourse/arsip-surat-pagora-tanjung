@@ -1069,10 +1069,11 @@ function startLiveDateTime() {
 function applyRoleUI() {
   const email = currentUser?.email || '-';
   const role = currentUser?.role || 'staf';
-  const profileName = cachedProfile?.nama_aplikasi || defaultProfile.nama_aplikasi;
+  const appName = "SIAP TANJUNG";
+  const appDesc = cachedProfile?.deskripsi_aplikasi || defaultProfile.deskripsi_aplikasi || "Sistem Informasi Administrasi Pagora Tanjung";
   if (el('currentUserEmail')) el('currentUserEmail').textContent = email;
   if (el('currentUserRole')) el('currentUserRole').textContent = `Role: ${titleCase(role)}`;
-  if (el('sidebarProfileName')) el('sidebarProfileName').textContent = profileName;
+  if (el('sidebarProfileName')) el('sidebarProfileName').textContent = appDesc;
   document.querySelectorAll('[data-route="pengaturan"]').forEach((item) => item.classList.remove('hidden'));
   document.querySelectorAll('.admin-only').forEach((item) => item.classList.toggle('hidden', !getPerm('settings')));
 }
