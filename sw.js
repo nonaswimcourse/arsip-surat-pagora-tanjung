@@ -1,9 +1,9 @@
-const CACHE_NAME = 'pagora-tanjung-signature-left-transparent-v1';
+const CACHE_NAME = 'pagora-tanjung-modern-ui-v2';
 const APP_SHELL = [
   './',
   './index.html',
-  './assets/style.css?v=20260627-signature-left-transparent-1',
-  './assets/app.js?v=20260627-signature-left-transparent-1',
+  './assets/style.css?v=20260718-modern-ui-1',
+  './assets/app.js?v=20260718-modern-ui-1',
   './assets/stempel-kkg-pjok.png',
   './logo.png',
   './assets/logo.png',
