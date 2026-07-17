@@ -371,7 +371,7 @@ function installExportLayoutFixCss() {
 
 
     /* === FIX 20260627-RECIPIENT-DATE-DOWN-STAMP-SMALL ===
-       Kepada Yth. dan tanggal tanda tangan turun 2 enter, stempel tetap kecil. */
+       Yth. dan tanggal tanda tangan turun 2 enter, stempel tetap kecil. */
     .pdf-page .recipient, .pdf-live-capture .recipient, .pdf-export-page .recipient {
       margin-top: 20pt !important;
       margin-bottom: 5px !important;
@@ -823,7 +823,30 @@ function getPerm(action) {
   return Boolean(permissions[role]?.[action]);
 }
 
+function showSuccessOverlay(message) {
+  const overlay = el('successOverlay');
+  if (!overlay) return;
+  const msgEl = el('successOverlayMessage');
+  if (msgEl) msgEl.textContent = message || 'Berhasil';
+
+  overlay.hidden = false;
+  overlay.classList.remove('show');
+  // Paksa reflow supaya animasi centang selalu mengulang dari awal setiap dipanggil.
+  void overlay.offsetWidth;
+  overlay.classList.add('show');
+
+  window.clearTimeout(showSuccessOverlay.timer);
+  showSuccessOverlay.timer = window.setTimeout(() => {
+    overlay.classList.remove('show');
+    window.setTimeout(() => { overlay.hidden = true; }, 240);
+  }, 1900);
+}
+
 function showToast(message, type = 'success') {
+  if (type === 'success') {
+    showSuccessOverlay(message);
+    return;
+  }
   const toast = el('toast');
   if (!toast) return;
   toast.textContent = message;
@@ -1016,8 +1039,43 @@ function syncProfileSignatureToLocalDocuments() {
 function showApplication() {
   if (el('loginPage')) el('loginPage').style.display = 'none';
   if (el('app')) el('app').style.display = 'block';
+  if (el('sidebarToggleBtn')) el('sidebarToggleBtn').style.display = 'flex';
+  applySidebarState(getSidebarHiddenPreference());
   startLiveDateTime();
 }
+
+const SIDEBAR_STATE_KEY = 'siapTanjungSidebarHidden';
+
+function getSidebarHiddenPreference() {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem(SIDEBAR_STATE_KEY) === '1';
+  } catch (e) {
+    return false;
+  }
+}
+
+function saveSidebarHiddenPreference(isHidden) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(SIDEBAR_STATE_KEY, isHidden ? '1' : '0');
+  } catch (e) {
+    // abaikan jika localStorage tidak tersedia
+  }
+}
+
+function applySidebarState(isHidden) {
+  document.body.classList.toggle('sidebar-hidden', !!isHidden);
+  const btn = el('sidebarToggleBtn');
+  if (btn) btn.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+}
+
+function toggleSidebar() {
+  const isHidden = !document.body.classList.contains('sidebar-hidden');
+  applySidebarState(isHidden);
+  saveSidebarHiddenPreference(isHidden);
+}
+window.toggleSidebar = toggleSidebar;
 
 function showLoginError(message) {
   const loginError = el('loginError');
@@ -1107,6 +1165,7 @@ async function doLogin(event) {
         if (!error && data?.user) {
           clearLocalSession();
           currentUser = buildSupabaseUser(data.user);
+          showToast('Login berhasil.', 'success');
           showApplication();
           try {
             await bootstrapApp();
@@ -1130,6 +1189,7 @@ async function doLogin(event) {
 
     currentUser = { id: email, email, role: demo.role, name: demo.name, local_only: true };
     setLocalSession(currentUser);
+    showToast('Login berhasil.', 'success');
     showApplication();
 
     try {
@@ -2930,7 +2990,7 @@ function buildOutgoingTemplate(row, profile, type, signatureOptions = DEFAULT_SI
         ])}</div>
               </div>
       <div class="recipient">
-        <p>Kepada Yth.</p>
+        <p>Yth.</p>
         <p><strong>${safe(row.pengirim)}</strong></p>
         <p>${safe(row.penerima)}</p>
         <p>${safe(row.alamat_tujuan || '')}</p>
@@ -2999,7 +3059,7 @@ function buildInvitationTemplate(row, profile, type, signatureOptions = DEFAULT_
         ])}</div>
               </div>
       <div class="recipient">
-        <p>Kepada Yth.</p>
+        <p>Yth.</p>
         <p><strong>${safe(row.pengirim)}</strong></p>
         <p>${safe(row.alamat_tujuan || '')}</p>
       </div>
@@ -3778,7 +3838,7 @@ function convertSignatureBlocksForWord(clone) {
 }
 
 function normalizeWordParagraphs(clone) {
-  // FIX 20260627-WORD-RECIPIENT-CONTAINER-DOWN: Kepada Yth. turun setara 2 enter di Word.
+  // FIX 20260627-WORD-RECIPIENT-CONTAINER-DOWN: Yth. turun setara 2 enter di Word.
   clone.querySelectorAll('.recipient').forEach((node) => {
     node.setAttribute('style', 'margin:20pt 0 4px 0;');
   });
