@@ -1133,7 +1133,7 @@ body.sidebar-hidden .content {
   background: rgba(10, 18, 40, 0.55);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  z-index: 60;
+  z-index: 250;
   display: grid;
   place-items: center;
   padding: 20px;
@@ -1511,15 +1511,17 @@ img {
   }
 
   .sidebar {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     width: 100%;
     height: auto;
     max-height: none;
     padding: 14px 12px;
     gap: 12px;
     border-radius: 0;
-    z-index: 80;
+    z-index: 150;
     transition: max-height 0.28s ease, padding 0.28s ease, opacity 0.2s ease;
     max-height: 600px;
     overflow: hidden;
@@ -1531,6 +1533,7 @@ img {
     right: 12px;
     width: 36px;
     height: 36px;
+    z-index: 200;
   }
 
   body.sidebar-hidden .sidebar {
@@ -1619,6 +1622,12 @@ img {
   .content {
     margin-left: 0;
     padding: 14px 12px 22px;
+    padding-top: calc(var(--mobile-sidebar-h, 96px) + 14px);
+    transition: padding-top 0.28s ease;
+  }
+
+  body.sidebar-hidden .content {
+    padding-top: 14px;
   }
 
   .topbar {

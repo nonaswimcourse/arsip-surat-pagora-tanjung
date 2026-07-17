@@ -1042,6 +1042,7 @@ function showApplication() {
   if (el('sidebarToggleBtn')) el('sidebarToggleBtn').style.display = 'flex';
   applySidebarState(getSidebarHiddenPreference());
   startLiveDateTime();
+  initMobileSidebarOffset();
 }
 
 const SIDEBAR_STATE_KEY = 'siapTanjungSidebarHidden';
@@ -1076,6 +1077,31 @@ function toggleSidebar() {
   saveSidebarHiddenPreference(isHidden);
 }
 window.toggleSidebar = toggleSidebar;
+
+// Di tampilan mobile, sidebar dibuat "fixed" agar tetap terlihat di layar
+// saat halaman di-scroll ke bawah (tidak ikut tertarik ke atas). Karena
+// tinggi sidebar bisa berubah-ubah (dibuka/ditutup, ukuran layar, dsb),
+// tinggi aktualnya dipantau lalu disimpan ke CSS variable --mobile-sidebar-h
+// supaya konten halaman selalu diberi jarak yang pas dan tidak tertutup.
+function syncMobileSidebarHeightVar() {
+  const sidebar = el('appSidebar');
+  if (!sidebar) return;
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const height = isMobile ? sidebar.getBoundingClientRect().height : 0;
+  document.documentElement.style.setProperty('--mobile-sidebar-h', `${height}px`);
+}
+
+function initMobileSidebarOffset() {
+  const sidebar = el('appSidebar');
+  if (!sidebar) return;
+  syncMobileSidebarHeightVar();
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(() => syncMobileSidebarHeightVar());
+    observer.observe(sidebar);
+  }
+  window.addEventListener('resize', syncMobileSidebarHeightVar);
+  window.addEventListener('orientationchange', syncMobileSidebarHeightVar);
+}
 
 function showLoginError(message) {
   const loginError = el('loginError');
@@ -2367,7 +2393,6 @@ async function renderDashboard() {
         <div><h2>Dokumen Terbaru</h2><p>Data terakhir yang tersimpan di sistem.</p></div>
         <div class="topbar-actions">
           <button class="btn secondary" onclick="exportCsv()">Export CSV</button>
-          <button class="btn secondary" onclick="backupJson()">Backup JSON</button>
           <button class="btn danger" onclick="resetAllData()">Reset Semua Data</button>
         </div>
       </div>
@@ -4521,12 +4546,6 @@ async function exportCsv(scope = '') {
   downloadText(csv, `sipas-${scope || 'data'}-${todayInput()}.csv`, 'text/csv;charset=utf-8;');
 }
 
-async function backupJson() {
-  const rows = await fetchDocuments();
-  const payload = { profile: cachedProfile, documents: rows, exported_at: new Date().toISOString() };
-  downloadText(JSON.stringify(payload, null, 2), `backup-sipas-${todayInput()}.json`, 'application/json');
-}
-
 function downloadText(content, filename, type) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -4583,7 +4602,6 @@ window.resetAllData = resetAllData;
 window.saveProfile = saveProfile;
 window.saveSettings = saveProfile;
 window.exportCsv = exportCsv;
-window.backupJson = backupJson;
 
 document.addEventListener('DOMContentLoaded', () => {
   installExportLayoutFixCss();
