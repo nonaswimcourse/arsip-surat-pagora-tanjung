@@ -2298,6 +2298,13 @@ async function saveEditedDocument(event, id) {
       }
     }
 
+    // Buat & unggah PDF terbaru ke Storage juga saat menyimpan perubahan (bukan cuma saat buat surat baru),
+    // supaya arsip PDF di bucket selalu sinkron dengan data terakhir. Tidak memaksa download otomatis di sini.
+    const pdfResult = await createPdfFromDocument(saved, { download: false, upload: true });
+    if (!pdfResult) {
+      console.warn('PDF gagal dibuat ulang saat edit. Data surat tetap tersimpan.');
+    }
+
     closeEditModal();
     showToast(saved.local_only
       ? `Perubahan tersimpan lokal. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
