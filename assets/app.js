@@ -2058,7 +2058,7 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
         </div>
         <div class="field">
           <label>Tanggal Kegiatan</label>
-          <input name="tanggal_kegiatan" value="${safe(data.tanggal_kegiatan)}" placeholder="Contoh: 19 Februari 2026" ${disabled}>
+          <input type="date" name="tanggal_kegiatan" value="${safe(data.tanggal_kegiatan)}" ${disabled}>
         </div>
         <div class="field">
           <label>Waktu</label>
@@ -3017,7 +3017,7 @@ function paragraphText(value) {
 function buildActivityMeta(row) {
   return metaTable([
     ['Hari', row.hari],
-    ['Tanggal', row.tanggal_kegiatan],
+    ['Tanggal', row.tanggal_kegiatan ? formatDateLong(row.tanggal_kegiatan) : ''],
     ['Waktu', row.waktu],
     ['Tempat', row.tempat],
     ['Acara', row.acara]
