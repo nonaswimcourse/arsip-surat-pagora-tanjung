@@ -641,11 +641,6 @@ let lastPreviewDocument = null;
 let lastPreviewElement = null;
 let editTargetId = null;
 let lastProfileSignatureUploadError = '';
-
-const demoAccounts = {
-  'admin@sipas.local': { password: 'admin123', role: 'admin', name: 'Administrator' },
-  'staf@sipas.local': { password: 'staf123', role: 'staf', name: 'Staf Administrasi' },
-  'pimpinan@sipas.local': { password: 'pimpinan123', role: 'pimpinan', name: 'Pimpinan' }
 };
 
 const permissions = {
