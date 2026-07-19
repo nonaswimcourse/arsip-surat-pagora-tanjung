@@ -311,8 +311,8 @@ textarea {
 /* Tombol untuk menyembunyikan / menampilkan sidebar — hanya ikon garis tiga, menyatu dengan area biru, tanpa kotak pembungkus */
 .sidebar-toggle-btn {
   position: fixed;
-  top: 51px;
-  left: 250px;
+  top: 38px;
+  left: 265px;
   transform: translateY(-50%);
   z-index: 90;
   width: 26px;
