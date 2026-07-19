@@ -1804,11 +1804,7 @@ async function uploadProfileSignatureFile(file) {
       return null;
     }
 
-    const { data } = supabaseClient.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(path);
-
-    const publicUrl = data?.publicUrl || await resolveStoragePublicOrSignedUrl(path, '');
+    const publicUrl = await resolveStoragePublicOrSignedUrl(path, '');
 
     if (!publicUrl) {
       lastProfileSignatureUploadError = 'Upload TTD berhasil, tetapi URL publik gagal dibuat.';
@@ -1847,15 +1843,11 @@ async function uploadProfileSignatureFile(file) {
 async function resolveStoragePublicOrSignedUrl(path, fallbackUrl = '') {
   if (!path || !supabaseClient) return fallbackUrl || '';
 
-  // Bucket dokumen-surat dibuat public. Public URL lebih stabil setelah clear cookies
-  // karena tidak bergantung pada signed URL yang punya masa berlaku.
-  try {
-    const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-    if (data?.publicUrl) return data.publicUrl;
-  } catch (error) {
-    console.warn('Public URL gagal:', error);
-  }
-
+  // Bucket dokumen-surat bersifat PRIVATE, jadi signed URL diutamakan.
+  // getPublicUrl() selalu mengembalikan string URL walau bucket-nya private
+  // (dia tidak benar-benar mengecek ke server), sehingga URL itu akan error 403
+  // saat dibuka kalau dipakai sebagai sumber utama. createSignedUrl benar-benar
+  // meminta akses sementara dari Supabase sehingga valid untuk bucket private.
   try {
     const signed = await supabaseClient.storage
       .from(STORAGE_BUCKET)
@@ -1866,6 +1858,14 @@ async function resolveStoragePublicOrSignedUrl(path, fallbackUrl = '') {
     }
   } catch (error) {
     console.warn('Signed URL gagal:', error);
+  }
+
+  // Fallback terakhir kalau bucket ternyata public / signed URL gagal dibuat.
+  try {
+    const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    if (data?.publicUrl) return data.publicUrl;
+  } catch (error) {
+    console.warn('Public URL gagal:', error);
   }
 
   return fallbackUrl || '';
@@ -4525,14 +4525,12 @@ async function uploadPdf(documentRow, pdfBlob, fileName) {
 
     if (error) throw error;
 
-    const { data } = supabaseClient.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(path);
+    const pdfUrl = await resolveStoragePublicOrSignedUrl(path, '');
 
     const updated = normalizeDocument({
       ...documentRow,
       pdf_path: path,
-      pdf_url: data?.publicUrl || '',
+      pdf_url: pdfUrl,
       updated_at: new Date().toISOString()
     });
 
