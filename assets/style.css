@@ -311,11 +311,11 @@ textarea {
 /* Tombol untuk menyembunyikan / menampilkan sidebar — hanya ikon garis tiga, menyatu dengan area biru, tanpa kotak pembungkus */
 .sidebar-toggle-btn {
   position: fixed;
-  top: 14px;
-  left: 224px;
+  top: 0;
+  left: 238px;
   z-index: 90;
-  width: 40px;
-  height: 40px;
+  width: 26px;
+  height: 26px;
   border: none;
   border-radius: 0;
   background: transparent;
@@ -342,7 +342,7 @@ body.sidebar-hidden .sidebar-toggle-btn {
 .sidebar-toggle-icon {
   position: relative;
   display: block;
-  width: 20px;
+  width: 15px;
   height: 2px;
   background: currentColor;
   border-radius: 2px;
@@ -354,18 +354,18 @@ body.sidebar-hidden .sidebar-toggle-btn {
   content: '';
   position: absolute;
   left: 0;
-  width: 20px;
+  width: 15px;
   height: 2px;
   background: currentColor;
   border-radius: 2px;
 }
 
 .sidebar-toggle-icon::before {
-  top: -6px;
+  top: -5px;
 }
 
 .sidebar-toggle-icon::after {
-  top: 6px;
+  top: 5px;
 }
 
 /* Saat sidebar disembunyikan (desktop): geser keluar layar dan tombol menempel ke kiri */
@@ -1563,11 +1563,11 @@ img {
   }
 
   .sidebar-toggle-btn {
-    top: 12px;
+    top: 2px;
     left: auto;
     right: 12px;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     z-index: 200;
   }
 
