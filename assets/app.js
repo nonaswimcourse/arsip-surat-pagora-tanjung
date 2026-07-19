@@ -1321,6 +1321,9 @@ async function navigate(route) {
 
   if (route === 'dashboard') return renderDashboard();
   if (route === 'arsip') return renderArchivePage();
+  if (route === 'total-surat') { setActiveMenu('dashboard'); return renderDashboardStatPage('total-surat'); }
+  if (route === 'surat-aktif') { setActiveMenu('dashboard'); return renderDashboardStatPage('surat-aktif'); }
+  if (route === 'menunggu-persetujuan') { setActiveMenu('dashboard'); return renderDashboardStatPage('menunggu-persetujuan'); }
   if (route === 'pengaturan') return renderSettingsPage();
   if (documentTypes[route]) return renderDocumentPage(route);
 
@@ -2366,10 +2369,10 @@ async function renderDashboard() {
 
   pageContent.innerHTML = `
     <div class="stats">
-      <div class="card stat-card"><span>Total Surat</span><strong>${rows.length}</strong><small>Semua jenis dokumen</small></div>
-      <div class="card stat-card"><span>Surat Aktif</span><strong>${activeRows.length}</strong><small>Belum diarsipkan</small></div>
-      <div class="card stat-card"><span>Menunggu Persetujuan</span><strong>${approvalRows.length}</strong><small>Status diajukan</small></div>
-      <div class="card stat-card"><span>Total Arsip</span><strong>${archiveRows.length}</strong><small>Dokumen selesai</small></div>
+      <div class="card stat-card stat-card-clickable" role="button" tabindex="0" onclick="navigate('total-surat')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('total-surat');}"><span>Total Surat</span><strong>${rows.length}</strong><small>Semua jenis dokumen</small></div>
+      <div class="card stat-card stat-card-clickable" role="button" tabindex="0" onclick="navigate('surat-aktif')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('surat-aktif');}"><span>Surat Aktif</span><strong>${activeRows.length}</strong><small>Belum diarsipkan</small></div>
+      <div class="card stat-card stat-card-clickable" role="button" tabindex="0" onclick="navigate('menunggu-persetujuan')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('menunggu-persetujuan');}"><span>Menunggu Persetujuan</span><strong>${approvalRows.length}</strong><small>Status diajukan</small></div>
+      <div class="card stat-card stat-card-clickable" role="button" tabindex="0" onclick="navigate('arsip')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('arsip');}"><span>Total Arsip</span><strong>${archiveRows.length}</strong><small>Dokumen selesai</small></div>
     </div>
 
     <div class="section-grid">
@@ -2651,6 +2654,47 @@ async function resetAllData() {
   }
 
   showToast(result.error || 'Data lokal berhasil direset. Data online mungkin perlu dihapus lewat SQL Supabase.', 'warning');
+}
+
+const dashboardStatConfig = {
+  'total-surat': {
+    title: 'Total Surat',
+    subtitle: 'Semua jenis dokumen, tanpa memandang status.',
+    filter: (rows) => rows
+  },
+  'surat-aktif': {
+    title: 'Surat Aktif',
+    subtitle: 'Dokumen yang belum diarsipkan.',
+    filter: (rows) => rows.filter((row) => row.status !== 'diarsipkan')
+  },
+  'menunggu-persetujuan': {
+    title: 'Menunggu Persetujuan',
+    subtitle: 'Dokumen berstatus diajukan, menunggu persetujuan pimpinan.',
+    filter: (rows) => rows.filter((row) => row.status === 'diajukan')
+  }
+};
+
+async function renderDashboardStatPage(kind) {
+  const config = dashboardStatConfig[kind];
+  if (!config) return renderEmptyState('Menu belum tersedia', 'Menu ini belum memiliki konfigurasi halaman.');
+
+  setPageHeader(config.title, config.subtitle);
+  const allRows = await fetchDocuments();
+  const rows = config.filter(allRows);
+  const pageContent = el('pageContent');
+  if (!pageContent) return;
+
+  pageContent.innerHTML = `
+    <div class="panel">
+      <div class="panel-header">
+        <div><h2>${safe(config.title)}</h2><p>${safe(config.subtitle)}</p></div>
+        <div class="topbar-actions">
+          <button class="btn secondary" onclick="navigate('dashboard')">Kembali ke Dashboard</button>
+        </div>
+      </div>
+      ${tableToolbar('')}
+      <div id="table-${safe(kind)}">${renderTable(rows, { showType: true })}</div>
+    </div>`;
 }
 
 async function renderArchivePage() {
