@@ -311,8 +311,8 @@ textarea {
 /* Tombol untuk menyembunyikan / menampilkan sidebar — hanya ikon garis tiga, menyatu dengan area biru, tanpa kotak pembungkus */
 .sidebar-toggle-btn {
   position: fixed;
-  top: 35px;
-  left: 256px;
+  top: 51px;
+  left: 250px;
   transform: translateY(-50%);
   z-index: 90;
   width: 26px;
@@ -774,6 +774,15 @@ body.sidebar-hidden .content {
 .stat-card:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
+}
+
+.stat-card-clickable {
+  cursor: pointer;
+}
+
+.stat-card-clickable:focus-visible {
+  outline: 3px solid rgba(22, 87, 201, 0.45);
+  outline-offset: 2px;
 }
 
 .stat-card span {
