@@ -2151,7 +2151,7 @@ async function saveDocument(event, typeKey) {
 
     showToast(saved.local_only
       ? `Data tersimpan di browser. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
-      : 'Data berhasil disimpan.');
+      : 'Data berhasil disimpan.', saved.local_only ? 'warning' : 'success');
 
     await refreshCurrentPage();
   } finally {
@@ -2188,8 +2188,8 @@ async function saveDocumentAndPdf(event, typeKey) {
       if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
     }
 
-    // Download PDF dibuat lokal saja. Upload Storage dibuat opsional agar tidak memperlambat tombol download.
-    const pdfResult = await createPdfFromDocument(saved, { download: true, upload: false });
+    // PDF diunduh sekaligus diunggah ke Storage agar arsip surat kedinasan tersimpan permanen di Supabase.
+    const pdfResult = await createPdfFromDocument(saved, { download: true, upload: true });
     if (!pdfResult) {
       showToast('Data sudah tersimpan, tetapi PDF gagal dibuat. Periksa library html2canvas dan jsPDF.', 'warning');
       return;
@@ -2201,7 +2201,7 @@ async function saveDocumentAndPdf(event, typeKey) {
 
     showToast(saved.local_only
       ? `Data lokal tersimpan dan PDF berhasil diunduh. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
-      : 'Data tersimpan dan PDF berhasil diunduh.');
+      : 'Data tersimpan dan PDF berhasil diunduh.', saved.local_only ? 'warning' : 'success');
 
     // Tidak langsung refresh halaman setelah PDF dibuat. Ini mencegah proses download terasa seperti reload.
     window.setTimeout(() => refreshCurrentPage().catch((error) => console.warn('Refresh daftar setelah PDF gagal:', error)), 1200);
@@ -2252,7 +2252,7 @@ async function saveDocumentAndWord(event, typeKey) {
 
     showToast(saved.local_only
       ? `Data lokal tersimpan dan Word berhasil diunduh. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
-      : 'Data tersimpan dan Word berhasil diunduh.');
+      : 'Data tersimpan dan Word berhasil diunduh.', saved.local_only ? 'warning' : 'success');
 
     window.setTimeout(() => refreshCurrentPage().catch((error) => console.warn('Refresh setelah Word gagal:', error)), 0);
   } finally {
@@ -2301,7 +2301,7 @@ async function saveEditedDocument(event, id) {
     closeEditModal();
     showToast(saved.local_only
       ? `Perubahan tersimpan lokal. Supabase belum menerima data: ${saved.sync_error || 'periksa tabel/RLS.'}`
-      : 'Data berhasil diperbarui.');
+      : 'Data berhasil diperbarui.', saved.local_only ? 'warning' : 'success');
     await refreshCurrentPage();
   } finally {
     restoreButton(btn, originalText);
@@ -2529,8 +2529,8 @@ async function downloadById(eventOrId, maybeId) {
       return;
     }
 
-    // Tombol PDF hanya download. Tidak upload ke Supabase agar proses jauh lebih cepat.
-    const pdfResult = await createPdfFromDocument(row, { download: true, upload: false });
+    // Tombol PDF juga mengunggah ke Storage agar tetap tersimpan sebagai arsip resmi, bukan cuma di komputer pengguna.
+    const pdfResult = await createPdfFromDocument(row, { download: true, upload: true });
     if (!pdfResult) showToast('PDF gagal dibuat. Periksa koneksi library html2canvas dan jsPDF.', 'error');
   } finally {
     restoreButton(btn, originalText);
@@ -2616,7 +2616,7 @@ async function deleteById(id) {
   await refreshCurrentPage();
 
   if (result.onlineDeleted) {
-    showToast(result.storageWarning ? `Data terhapus. ${result.storageWarning}` : 'Data berhasil dihapus permanen.');
+    showToast(result.storageWarning ? `Data terhapus. ${result.storageWarning}` : 'Data berhasil dihapus permanen.', result.storageWarning ? 'warning' : 'success');
     return;
   }
 
@@ -2639,7 +2639,7 @@ async function resetAllData() {
   await refreshCurrentPage();
 
   if (result.onlineDeleted) {
-    showToast(result.storageWarning ? `Semua data berhasil direset. ${result.storageWarning}` : 'Semua data surat berhasil direset.');
+    showToast(result.storageWarning ? `Semua data berhasil direset. ${result.storageWarning}` : 'Semua data surat berhasil direset.', result.storageWarning ? 'warning' : 'success');
     return;
   }
 
