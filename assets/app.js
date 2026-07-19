@@ -1844,31 +1844,44 @@ async function uploadProfileSignatureFile(file) {
 }
 
 
-async function resolveStoragePublicOrSignedUrl(path, fallbackUrl = '') {
-  if (!path || !supabaseClient) return fallbackUrl || '';
+class StorageService {
+  // Jika supabaseClient dan STORAGE_BUCKET didefinisikan di dalam class, 
+  // pastikan untuk menyesuaikan pemanggilannya (misal: this.supabaseClient)
 
-  // Bucket dokumen-surat dibuat public. Public URL lebih stabil setelah clear cookies
-  // karena tidak bergantung pada signed URL yang punya masa berlaku.
-  try {
-    const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-    if (data?.publicUrl) return data.publicUrl;
-  } catch (error) {
-    console.warn('Public URL gagal:', error);
-  }
+  /**
+   * Mengubah ke fungsi privat dengan menambahkan tanda '#' di awal nama fungsi
+   */
+  async #resolveStoragePublicOrSignedUrl(path, fallbackUrl = '') {
+    if (!path || !supabaseClient) return fallbackUrl || '';
 
-  try {
-    const signed = await supabaseClient.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(path, 60 * 60 * 24 * 7);
-
-    if (!signed.error && signed.data?.signedUrl) {
-      return signed.data.signedUrl;
+    // Bucket dokumen-surat dibuat public. Public URL lebih stabil setelah clear cookies
+    // karena tidak bergantung pada signed URL yang punya masa berlaku.
+    try {
+      const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+      if (data?.publicUrl) return data.publicUrl;
+    } catch (error) {
+      console.warn('Public URL gagal:', error);
     }
-  } catch (error) {
-    console.warn('Signed URL gagal:', error);
+
+    try {
+      const signed = await supabaseClient.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(path, 60 * 60 * 24 * 7);
+
+      if (!signed.error && signed.data?.signedUrl) {
+        return signed.data.signedUrl;
+      }
+    } catch (error) {
+      console.warn('Signed URL gagal:', error);
+    }
   }
 
-  return fallbackUrl || '';
+  /**
+   * Contoh fungsi publik untuk memanggil fungsi privat di atas dari dalam class
+   */
+  async getDocumentUrl(path, fallbackUrl) {
+    return await this.#resolveStoragePublicOrSignedUrl(path, fallbackUrl);
+  }
 }
 
 async function refreshDocumentFileUrls(row) {
