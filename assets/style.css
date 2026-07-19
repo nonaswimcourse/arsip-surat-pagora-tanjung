@@ -312,7 +312,7 @@ textarea {
 .sidebar-toggle-btn {
   position: fixed;
   top: 51px;
-  left: 238px;
+  left: 250px;
   transform: translateY(-50%);
   z-index: 90;
   width: 26px;
