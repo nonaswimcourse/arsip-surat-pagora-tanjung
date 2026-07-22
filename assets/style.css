@@ -1277,6 +1277,57 @@ body.sidebar-hidden .content {
   overflow: hidden !important;   /* Potong elemen liar penyebab jebol halaman 2 */
 }
 
+/* Jarak antar halaman saat tampil di layar (preview), misal Surat Tugas + halaman Lampiran. */
+.pdf-page + .pdf-page {
+  margin-top: 24px;
+}
+
+/* === Halaman Lampiran daftar nama (khusus Surat Tugas) === */
+.pdf-page.lampiran-page {
+  display: block;
+}
+
+.lampiran-page .lampiran-title {
+  font-weight: 700;
+  margin: 0 0 14px 0;
+  font-size: 11pt;
+}
+
+.lampiran-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lampiran-table th,
+.lampiran-table td {
+  border: 1px solid #111;
+  padding: 6px 10px;
+  vertical-align: top;
+  font-size: 11pt;
+  text-align: left;
+}
+
+.lampiran-table th {
+  font-weight: 700;
+  text-align: center;
+  background: #f3f4f6;
+}
+
+/* Halaman lampiran foto/gambar (upload, khusus Surat Tugas) */
+.lampiran-foto-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.lampiran-foto-img {
+  max-width: 100%;
+  max-height: 620px;
+  object-fit: contain;
+  border: 1px solid #111;
+}
+
 /* Container Utama Kop Surat */
 .letterhead {
   display: flex;
@@ -2878,6 +2929,13 @@ img {
     page-break-before: avoid !important;
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  /* Halaman Lampiran (jika ada) harus mulai di halaman cetak baru, bukan menyatu dengan halaman surat. */
+  body.printing-preview #previewContent .pdf-page.lampiran-page,
+  body.printing-preview .preview-content .pdf-page.lampiran-page {
+    display: block !important;
+    page-break-before: always !important;
   }
 }
 

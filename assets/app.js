@@ -1353,6 +1353,9 @@ function normalizeDocument(row) {
     perihal: row.perihal || '',
     sifat_surat: row.sifat_surat || 'Biasa',
     lampiran: row.lampiran || '-',
+    // Data lampiran daftar nama (halaman terpisah khusus Surat Tugas), disimpan sebagai JSON string
+    // supaya cukup 1 kolom tambahan saja di tabel Supabase.
+    lampiran_data: row.lampiran_data || '',
     isi_surat: row.isi_surat || '',
     hari: row.hari || '',
     tanggal_kegiatan: row.tanggal_kegiatan || '',
@@ -1602,6 +1605,23 @@ function getFormData(form, typeKey, existing = {}) {
     perihal: data.get('perihal')?.trim(),
     sifat_surat: data.get('sifat_surat') || 'Biasa',
     lampiran: data.get('lampiran')?.trim() || '-',
+    lampiran_data: JSON.stringify((() => {
+      // Foto/gambar lampiran diproses & disimpan lewat attachUploadedFiles setelah upload selesai,
+      // jadi di sini nilai lama (foto_data_url/foto_name) dipertahankan agar tidak hilang saat submit.
+      const prevLampiran = parseLampiranData(existing);
+      return {
+        aktif: data.get('lampiran_daftar_aktif') === 'ya',
+        judul: data.get('lampiran_daftar_judul')?.trim() || 'Lampiran.1',
+        kolom1_judul: data.get('lampiran_kolom1_judul')?.trim() || '',
+        kolom1_isi: data.get('lampiran_kolom1_isi') || '',
+        kolom2_judul: data.get('lampiran_kolom2_judul')?.trim() || '',
+        kolom2_isi: data.get('lampiran_kolom2_isi') || '',
+        foto_aktif: data.get('lampiran_foto_aktif') === 'ya',
+        foto_judul: data.get('lampiran_foto_judul')?.trim() || 'Lampiran Foto',
+        foto_data_url: prevLampiran.foto_data_url || '',
+        foto_name: prevLampiran.foto_name || ''
+      };
+    })()),
     isi_surat: data.get('isi_surat')?.trim(),
     hari: data.get('hari')?.trim(),
     tanggal_kegiatan: data.get('tanggal_kegiatan')?.trim(),
@@ -1908,11 +1928,13 @@ async function attachUploadedFiles(form, row) {
   const nextRow = normalizeDocument(row);
   const originalFile = getSelectedFile(form, 'surat_asli_file');
   const signatureFile = getSelectedFile(form, 'ttd_file');
+  const lampiranFotoFile = getSelectedFile(form, 'lampiran_foto_file');
 
   if (originalFile && !validateUploadFile(originalFile)) return null;
   if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return null;
+  if (lampiranFotoFile && !validateUploadFile(lampiranFotoFile, { imageOnly: true })) return null;
 
-  if (!originalFile && !signatureFile) return nextRow;
+  if (!originalFile && !signatureFile && !lampiranFotoFile) return nextRow;
 
   // TTD wajib dibaca menjadi base64 lebih dulu. Ini membuat preview, arsip, edit, dan PDF
   // tetap menampilkan tanda tangan walaupun upload Supabase gagal atau tabel belum punya kolom TTD.
@@ -1925,6 +1947,19 @@ async function attachUploadedFiles(form, row) {
 
     // TTD dari form surat hanya menjadi snapshot untuk surat ini.
     // Jangan update cachedProfile, agar upload TTD baru tidak mengubah surat lama atau default profil.
+  }
+
+  // Foto/gambar lampiran (khusus Surat Tugas) disimpan sebagai base64 di kolom lampiran_data yang
+  // sudah ada, sama seperti TTD di atas, supaya tidak perlu kolom/bucket Supabase baru dan tetap
+  // tampil walau Supabase belum aktif.
+  if (lampiranFotoFile && nextRow.jenis === 'tugas') {
+    const fotoDataUrl = await fileToDataUrl(lampiranFotoFile);
+    const prevLampiran = parseLampiranData(nextRow);
+    nextRow.lampiran_data = JSON.stringify({
+      ...prevLampiran,
+      foto_data_url: fotoDataUrl,
+      foto_name: lampiranFotoFile.name || 'Foto lampiran'
+    });
   }
 
   if (!supabaseClient) {
@@ -2004,6 +2039,7 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
     ? `saveEditedDocument(event, '${jsAttr(data.id)}')`
     : `saveDocument(event, '${jsAttr(resolvedTypeKey)}')`;
   const disabled = !getPerm(mode === 'edit' ? 'edit' : 'create') ? 'disabled' : '';
+  const lampiranData = parseLampiranData(data);
 
   return `
     <form id="${formId}" onsubmit="${submitHandler}" enctype="multipart/form-data">
@@ -2080,6 +2116,50 @@ function documentFormHTML(typeKey, row = {}, mode = 'create') {
           <label>Catatan Internal</label>
           <textarea name="catatan" rows="3" placeholder="Catatan internal, disposisi, atau tindak lanjut" ${disabled}>${safe(data.catatan)}</textarea>
         </div>
+        ${resolvedTypeKey === 'tugas' ? `
+          <div class="field full lampiran-daftar-toggle">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" name="lampiran_daftar_aktif" value="ya" style="width:auto;" ${lampiranData.aktif ? 'checked' : ''} ${disabled}>
+              Sertakan Lampiran Daftar Nama (ditambahkan sebagai halaman terpisah, contoh: "Nama Petugas" diisi "Terlampir")
+            </label>
+          </div>
+          <div class="field full">
+            <label>Judul Lampiran</label>
+            <input name="lampiran_daftar_judul" value="${safe(lampiranData.judul || 'Lampiran.1')}" placeholder="Contoh: Lampiran.1" ${disabled}>
+          </div>
+          <div class="field">
+            <label>Judul Kolom 1</label>
+            <input name="lampiran_kolom1_judul" value="${safe(lampiranData.kolom1_judul)}" placeholder="Contoh: TIM PUTRA" ${disabled}>
+          </div>
+          <div class="field">
+            <label>Judul Kolom 2 (opsional)</label>
+            <input name="lampiran_kolom2_judul" value="${safe(lampiranData.kolom2_judul)}" placeholder="Contoh: TIM PUTRI, kosongkan jika hanya 1 kolom" ${disabled}>
+          </div>
+          <div class="field">
+            <label>Daftar Nama Kolom 1</label>
+            <textarea name="lampiran_kolom1_isi" rows="6" placeholder="Satu nama per baris, contoh:&#10;Agus Riyadi, S.Pd. (SDN Kubangputat 02)&#10;Wahyu Riski Maulana (SDN Tanjung 03)" ${disabled}>${safe(lampiranData.kolom1_isi)}</textarea>
+          </div>
+          <div class="field">
+            <label>Daftar Nama Kolom 2 (opsional)</label>
+            <textarea name="lampiran_kolom2_isi" rows="6" placeholder="Satu nama per baris, kosongkan jika hanya 1 kolom" ${disabled}>${safe(lampiranData.kolom2_isi)}</textarea>
+          </div>
+          <div class="field full lampiran-daftar-toggle">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" name="lampiran_foto_aktif" value="ya" style="width:auto;" ${lampiranData.foto_aktif ? 'checked' : ''} ${disabled}>
+              Sertakan Lampiran Foto/Gambar (ditambahkan sebagai halaman terpisah)
+            </label>
+          </div>
+          <div class="field full">
+            <label>Judul Lampiran Foto</label>
+            <input name="lampiran_foto_judul" value="${safe(lampiranData.foto_judul || 'Lampiran Foto')}" placeholder="Contoh: Lampiran Foto Kegiatan" ${disabled}>
+          </div>
+          <div class="field full upload-card">
+            <label>Upload Foto/Gambar</label>
+            <input type="file" name="lampiran_foto_file" accept="image/png,image/jpeg,image/webp" ${disabled}>
+            <small>Format: JPG/PNG/WebP. Maksimal 5 MB.</small>
+            ${lampiranData.foto_data_url ? `<small class="file-current">File tersimpan: ${safe(lampiranData.foto_name || 'Lihat foto lampiran')}</small>` : ''}
+          </div>
+        ` : ''}
         ${resolvedTypeKey === 'masuk' ? `
           <div class="field full upload-card">
             <label>Upload Surat Asli</label>
@@ -2135,15 +2215,17 @@ async function saveDocument(event, typeKey) {
 
     const originalFile = getSelectedFile(form, 'surat_asli_file');
     const signatureFile = getSelectedFile(form, 'ttd_file');
+    const lampiranFotoFile = getSelectedFile(form, 'lampiran_foto_file');
     if (originalFile && !validateUploadFile(originalFile)) return;
     if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return;
+    if (lampiranFotoFile && !validateUploadFile(lampiranFotoFile, { imageOnly: true })) return;
 
     const row = getFormData(form, typeKey);
 
     // Simpan data utama lebih dulu agar tombol Simpan tetap bekerja walau upload file gagal.
     let saved = await saveDocumentToStorage(row);
 
-    if (originalFile || signatureFile) {
+    if (originalFile || signatureFile || lampiranFotoFile) {
       const rowWithFiles = await attachUploadedFiles(form, saved);
       if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
     }
@@ -2178,15 +2260,17 @@ async function saveDocumentAndPdf(event, typeKey) {
 
     const originalFile = getSelectedFile(form, 'surat_asli_file');
     const signatureFile = getSelectedFile(form, 'ttd_file');
+    const lampiranFotoFile = getSelectedFile(form, 'lampiran_foto_file');
     if (originalFile && !validateUploadFile(originalFile)) return;
     if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return;
+    if (lampiranFotoFile && !validateUploadFile(lampiranFotoFile, { imageOnly: true })) return;
 
     const row = getFormData(form, typeKey);
 
     // Simpan data utama lebih dulu. Upload file dan PDF tidak lagi membuat tombol Simpan terasa mati.
     let saved = await saveDocumentToStorage(row);
 
-    if (originalFile || signatureFile) {
+    if (originalFile || signatureFile || lampiranFotoFile) {
       const rowWithFiles = await attachUploadedFiles(form, saved);
       if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
     }
@@ -2230,15 +2314,17 @@ async function saveDocumentAndWord(event, typeKey) {
 
     const originalFile = getSelectedFile(form, 'surat_asli_file');
     const signatureFile = getSelectedFile(form, 'ttd_file');
+    const lampiranFotoFile = getSelectedFile(form, 'lampiran_foto_file');
     if (originalFile && !validateUploadFile(originalFile)) return;
     if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return;
+    if (lampiranFotoFile && !validateUploadFile(lampiranFotoFile, { imageOnly: true })) return;
 
     const row = getFormData(form, typeKey);
 
     // Simpan data utama lebih dulu, sama seperti tombol PDF.
     let saved = await saveDocumentToStorage(row);
 
-    if (originalFile || signatureFile) {
+    if (originalFile || signatureFile || lampiranFotoFile) {
       const rowWithFiles = await attachUploadedFiles(form, saved);
       if (rowWithFiles) saved = await saveDocumentToStorage(rowWithFiles);
     }
@@ -2283,13 +2369,15 @@ async function saveEditedDocument(event, id) {
 
     const originalFile = getSelectedFile(form, 'surat_asli_file');
     const signatureFile = getSelectedFile(form, 'ttd_file');
+    const lampiranFotoFile = getSelectedFile(form, 'lampiran_foto_file');
     if (originalFile && !validateUploadFile(originalFile)) return;
     if (signatureFile && !validateUploadFile(signatureFile, { imageOnly: true })) return;
+    if (lampiranFotoFile && !validateUploadFile(lampiranFotoFile, { imageOnly: true })) return;
 
     const row = getFormData(form, existing.jenis, existing);
     let saved = await saveDocumentToStorage(row);
 
-    if (originalFile || signatureFile) {
+    if (originalFile || signatureFile || lampiranFotoFile) {
       const rowWithFiles = await attachUploadedFiles(form, saved);
       if (rowWithFiles) {
         saved = await saveDocumentToStorage(rowWithFiles);
@@ -2925,7 +3013,9 @@ function renderActivePreviewDocument() {
   if (!preview || !lastPreviewDocument) return;
   preview.innerHTML = buildDocumentHTML(lastPreviewDocument, getPreviewSignatureOptions());
   applyPreviewSignatureLayer(preview);
-  lastPreviewElement = preview.querySelector('.pdf-page');
+  // Simpan referensi ke container (bukan hanya halaman pertama) supaya dokumen dengan
+  // halaman lampiran tambahan tetap ikut tertangkap saat cetak/download PDF/Word.
+  lastPreviewElement = preview;
 }
 
 function refreshPreviewSignatureOptions() {
@@ -3022,6 +3112,85 @@ function buildActivityMeta(row) {
     ['Tempat', row.tempat],
     ['Acara', row.acara]
   ]);
+}
+
+// === Lampiran daftar nama (khusus Surat Tugas) ===
+// Disimpan sebagai JSON string di kolom lampiran_data agar tidak perlu banyak kolom baru di Supabase.
+function parseLampiranData(row) {
+  const fallback = {
+    aktif: false, judul: 'Lampiran.1', kolom1_judul: '', kolom1_isi: '', kolom2_judul: '', kolom2_isi: '',
+    // Lampiran foto/gambar (opsional, khusus Surat Tugas). Disimpan sebagai base64 di sini juga
+    // supaya tetap tampil di PDF/Word walau Supabase Storage belum aktif.
+    foto_aktif: false, foto_judul: 'Lampiran Foto', foto_data_url: '', foto_name: ''
+  };
+  try {
+    if (!row?.lampiran_data) return fallback;
+    const parsed = JSON.parse(row.lampiran_data);
+    return { ...fallback, ...parsed };
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function splitLampiranLines(value) {
+  return String(value || '')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function buildLampiranTablePage(row, profile) {
+  const data = parseLampiranData(row);
+  if (!data.aktif) return '';
+
+  const rows1 = splitLampiranLines(data.kolom1_isi);
+  const rows2 = splitLampiranLines(data.kolom2_isi);
+  const hasCol2 = Boolean(String(data.kolom2_judul || '').trim() || rows2.length);
+  const rowCount = Math.max(rows1.length, rows2.length, 1);
+
+  const bodyRows = Array.from({ length: rowCount }).map((_, index) => `
+    <tr>
+      <td>${safe(rows1[index] || '')}</td>
+      ${hasCol2 ? `<td>${safe(rows2[index] || '')}</td>` : ''}
+    </tr>`).join('');
+
+  return `
+    <article class="pdf-page lampiran-page">
+      <p class="lampiran-title">${safe(data.judul || 'Lampiran.1')}</p>
+      <table class="lampiran-table">
+        <thead>
+          <tr>
+            <th>${safe(data.kolom1_judul || 'Daftar Nama')}</th>
+            ${hasCol2 ? `<th>${safe(data.kolom2_judul)}</th>` : ''}
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </article>`;
+}
+
+// Halaman lampiran berupa foto/gambar yang diunggah (khusus Surat Tugas), terpisah dari
+// halaman lampiran daftar nama supaya keduanya bisa dipakai bersamaan atau sendiri-sendiri.
+function buildLampiranFotoPage(row) {
+  const data = parseLampiranData(row);
+  if (!data.foto_aktif || !data.foto_data_url) return '';
+
+  return `
+    <article class="pdf-page lampiran-page lampiran-foto-page">
+      <p class="lampiran-title">${safe(data.foto_judul || 'Lampiran Foto')}</p>
+      <div class="lampiran-foto-wrap">
+        <img src="${safe(data.foto_data_url)}" alt="${safe(data.foto_name || 'Lampiran foto')}" class="lampiran-foto-img">
+      </div>
+    </article>`;
+}
+
+// Mengembalikan seluruh elemen .pdf-page di dalam sebuah elemen/container,
+// baik elemen itu sendiri adalah .pdf-page maupun sebuah pembungkus berisi beberapa halaman.
+function getPdfPageElements(sourceElement) {
+  if (!sourceElement) return [];
+  if (sourceElement.classList && sourceElement.classList.contains('pdf-page')) return [sourceElement];
+  return Array.from(sourceElement.querySelectorAll ? sourceElement.querySelectorAll('.pdf-page') : []);
 }
 
 
@@ -3122,10 +3291,13 @@ function buildAssignmentTemplate(row, profile, type, signatureOptions = DEFAULT_
         ])}
         ${buildActivityMeta(row)}
         ${paragraphText(row.isi_surat)}
+        <div class="doc-one-enter-gap"></div>
         <p>Surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.</p>
       </div>
       ${signature(profile, row, signatureOptions)}
-    </article>`;
+    </article>
+    ${buildLampiranTablePage(row, profile)}
+    ${buildLampiranFotoPage(row)}`;
 }
 
 function buildInvitationTemplate(row, profile, type, signatureOptions = DEFAULT_SIGNATURE_RENDER_OPTIONS) {
@@ -3153,6 +3325,7 @@ function buildInvitationTemplate(row, profile, type, signatureOptions = DEFAULT_
         ${buildActivityMeta(row)}
         <div class="doc-one-enter-gap gap-after-activity"></div>
         ${paragraphText(row.isi_surat)}
+        <div class="doc-one-enter-gap"></div>
         <p>Demikian undangan ini disampaikan. Atas perhatian dan kehadirannya, kami ucapkan terima kasih.</p>
       </div>
       ${signature(profile, row, signatureOptions)}
@@ -4297,7 +4470,12 @@ async function createWordFromDocument(data, options = { download: true }) {
   workerDiv.style.color = '#000000';
 
   if (wordOptions.sourceElement && wordOptions.sourceElement.isConnected) {
-    workerDiv.appendChild(wordOptions.sourceElement.cloneNode(true));
+    // sourceElement bisa berupa satu .pdf-page ATAU sebuah container berisi beberapa
+    // halaman (misal Surat Tugas + halaman Lampiran). Ambil semua halamannya secara terpisah
+    // supaya masing-masing tetap dikloning apa adanya, lalu digabung kembali di bawah.
+    getPdfPageElements(wordOptions.sourceElement).forEach((pageEl) => {
+      workerDiv.appendChild(pageEl.cloneNode(true));
+    });
   } else {
     workerDiv.innerHTML = buildDocumentHTML(documentData, wordOptions);
   }
@@ -4305,22 +4483,34 @@ async function createWordFromDocument(data, options = { download: true }) {
   document.body.appendChild(workerDiv);
 
   try {
-    const wordTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
+    // Dokumen bisa terdiri dari lebih dari satu halaman (misal Surat Tugas + halaman Lampiran).
+    // Setiap .pdf-page diproses satu per satu lalu digabung dengan page-break Word di antaranya.
+    const pageElements = Array.from(workerDiv.querySelectorAll('.pdf-page'));
+    const wordTargets = pageElements.length ? pageElements : [workerDiv];
+    const pageHtmlParts = [];
 
-    wordTarget.classList.remove('pdf-live-capture', 'pdf-export-page');
-    wordTarget.style.width = '';
-    wordTarget.style.height = '';
-    wordTarget.style.minHeight = '';
-    wordTarget.style.maxHeight = '';
-    wordTarget.style.overflow = '';
-    wordTarget.style.boxShadow = '';
-    wordTarget.style.margin = '';
+    for (let index = 0; index < wordTargets.length; index++) {
+      const wordTarget = wordTargets[index];
 
-    await inlineImagesForPdf(wordTarget);
-    await waitForImages(wordTarget, PDF_IMAGE_TIMEOUT_MS);
-    await nextFrame();
+      wordTarget.classList.remove('pdf-live-capture', 'pdf-export-page');
+      wordTarget.style.width = '';
+      wordTarget.style.height = '';
+      wordTarget.style.minHeight = '';
+      wordTarget.style.maxHeight = '';
+      wordTarget.style.overflow = '';
+      wordTarget.style.boxShadow = '';
+      wordTarget.style.margin = '';
 
-    const htmlContent = wordSafeHtml(await prepareWordHtml(wordTarget));
+      await inlineImagesForPdf(wordTarget);
+      await waitForImages(wordTarget, PDF_IMAGE_TIMEOUT_MS);
+      await nextFrame();
+
+      const pageHtml = wordSafeHtml(await prepareWordHtml(wordTarget));
+      // Halaman kedua dan seterusnya (mis. Lampiran) dimulai di halaman Word baru.
+      pageHtmlParts.push(index === 0 ? pageHtml : `<div style="page-break-before:always;">${pageHtml}</div>`);
+    }
+
+    const htmlContent = pageHtmlParts.join('');
     const fullHtml = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
@@ -4407,63 +4597,131 @@ async function finalizePdfFromCanvas(canvas, documentData, pdfOptions) {
   return { fileName, pdfBlob };
 }
 
+// Sama seperti finalizePdfFromCanvas, tetapi menerima beberapa canvas sekaligus
+// dan menambahkannya sebagai halaman PDF berurutan (dipakai saat dokumen punya halaman Lampiran).
+async function finalizePdfFromCanvases(canvases, documentData, pdfOptions) {
+  const list = (canvases || []).filter(Boolean);
+  if (!list.length) return null;
+  if (list.length === 1) return finalizePdfFromCanvas(list[0], documentData, pdfOptions);
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+
+  list.forEach((canvas, index) => {
+    if (index > 0) pdf.addPage('a4', 'portrait');
+
+    const imgData = canvas.toDataURL('image/png');
+    const canvasRatio = canvas.width / canvas.height;
+    const pageRatio = pageWidth / pageHeight;
+    let renderWidth = pageWidth;
+    let renderHeight = pageHeight;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (Math.abs(canvasRatio - pageRatio) > 0.003) {
+      if (canvasRatio > pageRatio) {
+        renderWidth = pageWidth;
+        renderHeight = pageWidth / canvasRatio;
+        offsetY = (pageHeight - renderHeight) / 2;
+      } else {
+        renderHeight = pageHeight;
+        renderWidth = pageHeight * canvasRatio;
+        offsetX = (pageWidth - renderWidth) / 2;
+      }
+    }
+
+    pdf.addImage(imgData, 'PNG', offsetX, offsetY, renderWidth, renderHeight, undefined, 'FAST');
+  });
+
+  const fileName = `${slugify(documentData.nomor_surat || 'surat')}.pdf`;
+  const pdfBlob = pdf.output('blob');
+
+  if (pdfOptions.upload) {
+    await uploadPdf(documentData, pdfBlob, fileName);
+  }
+
+  if (pdfOptions.download) {
+    downloadBlob(pdfBlob, fileName);
+  }
+
+  return { fileName, pdfBlob };
+}
+
 async function createPdfFromVisiblePreview(sourceElement, documentData, pdfOptions) {
   if (!sourceElement || !sourceElement.isConnected) return null;
 
-  // Anti gepeng: jangan capture elemen modal yang tingginya bisa berubah karena scroll.
-  // Clone preview dibuat off-screen dengan ukuran A4 pasti, lalu baru dirender ke PDF.
-  const workerDiv = document.createElement('div');
-  workerDiv.style.position = 'absolute';
-  workerDiv.style.top = '-9999px';
-  workerDiv.style.left = '-9999px';
-  workerDiv.style.width = '210mm';
-  workerDiv.style.height = '297mm';
-  workerDiv.style.background = '#ffffff';
-  workerDiv.style.color = '#000000';
-  workerDiv.style.overflow = 'hidden';
+  // Dokumen bisa terdiri dari lebih dari satu halaman (misal Surat Tugas + halaman Lampiran).
+  // Setiap .pdf-page ditangkap satu per satu supaya urutan halaman PDF tetap benar.
+  const pages = getPdfPageElements(sourceElement);
+  if (!pages.length) return null;
 
-  const captureClone = sourceElement.cloneNode(true);
-  captureClone.classList.add('pdf-live-capture');
-  captureClone.style.width = '210mm';
-  captureClone.style.height = '297mm';
-  captureClone.style.minHeight = '297mm';
-  captureClone.style.maxHeight = '297mm';
-  captureClone.style.boxSizing = 'border-box';
-  captureClone.style.boxShadow = 'none';
-  captureClone.style.margin = '0';
-  captureClone.style.overflow = 'hidden';
+  const canvases = [];
 
-  workerDiv.appendChild(captureClone);
-  document.body.appendChild(workerDiv);
+  for (const pageElement of pages) {
+    // Anti gepeng: jangan capture elemen modal yang tingginya bisa berubah karena scroll.
+    // Clone preview dibuat off-screen dengan ukuran A4 pasti, lalu baru dirender ke PDF.
+    const workerDiv = document.createElement('div');
+    workerDiv.style.position = 'absolute';
+    workerDiv.style.top = '-9999px';
+    workerDiv.style.left = '-9999px';
+    workerDiv.style.width = '210mm';
+    workerDiv.style.height = '297mm';
+    workerDiv.style.background = '#ffffff';
+    workerDiv.style.color = '#000000';
+    workerDiv.style.overflow = 'hidden';
 
-  try {
-    await inlineImagesForPdf(captureClone);
-    normalizeSignatureImages(captureClone);
-    await nextFrame();
-    await wait(PDF_RENDER_DELAY_MS);
+    const captureClone = pageElement.cloneNode(true);
+    captureClone.classList.add('pdf-live-capture');
+    captureClone.style.width = '210mm';
+    captureClone.style.height = '297mm';
+    captureClone.style.minHeight = '297mm';
+    captureClone.style.maxHeight = '297mm';
+    captureClone.style.boxSizing = 'border-box';
+    captureClone.style.boxShadow = 'none';
+    captureClone.style.margin = '0';
+    captureClone.style.overflow = 'hidden';
 
-    const targetWidth = captureClone.offsetWidth || 794;
-    const targetHeight = Math.round(targetWidth * 297 / 210);
+    workerDiv.appendChild(captureClone);
+    document.body.appendChild(workerDiv);
 
-    const canvas = await html2canvas(captureClone, {
-      scale: PDF_RENDER_SCALE,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-      width: targetWidth,
-      height: targetHeight,
-      windowWidth: targetWidth,
-      windowHeight: targetHeight,
-      scrollX: 0,
-      scrollY: 0,
-      imageTimeout: PDF_IMAGE_TIMEOUT_MS
-    });
+    try {
+      await inlineImagesForPdf(captureClone);
+      normalizeSignatureImages(captureClone);
+      await nextFrame();
+      await wait(PDF_RENDER_DELAY_MS);
 
-    return await finalizePdfFromCanvas(canvas, documentData, pdfOptions);
-  } finally {
-    if (workerDiv.parentNode) workerDiv.remove();
+      const targetWidth = captureClone.offsetWidth || 794;
+      const targetHeight = Math.round(targetWidth * 297 / 210);
+
+      const canvas = await html2canvas(captureClone, {
+        scale: PDF_RENDER_SCALE,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: targetWidth,
+        height: targetHeight,
+        windowWidth: targetWidth,
+        windowHeight: targetHeight,
+        scrollX: 0,
+        scrollY: 0,
+        imageTimeout: PDF_IMAGE_TIMEOUT_MS
+      });
+
+      canvases.push(canvas);
+    } finally {
+      if (workerDiv.parentNode) workerDiv.remove();
+    }
   }
+
+  return await finalizePdfFromCanvases(canvases, documentData, pdfOptions);
 }
 
 // PERBAIKAN FINAL ANTI-BLANK: Menggunakan teknik Off-Screen Rendering posisi absolut
@@ -4506,53 +4764,62 @@ async function createPdfFromDocument(data, options = { download: true, upload: f
   try {
     // 2. Paksa seluruh gambar eksternal/Supabase menjadi data URL lokal sebelum html2canvas.
     // Ini memperbaiki kasus TTD tampil di preview, tetapi hilang saat render PDF.
-    const captureTarget = workerDiv.querySelector('.pdf-page') || workerDiv;
-    captureTarget.classList.add('pdf-export-page');
-    captureTarget.style.width = '210mm';
-    captureTarget.style.height = '297mm';
-    captureTarget.style.minHeight = '297mm';
-    captureTarget.style.maxHeight = '297mm';
-    captureTarget.style.overflow = 'hidden';
-    captureTarget.style.boxSizing = 'border-box';
+    // Dokumen bisa memiliki lebih dari satu halaman (misal Surat Tugas + halaman Lampiran),
+    // jadi setiap .pdf-page ditangkap satu per satu agar urutan halaman PDF tetap benar.
+    const pageElements = Array.from(workerDiv.querySelectorAll('.pdf-page'));
+    const captureTargets = pageElements.length ? pageElements : [workerDiv];
+    const canvases = [];
 
-    await inlineImagesForPdf(captureTarget);
-    await applyAutoTransparentSignatureImages(captureTarget);
-    await waitForImages(captureTarget, PDF_IMAGE_TIMEOUT_MS);
-    normalizeSignatureImages(captureTarget);
-    await nextFrame();
-    await wait(PDF_RENDER_DELAY_MS);
+    for (const captureTarget of captureTargets) {
+      captureTarget.classList.add('pdf-export-page');
+      captureTarget.style.width = '210mm';
+      captureTarget.style.height = '297mm';
+      captureTarget.style.minHeight = '297mm';
+      captureTarget.style.maxHeight = '297mm';
+      captureTarget.style.overflow = 'hidden';
+      captureTarget.style.boxSizing = 'border-box';
 
-    captureTarget.querySelectorAll('.signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
-      node.style.visibility = 'visible';
-      node.style.opacity = '1';
-      if (node.tagName === 'IMG') node.style.display = 'block';
-    });
+      await inlineImagesForPdf(captureTarget);
+      await applyAutoTransparentSignatureImages(captureTarget);
+      await waitForImages(captureTarget, PDF_IMAGE_TIMEOUT_MS);
+      normalizeSignatureImages(captureTarget);
+      await nextFrame();
+      await wait(PDF_RENDER_DELAY_MS);
 
-    const targetWidth = captureTarget.offsetWidth || 794;
-    const targetHeight = captureTarget.offsetHeight || Math.round(targetWidth * 297 / 210);
+      captureTarget.querySelectorAll('.signature-image-wrap, .signature-image-wrap img, .ttd-img').forEach((node) => {
+        node.style.visibility = 'visible';
+        node.style.opacity = '1';
+        if (node.tagName === 'IMG') node.style.display = 'block';
+      });
 
-    // 3. Eksekusi html2canvas dengan ukuran A4 tetap.
-    // Ini mencegah hasil PDF gepeng karena canvas tidak lagi dipaksa masuk ke A4 dengan rasio berbeda.
-    const canvas = await html2canvas(captureTarget, {
-      scale: PDF_RENDER_SCALE,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-      width: targetWidth,
-      height: targetHeight,
-      windowWidth: targetWidth,
-      windowHeight: targetHeight,
-      scrollX: 0,
-      scrollY: 0,
-      imageTimeout: PDF_IMAGE_TIMEOUT_MS
-    });
+      const targetWidth = captureTarget.offsetWidth || 794;
+      const targetHeight = captureTarget.offsetHeight || Math.round(targetWidth * 297 / 210);
 
-    // Setelah canvas berhasil dicapture, langsung hapus elemen pembantu dari DOM
+      // 3. Eksekusi html2canvas dengan ukuran A4 tetap.
+      // Ini mencegah hasil PDF gepeng karena canvas tidak lagi dipaksa masuk ke A4 dengan rasio berbeda.
+      const canvas = await html2canvas(captureTarget, {
+        scale: PDF_RENDER_SCALE,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: targetWidth,
+        height: targetHeight,
+        windowWidth: targetWidth,
+        windowHeight: targetHeight,
+        scrollX: 0,
+        scrollY: 0,
+        imageTimeout: PDF_IMAGE_TIMEOUT_MS
+      });
+
+      canvases.push(canvas);
+    }
+
+    // Setelah semua halaman berhasil dicapture, langsung hapus elemen pembantu dari DOM
     workerDiv.remove();
 
-    // 4. Konversi hasil tangkapan gambar menjadi PDF halaman tunggal.
-    return await finalizePdfFromCanvas(canvas, documentData, pdfOptions);
+    // 4. Konversi hasil tangkapan gambar menjadi PDF (satu halaman atau lebih).
+    return await finalizePdfFromCanvases(canvases, documentData, pdfOptions);
   } catch (error) {
     console.error('Gagal membuat PDF:', error);
     showToast('Gagal memproses file PDF.', 'error');
